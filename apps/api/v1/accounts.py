@@ -89,55 +89,52 @@ class ChangePasswordView(generics.UpdateAPIView):
 
 class RegisterView(APIView):
     def post(self, request):
-        fname       = request.data.get('first_name')
-        lname       = request.data.get('last_name')
-        phone       = request.data.get('phone')
-        email       = request.data.get('email')
+        fullName    = request.data.get('fullName')
+        phoneNumber = request.data.get('phoneNumber')
+        username    = request.data.get('username')
         passwd1     = request.data.get('password')
-        passwd2     = request.data.get('password_confirm')
+        passwd2     = request.data.get('passwordConfirm')
 
         response           = {}
         status_code        = 200
 
-        if not fname or not lname or not phone or not email or not passwd1:
-            # return password mismatch
+        if not fullName or not phoneNumber or not username or not passwd1:
             response['error']        = True
             response['error_msg']    = 'Required parameters missing'
             status_code              = 203
         else:
             # check for password matching
             if passwd1 != passwd2:
-                # return password mismatch
                 response['error']        = True
-                response['error_msg']    = 'Password Mismatch'
+                response['error_msg']    = 'Password mismatch'
                 status_code              = 203
             else:
                 try:
-                    User.objects.get(username = email)
+                    User.objects.get(username = username)
                     response['error']        = True
-                    response['error_msg']    = 'Email already registered'
+                    response['error_msg']    = 'Username should be unique.'
                     status_code              = 203
                 
                 except User.DoesNotExist:
                     # create new user
                     new_user = User.objects.create_user(
-                        username   = email,
+                        username   = username,
                         password   = passwd1,
-                        first_name = fname,
-                        last_name  = lname,
-                        email      = email
+                        first_name = fullName,
+                        last_name  = fullName,
+                        email      = f"{username}@sacids.org"
                     )
 
                     #update profile
                     profile         = Profile.objects.get(user=new_user)
-                    profile.phone   = phone
+                    profile.phone   = phoneNumber
                     #profile.digest  = calculate_digest(new_user.username, passwd1)
                     profile.save()
                     
                     response['error']    = False
                     response['uid']      = new_user.pk
-                    response['user']     = {'username':new_user.username,'first_name':new_user.first_name,'last_name':new_user.last_name}
-                    response['success_msg']  = 'User registered, please login now.'
+                    response['user']     = {'username':new_user.username,'fullName':new_user.first_name,'phone':phoneNumber}
+                    response['success_msg']  = 'User successfully registered.'
                     status_code     = 200
 
         # response for user registration
@@ -161,11 +158,14 @@ class LoginView(APIView):
             if user is not None:
                 refresh = RefreshToken.for_user(user)
 
+                # profile 
+                profile = user.profile
+
                 return JsonResponse({
                     'error': False,
                     'refresh': str(refresh),
                     'access': str(refresh.access_token), 
-                    'user': {'first_name': user.first_name, 'surname': user.last_name, 'username': user.username, 'email': user.email}
+                    'user': {'fullName': user.first_name, 'username': user.username, 'phone': profile.phone}
                 })
             else:
                 return JsonResponse({
