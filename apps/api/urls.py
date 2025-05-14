@@ -1,15 +1,14 @@
 from django.urls import path
 from django.urls.resolvers import URLPattern
 from django.contrib.auth import views as auth_views
-from .v1.accounts import CustomTokenObtainPairView
+from .v1.accounts import RegisterView, CustomTokenObtainPairView
 from .v1.projects import *
 from .v1.surveys import *
 from .v1.form_data import *
 
 urlpatterns = [
     # Accounts
-    # path('v1/register', RegisterView.as_view(), name='v1.register'),
-    # path('v1/login', LoginView.as_view(), name='v1.login'),
+    path('v1/register', RegisterView.as_view(), name='v1.register'),
     path("v1/token/", CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
 
     # Projects
