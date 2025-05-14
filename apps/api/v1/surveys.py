@@ -26,13 +26,19 @@ class FormDefinitionView(viewsets.ViewSet):
             return FormDefinitionSerializer
         return super().get_serializer_class()
     
-    def lists(self, request):
+    def lists(self, request, project_id=None):
         """Get all form definition"""
-        form_definition = FormDefinition.objects.order_by('created_at').all()
+        form_definition = FormDefinition.objects.filter(project_id=project_id).order_by('created_at').all()
         serializer = FormDefinitionSerializer(form_definition, many=True)
         return Response(serializer.data)
+    
+    def listMeta(self, request, project_id=None):
+        """Get all form definition (id,version, short title) that user is permitted to access"""
+        form_definition = FormDefinition.objects.filter(project_id=project_id).values('id','version','short_title').distinct()
+        serializer = FormDefnMetaSerializer(form_definition, many=True)
+        return Response(serializer.data)
 
-    def detail(self, request, pk=0):
+    def getForm(self, request, pk=None):
         """Get form definition information"""
         form_definition = FormDefinition.objects.get(pk=pk)
         serializer = FormDefinitionSerializer(form_definition)

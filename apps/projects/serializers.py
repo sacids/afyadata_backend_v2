@@ -24,6 +24,12 @@ class FormDefinitionSerializer(serializers.ModelSerializer):
         model = FormDefinition
         fields = "__all__"
 
+class FormDefnMetaSerializer(serializers.ModelSerializer):
+    """Serializer for form definition"""
+    class Meta:
+        model = FormDefinition
+        fields = ['id','version', 'short_title']
+
 class FormDataSerializer(serializers.ModelSerializer):
     """Serializer for form data"""
     #form_data  = serializers.StringRelatedField(many=False)

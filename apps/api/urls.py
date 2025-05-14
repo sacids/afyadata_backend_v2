@@ -21,9 +21,9 @@ urlpatterns = [
 
 
     # Form definition
-    path("v1/form-definition",FormDefinitionView.as_view({"get": "lists", "post": "create"})),
-    path("v1/form-defn-meta", FormDefinitionView.as_view({"post": "listMeta"})),
-    path("v1/form-definition/<str:form_category_id>", FormDefinitionView.as_view({"get": "retrieve"})),
-    path("v1/form-definition/detail/<int:pk>",FormDefinitionView.as_view({"get": "getForm"}),),
+    path("v1/all-form-definition/<str:project_id>",FormDefinitionView.as_view({"get": "lists", "post": "create"})),
+    path("v1/form-defn-meta/<str:project_id>", FormDefinitionView.as_view({"post": "listMeta"})),
+    path("v1/form-definition/<str:project_id>", FormDefinitionView.as_view({"get": "retrieve"})),
+    path("v1/form-definition/details/<str:pk>",FormDefinitionView.as_view({"get": "getForm"}),),
   
 ]
