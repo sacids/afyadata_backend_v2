@@ -18,11 +18,14 @@ urlpatterns = [
     path('v1/project/request-access', ProjectView.as_view({'post': 'request_access'})),
     path('v1/project/create', ProjectView.as_view({'post': 'create'})),
 
-
     # Form definition
     path("v1/all-form-definition/<str:project_id>",FormDefinitionView.as_view({"get": "lists", "post": "create"})),
     path("v1/form-defn-meta/<str:project_id>", FormDefinitionView.as_view({"post": "listMeta"})),
     path("v1/form-definition/<str:project_id>", FormDefinitionView.as_view({"get": "retrieve"})),
-    path("v1/form-definition/details/<str:pk>",FormDefinitionView.as_view({"get": "getForm"}),),
+    path("v1/form-definition/detail/<str:pk>",FormDefinitionView.as_view({"get": "getForm"}),),
+
+    # Form data
+    path("v1/form-data", FormDataView.as_view({"get": "retrieve", "post": "create"})),
+    path("v1/form-data/<str:pk>", FormDataView.as_view({"get": "detail"})),
   
 ]

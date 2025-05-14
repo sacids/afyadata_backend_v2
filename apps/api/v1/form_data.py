@@ -50,7 +50,6 @@ class FormDataView(viewsets.ViewSet):
         """Create new form data"""
         # TODO: check if project accept the data at the moment
 
-
         if request.data:
             arr_response = []
             for val in request.data:
