@@ -32,7 +32,7 @@ class FormDefinitionAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'short_title', 'version', 'code', 'sort_order')
+            'fields': ('project','title', 'short_title', 'version', 'code', 'sort_order')
         }),
         ('Form Definition Details', {
             'fields': ('xlsform', 'form_defn', 'description', 'children')
