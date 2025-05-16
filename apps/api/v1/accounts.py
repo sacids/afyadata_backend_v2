@@ -141,7 +141,7 @@ class RegisterView(APIView):
                     response['uid']      = new_user.pk
                     response['refresh']  = str(refresh),
                     response['access']   = str(refresh.access_token), 
-                    response['user']     = {'username':new_user.username,'fullName':new_user.first_name,'phone':phoneNumber}
+                    response['user']     = {'id': new_user.id, 'username':new_user.username,'fullName':new_user.first_name,'phone':phoneNumber}
                     response['success_msg']  = 'User successfully registered.'
                     status_code     = 200
 
