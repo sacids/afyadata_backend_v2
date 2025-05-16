@@ -59,18 +59,18 @@ class ProjectView(viewsets.ViewSet):
 
             # check if user is already a member
             if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
-                return Response({"error": False, "message": "You are already a member of this project"},status=status.HTTP_200_OK)
+                return Response({"error": True, "message": "You are already a member of this project"},status=status.HTTP_200_OK)
             else:
                 # check if project is auto_join is true
                 if project.auto_join:
                     ProjectMember.objects.create(project=project, member=request.user, active=True)
-                    return Response({"error": False, "message": "You have been added to this project"},status=status.HTTP_200_OK)
+                    return Response({"error": False, "message": "Your request has approved"},status=status.HTTP_200_OK)
                 else:
                     ProjectMember.objects.create(project=project, member=request.user, active=False)
 
                     # TODO: send notification to project owner
 
                     # response
-                    return Response({"error": False, "message": "You need to request access to this project"},status=status.HTTP_200_OK)
+                    return Response({"error": False, "message": "Your request received, awaiting approval"},status=status.HTTP_200_OK)
         except:
             return Response({"error": True, "message": "Project does not exist"},status=status.HTTP_200_OK)
