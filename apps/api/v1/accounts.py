@@ -15,6 +15,7 @@ from django.contrib.auth import authenticate
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.permissions import AllowAny
 
     
 class UserViewSet(viewsets.ModelViewSet):
@@ -88,6 +89,8 @@ class ChangePasswordView(generics.UpdateAPIView):
     
 
 class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         fullName    = request.data.get('fullName')
         phoneNumber = request.data.get('phoneNumber')
@@ -125,6 +128,9 @@ class RegisterView(APIView):
                         email      = f"{username}@sacids.org"
                     )
 
+                    # create token
+                    refresh = RefreshToken.for_user(new_user)
+
                     #update profile
                     profile         = Profile.objects.get(user=new_user)
                     profile.phone   = phoneNumber
@@ -133,6 +139,8 @@ class RegisterView(APIView):
                     
                     response['error']    = False
                     response['uid']      = new_user.pk
+                    response['refresh']  = str(refresh),
+                    response['access']   = str(refresh.access_token), 
                     response['user']     = {'username':new_user.username,'fullName':new_user.first_name,'phone':phoneNumber}
                     response['success_msg']  = 'User successfully registered.'
                     status_code     = 200
