@@ -53,6 +53,9 @@ INSTALLED_APPS = [
     # libs
     "rest_framework_simplejwt",
     "rest_framework",
+    "ajax_datatable",
+    "crispy_forms",
+    "crispy_tailwind",
 ]
 
 MIDDLEWARE = [
@@ -135,7 +138,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-# STATICFILES_DIRS = ["assets", "templates/css"]
+STATICFILES_DIRS = ["assets"]
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
@@ -149,6 +152,10 @@ MEDIA_URL = "media/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+APPEND_SLASH = False
+CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
+CRISPY_TEMPLATE_PACK = "tailwind"
 
 # Django rest framework Config
 DIGEST_REALM    = 'AFYADATA.SACIDS.ORG'

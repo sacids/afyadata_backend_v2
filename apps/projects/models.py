@@ -106,7 +106,7 @@ class FormDefinition(models.Model):
     updated_at    = models.DateTimeField(auto_now=True) 
     created_by    = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='f_created_by', blank=True, null=True)
     updated_by    = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='f_updated_by', blank=True, null=True)
-    synced = models.IntegerField(default=0)
+    synced        = models.IntegerField(default=0)
     @property
     def int_updated_at(self):
         return self.updated_at.strftime("%Y%m%d%H%M%S")

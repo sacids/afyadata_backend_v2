@@ -13,6 +13,7 @@ class ProjectMemberInline(admin.TabularInline):
     ordering = ("id", )
     extra = 0
 
+
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     list_display = ['title', 'code', 'access', 'auto_join', "active", "created_at"]

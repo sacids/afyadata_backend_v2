@@ -1,0 +1,46 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% load humanize %}
+
+{% block content %}
+
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-row flex-wrap">
+            <div class="flex w-1/3 flex-col">
+                <div class="relative overflow-x-auto">
+                    <!--form message => success or danger -->
+                    <div id="message_wrp"></div>
+
+                    <form method="post" hx-encoding='multipart/form-data' hx-post="{% url 'projects:edit' project.pk %}"
+                        hx-target="#message_wrp" enctype="multipart/form-data">
+                        <!-- Security token -->
+                        {% csrf_token %}
+
+                        {% for field in form.visible_fields %}
+                        <div class="mb-3">
+                            {{ field|as_crispy_field }}
+                        </div>
+                        {% endfor %}
+
+                        <div class="flex items-end">
+                            <div class="space-x-1 px-1">
+                                <button type="button" hx-get="{% url 'projects:lists' %}" hx-target="body" hx-swap="outerHTML"
+                                    class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm font-normal py-2 px-3 rounded-sm">Cancel</button>
+
+                                <button hx-post="{% url 'projects:edit' project.pk %}" hx-target="#message_wrp" type="button"
+                                    class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-sm text-sm w-full sm:w-auto px-3 py-2 text-center">Edit</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- /End replace -->
+    </div>
+</main>
+
+{% endblock %}
+
+{% block extra-js %}{% endblock extra-js %}
