@@ -32,7 +32,7 @@ ALLOWED_HOSTS = ["*"]
 
 #Login URL
 LOGIN_URL = '/auth/login'
-LOGIN_REDIRECT_URL = '/dashboard/summaries'
+LOGIN_REDIRECT_URL = '/projects/lists'
 
 # Application definition
 INSTALLED_APPS = [
