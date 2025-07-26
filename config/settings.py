@@ -30,9 +30,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+#Login URL
+LOGIN_URL = '/auth/login'
+LOGIN_REDIRECT_URL = '/dashboard/summaries'
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
