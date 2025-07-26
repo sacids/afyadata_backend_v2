@@ -49,15 +49,13 @@ class FormDataView(viewsets.ViewSet):
     def create(self, request):
         """Create new form data"""
         # TODO: check if project accept the data at the moment
+        logging.info("==Request Data ==")
+        logging.info(request.data)
 
         if request.data:
             arr_response = []
             for val in request.data:
                 serializer = FormDataSerializer(data=val)
-                logging.info("== Serializers ==")
-                logging.info(serializer)
-                logging.info("== Data ==")
-                logging.info(val)
                 try:
                     if serializer.is_valid():
                         # insert or update data
