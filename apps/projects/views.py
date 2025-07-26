@@ -17,6 +17,7 @@ from django.db.models.fields.json import KeyTextTransform
 from datetime import date, datetime
 from django.http import JsonResponse, HttpResponse
 from . import x2jform
+from . import utils
 
 from .models import *
 from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm
@@ -372,3 +373,35 @@ class SurveyDeleteView(generic.DeleteView):
         return HttpResponse(
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form deleted Succesfully</div>'
         )
+    
+
+# Form data
+class SurveyDataView(generic.TemplateView):
+    template_name = "surveys/data/table.html"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataView, self).dispatch(*args, **kwargs)
+    
+    def get(self, request, *args, **kwargs):
+        # get form
+        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        context = {"cur_form": cur_form}
+
+        context["title"] = cur_form.title
+        context["datatable_list"] = reverse("projects:form_data_list", kwargs={"pk": cur_form.pk})
+
+        # get jform
+        data = utils.load_json(cur_form.form_defn)
+        context["tbl_header"] = utils.get_table_header(data)
+        print(cur_form, context["tbl_header"])
+
+        # Add links to context
+        context["links"] = {
+            "Summary": '#',
+            "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
+            "Charts": '#',
+            "Map": '#',   
+        }
+
+        return render(request, self.template_name, context)

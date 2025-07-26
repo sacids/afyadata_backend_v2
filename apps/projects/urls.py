@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, utils
 from . import ajax_datatable_views
 
 app_name = 'projects'
@@ -20,6 +20,9 @@ urlpatterns = [
     path('forms/<str:pk>/edit', views.SurveyUpdateView.as_view(), name='edit-form'),
     path('forms/<str:pk>/delete', views.SurveyDeleteView.as_view(), name='delete-form'),
 
+    # form data
+    path('forms/data/<str:pk>', views.SurveyDataView.as_view(), name='form-data'),
+    path('form_data/<str:pk>', utils.form_data_list, name="form_data_list"),
 
     #ajax datatable views
     path('projects-datatable', ajax_datatable_views.ProjectAjaxDatatableView.as_view(), name="dt-projects"),

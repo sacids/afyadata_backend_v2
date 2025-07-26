@@ -1,0 +1,39 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-row flex-wrap">
+            <div class="w-full">
+                <div class="relative overflow-x-auto">
+                    <table class="table border=1 w-full table-striped table-bordered compact nowrap text-sm">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                {% for k,col in tbl_header.items %}
+                                <th>{{col}}</th>
+                                {% endfor %}
+                                <th>Created on</th>
+                                <th>Created By</th>
+                                <th>Username</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- /End replace -->
+    </div>
+</main>
+
+{% endblock %}
+
+{% block extra-js %}
+
+<script language="javascript">
+
+</script>
+{% endblock extra-js %}
