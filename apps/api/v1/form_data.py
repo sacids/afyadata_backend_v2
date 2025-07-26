@@ -54,6 +54,10 @@ class FormDataView(viewsets.ViewSet):
             arr_response = []
             for val in request.data:
                 serializer = FormDataSerializer(data=val)
+                logging.info("== Serializers ==")
+                logging.info(serializer)
+                logging.info("== Data ==")
+                logging.info(val)
                 try:
                     if serializer.is_valid():
                         # insert or update data
