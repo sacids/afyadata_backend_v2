@@ -1,5 +1,6 @@
 import re
 import logging
+import json
 from django.http import JsonResponse
 from django.contrib.auth.models import User, Group
 from apps.accounts.models import Profile
@@ -152,6 +153,9 @@ class RegisterView(APIView):
                     response['user']     = {'id': new_user.id, 'username':new_user.username,'fullName':new_user.first_name,'phone':phoneNumber}
                     response['success_msg']  = 'User successfully registered.'
                     status_code     = 200
+
+        logging.info("== User registration response ==")
+        logging.info(json.dumps(response, indent=2, default=str))            
 
         # response for user registration
         return JsonResponse(response,safe=False, status=status_code)
