@@ -138,7 +138,7 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
 
                     # Check if it's an image
                     if value.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                        image_url = f"{settings.MEDIA_URL}{value}"  # assuming MEDIA_URL + path
+                        image_url = f"{settings.MEDIA_URL}/assets/uploads/photos/{value}"
                         img_tag = f'<img src="{image_url}" alt="{field_name}" style="max-height: 50px; max-width: 50px;" />'
                         row.append(img_tag)
                     else:
