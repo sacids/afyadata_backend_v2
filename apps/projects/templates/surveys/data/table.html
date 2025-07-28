@@ -38,8 +38,10 @@
         var table = $('#datatable').DataTable({
             processing: true,
             serverSide: true,
-            ajax: "{{datatable_list}}",
-            type: 'POST',
+            ajax: {
+                url: "{{datatable_list}}",  // dynamic path with pk
+                type: 'POST',
+            },
             rowId: [0],
             order: [[ {{ tbl_header|length }} + 1, 'desc' ]],
             search: {

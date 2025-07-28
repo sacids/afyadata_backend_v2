@@ -391,6 +391,8 @@ class SurveyDataView(generic.TemplateView):
         context["title"] = cur_form.title
         context["datatable_list"] = reverse("projects:form-data-list", kwargs={"pk": cur_form.pk})
 
+        print("datatable_list", context["datatable_list"])
+
         # get jform
         data = utils.load_json(cur_form.form_defn)
         context["tbl_header"] = utils.get_table_header(data)
