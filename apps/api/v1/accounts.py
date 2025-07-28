@@ -113,10 +113,18 @@ class RegisterView(APIView):
                 status_code              = 203
             else:
                 try:
-                    User.objects.get(username = username)
-                    response['error']        = True
-                    response['error_msg']    = 'Username should be unique.'
-                    status_code              = 203
+                    user = User.objects.get(username = username)
+
+                    # create token
+                    refresh = RefreshToken.for_user(user)
+
+                    response['error']    = False
+                    response['uid']      = user.pk
+                    response['refresh']  = str(refresh),
+                    response['access']   = str(refresh.access_token), 
+                    response['user']     = {'id': user.pk, 'username':user.username,'fullName':user.first_name,'phone':phoneNumber}
+                    response['success_msg']  = 'User information retrieved successfully.'
+                    status_code     = 200
                 
                 except User.DoesNotExist:
                     # create new user
