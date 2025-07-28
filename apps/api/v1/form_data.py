@@ -1,5 +1,7 @@
 import logging
+import json
 from datetime import datetime, date
+from django.utils.dateparse import parse_datetime
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -48,51 +50,41 @@ class FormDataView(viewsets.ViewSet):
 
     def create(self, request):
         """Create new form data"""
-        # TODO: check if project accept the data at the moment
-        logging.info("==Request Data ==")
-        logging.info(request.data)
-
         if request.data:
             arr_response = []
-            for val in request.data:
-                serializer = FormDataSerializer(data=val)
-                try:
-                    if serializer.is_valid():
-                        # insert or update data
-                        #print('val',val)
-                        form_data_create_update = FormData.objects.update_or_create(
-                            uuid=val["uuid"],
-                            defaults={
-                                "form_data": val["form_data"],
-                                "original_uuid": val["original_uuid"],
-                                "path": val["path"],
-                                "parent_id": val["parent_id"],
-                                "created_by_name": val["created_by_name"],
-                                "form_id": val["form"],
-                                "gps": val["gps"],
-                                "created_at": val["created_at"],
-                                "created_by": request.user,
-                                "updated_at": "",
-                                "deleted": val["deleted"],
-                                "synced": 1,
-                            },
-                        )
-                        # create reponse
-                        res = {"uuid": val["uuid"], "synced": 1, "message": "success"}
-                        print('result',res)
-                        arr_response.append(res)
-                    else:
-                        res = {
-                            "uuid": val["uuid"],
-                            "synced": 0,
-                            "message": str(serializer.errors),
-                        }
-                        print('result else',res)
-                        arr_response.append(res)
-                except Exception as e:
-                    print('result error',e)
-                    logging.info("==Errors ==")
-                    logging.info(e)
-            return Response({"success": True, "data": arr_response}, status=status.HTTP_201_CREATED)
+            data = request.data
+
+            try:
+                # if "form_data" in data:
+                #     data["form_data"] = json.loads(data["form_data"])
+
+                # insert or update data
+                form_data = FormData.objects.update_or_create(
+                    uuid=data["uuid"],
+                    defaults={
+                        "form_data": data["form_data"],
+                        "original_uuid": data["original_uuid"],
+                        "title": data["title"],
+                        "created_by_name": data["created_by_name"],
+                        "form_id": data["form"],
+                        "gps": data["gps"],
+                        "created_at": data["created_at"],
+                        "created_by": request.user,
+                        "updated_at": datetime.now(),
+                        "last_updated_at": datetime.now(),
+                        "submitted_at": datetime.now(),
+                        "deleted": data["deleted"],
+                        "synced": 1,
+                    },
+                )
+
+                # create response
+                res = {"uuid": data["uuid"], "synced": 1, "message": "success"}
+                arr_response.append(res)
+
+                return Response({"success": True, "data": arr_response}, status=status.HTTP_201_CREATED)
+        
+            except Exception as e:
+                return Response({"success": False,"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(status=status.HTTP_204_NO_CONTENT)
