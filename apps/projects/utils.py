@@ -25,12 +25,12 @@ def get_key_at_index(dictionary, n):
 def form_data_list(request, pk):
     """AJAX endpoint for DataTables with foreign key support"""
     # Get DataTables parameters
-    start = int(request.GET.get("start", 0))
-    length = int(request.GET.get("length", 10))
-    draw = int(request.GET.get("draw", 1))
-    search_val = request.GET.get("search[value]")
-    sort_col = int(request.GET.get("order[0][column]", 0))
-    sort_dir = request.GET.get("order[0][dir]", "asc")
+    start = int(request.POST.get("start", 0))
+    length = int(request.POST.get("length", 10))
+    draw = int(request.POST.get("draw", 1))
+    search_val = request.POST.get("search[value]")
+    sort_col = int(request.POST.get("order[0][column]", 0))
+    sort_dir = request.POST.get("order[0][dir]", "asc")
 
     # Get form definition and columns
     aDefn = FormDefinition.objects.get(id=pk)
@@ -56,8 +56,8 @@ def form_data_list(request, pk):
         adata = adata.filter(reduce(operator.or_, or_filter))
 
     # Apply date range filtering
-    min_date = request.GET.get("min_date")
-    max_date = request.GET.get("max_date")
+    min_date = request.POST.get("min_date")
+    max_date = request.POST.get("max_date")
     if min_date:
         adata = adata.filter(created_on__gte=datetime.strptime(min_date, "%Y-%m-%d"))
     if max_date:
@@ -195,6 +195,7 @@ def get_table_config(jForm):
                 }
     
     return config
+
 def load_json(json_data):
     """Load and parse JSON data."""
     try:

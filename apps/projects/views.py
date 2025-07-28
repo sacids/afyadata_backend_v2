@@ -394,7 +394,6 @@ class SurveyDataView(generic.TemplateView):
         # get jform
         data = utils.load_json(cur_form.form_defn)
         context["tbl_header"] = utils.get_table_header(data)
-        print(cur_form, context["tbl_header"])
 
         # Add links to context
         context["links"] = {
