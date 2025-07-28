@@ -54,7 +54,8 @@ class FormDataView(viewsets.ViewSet):
             arr_response = []
             data = request.data
             # logging the received data for debugging
-            logging.info("Received data:", data)
+            logging.info("== Received data ==")
+            logging.info(json.dumps(data, indent=2, default=str))
 
             try:
                 # if "form_data" in data:
@@ -86,7 +87,8 @@ class FormDataView(viewsets.ViewSet):
 
                 return Response({"success": True, "data": arr_response}, status=status.HTTP_201_CREATED)
             except Exception as e:
-                logging.info("Error creating form data:", str(e))
+                logging.info("== Error creating form data ==")
+                logging.info(str(e))
                 return Response({"success": False,"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(status=status.HTTP_204_NO_CONTENT)
