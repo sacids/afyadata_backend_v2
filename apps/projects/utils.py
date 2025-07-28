@@ -2,6 +2,11 @@ import json
 import calendar
 from datetime import date, datetime
 from django.http import JsonResponse
+import os
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.conf import settings
+
 
 from .models import FormDefinition, FormData
 from django.utils.dateformat import DateFormat
@@ -217,59 +222,26 @@ def load_json(json_data):
         print(f"Error loading JSON: {e}")
         return None
 
-def detect_image_keys(data, valid_extensions=None):
-    """Detect image-related keys in a nested dictionary."""
-    if valid_extensions is None:
-        valid_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+def save_uploaded_images(files, upload_subdir):
+    """
+    Saves uploaded image files from a MultiValueDict (like request.FILES)
+    into the specified upload directory.
+    """
+    saved_paths = {}
 
-    image_fields = {}
+    for key in sorted(files.keys()):
+        file_list = files.getlist(key)
+        saved_paths[key] = []
 
-    def recurse(d, parent_key=''):
-        for key, value in d.items():
-            full_key = f"{parent_key}.{key}" if parent_key else key
+        for file in file_list:
+            filename = file.name
+            full_path = os.path.join(upload_subdir, filename)
 
-            if isinstance(value, dict):
-                recurse(value, full_key)
+            # Save file
+            path = default_storage.save(full_path, ContentFile(file.read()))
+            saved_paths[key].append(path)
 
-            elif isinstance(value, str):
-                if (
-                    value.lower().endswith(tuple(valid_extensions)) or
-                    value.strip().startswith("data:image/")
-                ):
-                    image_fields[full_key] = value
-
-    recurse(data)
-    return image_fields
-
-import os
-import base64
-from django.core.files.base import ContentFile
-from django.conf import settings
-
-def save_images(image_dict, prefix="img", save_path="assets/uploads/photos/"):
-    """Save image files from detected image values."""
-    saved = {}
-    output_dir = os.path.join(settings.MEDIA_ROOT, save_path)
-    os.makedirs(output_dir, exist_ok=True)
-
-    for key, value in image_dict.items():
-        clean_key = key.replace('.', '_')
-        if value.startswith("data:image/"):
-            # Handle base64 image
-            header, encoded = value.split(",", 1)
-            ext = header.split("/")[1].split(";")[0]
-            filename = f"{prefix}_{clean_key}.{ext}"
-            filepath = os.path.join(output_dir, filename)
-            with open(filepath, "wb") as f:
-                f.write(base64.b64decode(encoded))
-            saved[key] = os.path.join(save_path, filename)
-        else:
-            # Treat as image name or path reference
-            ext = os.path.splitext(value)[1].lstrip(".")
-            filename = f"{prefix}_{clean_key}.{ext}"
-            saved[key] = os.path.join(save_path, filename)
-
-    return saved
+    return saved_paths
 
 
 #handle file uploading  
