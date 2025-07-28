@@ -58,8 +58,11 @@ class FormDataView(viewsets.ViewSet):
             logging.info(json.dumps(data, indent=2, default=str))
 
             try:
-                # if "form_data" in data:
-                #     data["form_data"] = json.loads(data["form_data"])
+                if "form_data" in data:
+                    data["form_data"] = json.loads(data["form_data"])
+
+                # if "pic" in data:
+                #     pic = request.FILES.get('pic')
 
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
@@ -71,7 +74,7 @@ class FormDataView(viewsets.ViewSet):
                         "created_by_name": data["created_by_name"],
                         "form_id": data["form"],
                         "gps": data["gps"],
-                        "created_at": data["created_at"],
+                        "created_at": data["created_on"],
                         "created_by": request.user,
                         "updated_at": datetime.now(),
                         "last_updated_at": datetime.now(),
