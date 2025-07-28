@@ -391,8 +391,6 @@ class SurveyDataView(generic.TemplateView):
         context["title"] = cur_form.title
         context["datatable_list"] = reverse("projects:form-data-list", kwargs={"pk": cur_form.pk})
 
-        print("datatable_list", context["datatable_list"])
-
         # get jform
         data = utils.load_json(cur_form.form_defn)
         context["tbl_header"] = utils.get_table_header(data)
@@ -401,8 +399,56 @@ class SurveyDataView(generic.TemplateView):
         context["links"] = {
             "Summary": '#',
             "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
-            "Charts": '#',
-            "Map": '#',   
+            "Charts": reverse_lazy("projects:form-data-charts", kwargs={"pk": kwargs["pk"]}),
+            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),   
+        }
+
+        return render(request, self.template_name, context)
+
+
+# Form data
+class ChartsDataView(generic.TemplateView):
+    template_name = "surveys/data/charts.html"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ChartsDataView, self).dispatch(*args, **kwargs)
+    
+    def get(self, request, *args, **kwargs):
+        # get form
+        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        context = {"cur_form": cur_form}
+
+
+        # Add links to context
+        context["links"] = {
+            "Summary": '#',
+            "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
+            "Charts": reverse_lazy("projects:form-data-charts", kwargs={"pk": kwargs["pk"]}),
+            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
+        }
+
+        return render(request, self.template_name, context)
+    
+# Form data
+class MapDataView(generic.TemplateView):
+    template_name = "surveys/data/map.html"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(MapDataView, self).dispatch(*args, **kwargs)
+    
+    def get(self, request, *args, **kwargs):
+        # get form
+        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        context = {"cur_form": cur_form}
+
+        # Add links to context
+        context["links"] = {
+            "Summary": '#',
+            "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
+            "Charts": reverse_lazy("projects:form-data-charts", kwargs={"pk": kwargs["pk"]}),
+            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),  
         }
 
         return render(request, self.template_name, context)

@@ -24,6 +24,10 @@ urlpatterns = [
     path('forms/data/<str:pk>', views.SurveyDataView.as_view(), name='form-data'),
     path('form-data/<str:pk>', utils.FormDataAjaxDatatableView.as_view(), name="form-data-list"),
 
+    path('forms/charts/<str:pk>', views.ChartsDataView.as_view(), name='form-data-charts'),
+    path('forms/map/<str:pk>', views.MapDataView.as_view(), name='form-data-map'),
+
+
     #ajax datatable views
     path('projects-datatable', ajax_datatable_views.ProjectAjaxDatatableView.as_view(), name="dt-projects"),
     path('members-datatable/<str:pk>', ajax_datatable_views.MembersAjaxDatatableView.as_view(), name="dt-members"),

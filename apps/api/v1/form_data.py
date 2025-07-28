@@ -62,8 +62,6 @@ class FormDataView(viewsets.ViewSet):
                 if "pic" in data:
                     photo = request.FILES.get('pic')
 
-                print("photo", photo)
-
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
                     uuid=data["uuid"],

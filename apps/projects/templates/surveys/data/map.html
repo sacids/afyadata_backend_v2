@@ -1,0 +1,43 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-row flex-wrap">
+            <div class="w-full">
+                <div class="relative overflow-x-auto">
+                    <div id="map" style="width: 100%; min-height:560px; height: auto;"></div>
+                </div>
+            </div>
+        </div>
+        <!-- /End replace -->
+    </div>
+</main>
+
+{% endblock %}
+
+{% block extra-js %}
+<script language="javascript">
+    //create map
+    const map = L.map('map').setView([-6.40177, 34.99269], 6);
+
+    //create tileUrl and attribution
+    const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const attribution = '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+    //create tile
+    const tile = L.tileLayer(tileUrl, {
+        maxZoom: 19,
+        attribution: attribution,
+        id: 'mapbox/streets-v11'
+    });
+
+    //add tile to map
+    tile.addTo(map);
+
+    map.attributionControl.addAttribution('Sacids Foundation for One Health&copy; <a href="#">Afyadata</a>');
+</script>
+{% endblock extra-js %}
