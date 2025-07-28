@@ -181,7 +181,31 @@
 
 <header class="bg-slate-700">
     <div class="mx-auto max-w-7xl py-3 px-4 sm:px-6 lg:px-8">
-        <h1 class="text-xl font-medium tracking-tight text-white">{{ title|default:'Dashboard'}}</h1>
+        <div class="flex items-center justify-between">
+            <!-- Title on the left -->
+            <h1 class="text-xl font-medium tracking-tight text-white">
+                {{ title|default:'Dashboard' }}
+            </h1>
+
+            <!-- Breadcrumb on the right -->
+            <nav class="text-sm text-white">
+                <!-- Example breadcrumb -->
+                <ol class="flex space-x-1">
+                    {% for crumb in breadcrumbs %}
+                        <li>
+                            {% if crumb.url %}
+                                <a href="{{ crumb.url }}" class="font-normal text-xs hover:text-blue-500">{{ crumb.name }}</a>
+                            {% else %}
+                                <span class="font-normal text-xs text-gray-200">{{ crumb.name }}</span>
+                            {% endif %}
+                        </li>
+                        {% if not forloop.last %}
+                            <li>/</li>
+                        {% endif %}
+                    {% endfor %}
+                </ol>
+            </nav>
+        </div>
     </div>
 </header>
 

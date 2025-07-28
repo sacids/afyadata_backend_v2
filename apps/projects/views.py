@@ -41,6 +41,13 @@ class ProjectListView(generic.ListView):
         context["title"] = "Projects"
         context["page_title"] = "Projects"
 
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": ""},
+        ]
+
+        # Add links to context
         context["links"] = {
             "Project Lists": reverse_lazy("projects:lists"),
             "Create New": reverse_lazy("projects:create"),
@@ -74,6 +81,13 @@ class ProjectDetailView(generic.DetailView):
 
         context = {"project": project}
 
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": project.title, "url": ""},
+        ]
+
         # Add links to context
         context["links"] = {
             "Information": reverse_lazy("projects:lists"),
@@ -96,6 +110,13 @@ class ProjectCreateView(generic.CreateView):
 
     def get(self, request, *args, **kwargs):
         context = {"title": "Create New Project", "form": ProjectForm()}
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Create New", "url": ""},
+        ]
+
         # Add links to context
         context["links"] = {
             "Project Lists": reverse_lazy("projects:lists"),
@@ -137,6 +158,14 @@ class ProjectUpdateView(generic.UpdateView):
         form = ProjectForm(instance=project)
 
         context = {"title": "Edit Project", "project": project, "form": form}
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Edit Project", "url": ""},
+        ]
+
         # Add links to context
         context["links"] = {
             "Project Lists": reverse_lazy("projects:lists"),
@@ -195,6 +224,13 @@ class ProjectMembersListView(generic.TemplateView):
             "project": project,
         }
 
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Members", "url": ""},
+        ]
+
         context["links"] = {
             "Information": reverse_lazy("projects:lists"),
             "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
@@ -219,6 +255,13 @@ class SurveyListView(generic.TemplateView):
             "title": "Project Forms",
             "project": project,
         }
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Forms", "url": ""},
+        ]
 
         context["links"] = {
             "Information": reverse_lazy("projects:lists"),
@@ -245,6 +288,13 @@ class SurveyCreateView(generic.CreateView):
             "project": project,
             "form": SurveyAddForm(),
         }
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Upload Form", "url": ""},
+        ]
 
         context["links"] = {
             "Information": reverse_lazy("projects:lists"),
@@ -312,9 +362,17 @@ class SurveyUpdateView(generic.UpdateView):
             "form": SurveyUpdateForm(instance=survey),
         }
 
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Edit Form", "url": ""},
+        ]
+
+        # Add links to context
         context["links"] = {
             "Information": reverse_lazy("projects:lists"),
-            "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
+            "Members": reverse_lazy("projects:members", kwargs={"pk": survey.project.pk}),
             "Forms": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": survey.project.pk}
@@ -395,6 +453,14 @@ class SurveyDataView(generic.TemplateView):
         data = utils.load_json(cur_form.form_defn)
         context["tbl_header"] = utils.get_table_header(data)
 
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": cur_form.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {"name": "Form Data", "url": ""},
+        ]
+
         # Add links to context
         context["links"] = {
             "Summary": '#',
@@ -419,6 +485,13 @@ class ChartsDataView(generic.TemplateView):
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         context = {"cur_form": cur_form}
 
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": cur_form.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {"name": "Charts", "url": ""},
+        ]
 
         # Add links to context
         context["links"] = {
@@ -430,7 +503,7 @@ class ChartsDataView(generic.TemplateView):
 
         return render(request, self.template_name, context)
 
-    
+
 # Form data
 class MapDataView(generic.TemplateView):
     template_name = "surveys/data/map.html"
@@ -443,6 +516,14 @@ class MapDataView(generic.TemplateView):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         context = {"cur_form": cur_form}
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": cur_form.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {"name": "Map", "url": ""},
+        ]
 
         # Add links to context
         context["links"] = {
