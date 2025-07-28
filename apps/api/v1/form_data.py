@@ -14,6 +14,7 @@ from apps.projects.serializers import *
 from django.db.models import Q
 from django.contrib.auth.models import User
 from apps.projects.models import FormData
+from apps.projects.utils import save_images, detect_image_keys
 
 
 class FormDataView(viewsets.ViewSet):
@@ -61,6 +62,11 @@ class FormDataView(viewsets.ViewSet):
                 photo = None
                 if "pic" in data:
                     photo = request.FILES.get('pic')
+
+                image_dict = detect_image_keys(data["form_data"])
+                saved_paths = save_images(image_dict, prefix="formdata", save_path="assets/uploads/photos/")
+                logging.info("== Saved image paths ==")
+                logging.info(json.dumps(saved_paths, indent=2, default=str))
 
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
