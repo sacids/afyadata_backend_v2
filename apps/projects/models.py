@@ -123,6 +123,7 @@ class FormDefinition(models.Model):
     def __str__(self):
         return self.title if self.title else self.pk
     
+
 class FormData(models.Model):
     """Model definition for form_data"""
     uuid          = models.TextField(max_length=100, blank=True, null=True)
@@ -133,6 +134,7 @@ class FormData(models.Model):
     gps           = models.CharField(max_length=150, blank=True, null=True)
     path          = models.TextField(blank=True, null=True)
     form_data     = models.JSONField(null=False)
+    photo         = models.FileField(upload_to='assets/uploads/photo/', max_length=200, null=True, blank=True)
     deleted       = models.IntegerField(default=0)
     created_at    = models.DateTimeField(null=False) # app created date
     updated_at    = models.DateTimeField(auto_now=True) # app updated date

@@ -61,14 +61,16 @@ class FormDataView(viewsets.ViewSet):
                 if "form_data" in data:
                     data["form_data"] = json.loads(data["form_data"])
 
-                # if "pic" in data:
-                #     pic = request.FILES.get('pic')
+                photo = None
+                if "pic" in data:
+                    photo = request.FILES.get('pic')
 
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
                     uuid=data["uuid"],
                     defaults={
                         "form_data": data["form_data"],
+                        "photo": photo,
                         "original_uuid": data["original_uuid"],
                         "title": data["title"],
                         "created_by_name": data["created_by_name"],
