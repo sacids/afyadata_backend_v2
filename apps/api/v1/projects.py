@@ -54,12 +54,23 @@ class ProjectView(viewsets.ViewSet):
     
     def request_access(self, request):
         """Request access to project"""
+
+        code = request.data.get('code')
+        if not code:
+            return Response({"error": True, "message": "Missing project code"}, status=status.HTTP_400_BAD_REQUEST)
+    
         try:
             project = Project.objects.get(code=request.data['code'])
 
             # check if user is already a member
             if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
-                return Response({"error": True, "message": "You are already a member of this project"},status=status.HTTP_200_OK)
+                # Return project details
+                project_data = ProjectSerializer(project).data  # or build a dict manually
+                return Response({
+                    "error": False,
+                    "message": "You are already a member of this project",
+                    "project": project_data
+                }, status=status.HTTP_200_OK)
             else:
                 # check if project is auto_join is true
                 if project.auto_join:
