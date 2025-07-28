@@ -83,7 +83,7 @@ class MembersAjaxDatatableView(AjaxDatatableView):
     search_values_separator = '+'
 
     column_defs = [
-        {'name': 'member_id', 'title': 'Member', 'foreign_field': 'member__username' ,'visible': True, 'searchable': False, },
+        {'name': 'member_id', 'title': 'Member', 'foreign_field': 'member__first_name' ,'visible': True, 'searchable': False, },
         {'name': 'active', 'title': 'Active' ,'visible': True, 'searchable': False, },
         {'name': 'created_at', 'title': 'Created On' ,'visible': True, 'searchable': False, },
         {'name': 'updated_at', 'title': 'Updated On' ,'visible': True, 'searchable': False, },
