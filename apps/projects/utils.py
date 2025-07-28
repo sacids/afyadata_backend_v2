@@ -134,7 +134,15 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
                     row.append(str(getattr(record, field_name)))
                 else:
                     # JSON fields
-                    row.append(str(form_data.get(field_name, "")))
+                    value = str(form_data.get(field_name, ""))
+
+                    # Check if it's an image
+                    if value.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                        image_url = f"{settings.MEDIA_URL}{value}"  # assuming MEDIA_URL + path
+                        img_tag = f'<img src="{image_url}" alt="{field_name}" style="max-height: 50px; max-width: 50px;" />'
+                        row.append(img_tag)
+                    else:
+                        row.append(value)
 
             # Add metadata
             row.extend([
