@@ -457,8 +457,8 @@ class SurveyDataView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": cur_form.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
-            {"name": "Form Data", "url": ""},
+            {"name": cur_form.project.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {"name": "Data", "url": ""},
         ]
 
         # Add links to context
@@ -489,7 +489,7 @@ class ChartsDataView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": cur_form.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {"name": cur_form.project.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
             {"name": "Charts", "url": ""},
         ]
 
@@ -521,7 +521,7 @@ class MapDataView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": cur_form.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {"name": cur_form.project.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
             {"name": "Map", "url": ""},
         ]
 
