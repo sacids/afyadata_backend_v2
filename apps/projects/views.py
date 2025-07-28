@@ -429,6 +429,7 @@ class ChartsDataView(generic.TemplateView):
         }
 
         return render(request, self.template_name, context)
+
     
 # Form data
 class MapDataView(generic.TemplateView):

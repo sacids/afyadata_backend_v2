@@ -55,6 +55,9 @@ class FormDataView(viewsets.ViewSet):
             arr_response = []
             data = request.data
 
+            logging.info("== Request data ==")
+            logging.info(data)
+
             try:
                 if "form_data" in data:
                     data["form_data"] = json.loads(data["form_data"])
@@ -63,10 +66,8 @@ class FormDataView(viewsets.ViewSet):
                 if "pic" in data:
                     photo = request.FILES.get('pic')
 
-                image_dict = detect_image_keys(data["form_data"])
-                saved_paths = save_images(image_dict, prefix="formdata", save_path="assets/uploads/photos/")
-                logging.info("== Saved image paths ==")
-                logging.info(json.dumps(saved_paths, indent=2, default=str))
+                logging.info("== Request files ==")
+                logging.info(request.FILES)
 
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
