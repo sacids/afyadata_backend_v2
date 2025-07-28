@@ -53,9 +53,6 @@ class FormDataView(viewsets.ViewSet):
         if request.data:
             arr_response = []
             data = request.data
-            # logging the received data for debugging
-            logging.info("== Received data ==")
-            logging.info(json.dumps(data, indent=2, default=str))
 
             try:
                 if "form_data" in data:
@@ -89,6 +86,8 @@ class FormDataView(viewsets.ViewSet):
                 # create response
                 res = {"uuid": data["uuid"], "synced": 1, "message": "success"}
                 arr_response.append(res)
+                logging.info("== Data submitted successfully ==")
+                logging.info(json.dumps(arr_response, indent=2, default=str))
 
                 return Response({"success": True, "data": arr_response}, status=status.HTTP_201_CREATED)
             except Exception as e:
