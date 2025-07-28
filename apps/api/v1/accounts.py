@@ -119,10 +119,12 @@ class RegisterView(APIView):
                     # create token
                     refresh = RefreshToken.for_user(user)
 
+                    print(refresh)
+
                     response['error']    = False
                     response['uid']      = user.pk
-                    response['refresh']  = str(refresh),
-                    response['access']   = str(refresh.access_token), 
+                    response['refresh']  = str(refresh)
+                    response['access']   = str(refresh.access_token)
                     response['user']     = {'id': user.pk, 'username':user.username,'fullName':user.first_name,'phone':phoneNumber}
                     response['success_msg']  = 'User information retrieved successfully.'
                     status_code     = 200
@@ -148,8 +150,8 @@ class RegisterView(APIView):
                     
                     response['error']    = False
                     response['uid']      = new_user.pk
-                    response['refresh']  = str(refresh),
-                    response['access']   = str(refresh.access_token), 
+                    response['refresh']  = str(refresh)
+                    response['access']   = str(refresh.access_token)
                     response['user']     = {'id': new_user.pk, 'username':new_user.username,'fullName':new_user.first_name,'phone':phoneNumber}
                     response['success_msg']  = 'User successfully registered.'
                     status_code     = 200
