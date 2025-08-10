@@ -76,7 +76,7 @@ def get_item(item, choice_map):
         if len(tmp) == 0:
             raise ValueError(f"Item {item} has no options")
         if len(tmp) > 1:
-            print('key in select', tmp[1])
+            #print('key in select', tmp[1])
             if tmp[1].lower().endswith('.sql'):
                 key = tmp[1]
                 item["type"] = "select_db"
@@ -258,11 +258,11 @@ def make_jform_recursive(survey, choice_map, settings_map, in_group=False, group
                 continue
 
             type = type.strip()
-            if type[:5] == "begin":
+            if type[:6] == "begin_":
                 parent_group = survey_map if not in_group else group_context
                 new_group = handle_begin(item, type, parent_group)
                 make_jform_recursive(survey, choice_map, settings_map, in_group=True, group_context=new_group)
-            elif type[:3] == "end":
+            elif type[:4] == "end_":
                 return survey_map
             else:
                 uItem = process_item(item, choice_map)
@@ -285,7 +285,7 @@ def x2jform(filename, title):
 
     xlsform = os.path.join(settings.MEDIA_ROOT, filename)
     warnings.simplefilter(action="ignore", category=UserWarning)
-    # xlsform = filename
+    #xlsform = filename
 
     try:
         with warnings.catch_warnings():
@@ -304,7 +304,7 @@ def x2jform(filename, title):
             #print(survey_df)
 
             survey_obj = json.loads(survey_df.to_json(orient="records"))
-            #print(survey_obj)
+            #print(json.dumps(survey_obj, indent=4))
 
             #survey_map = make_jform(survey_obj, choice_map, settings_map)
             survey_map = make_jform_recursive(survey_obj, choice_map, settings_map)
@@ -320,7 +320,7 @@ def x2jform(filename, title):
                 settings_map["form_id"] = str(uuid.uuid4())
                 survey_map["form_id"] = settings_map["form_id"]
 
-            #print(json.dumps(survey_map, indent=4))
+            #print(json.dumps(survey_map['pages'], indent=4))
             #return
         
         dest = os.path.join(
@@ -338,5 +338,5 @@ def x2jform(filename, title):
         return 0
 
 
-# x2jform("barns.xlsx", "my title")
+x2jform("sample3.xlsx", "my title")
 
