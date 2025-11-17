@@ -22,6 +22,7 @@ class FormDataView(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     """API List for Form Data"""
+
     def get_serializer_class(self):
         if self.action in ["list", "featured"]:
             return FormDataSerializer()
@@ -55,16 +56,15 @@ class FormDataView(viewsets.ViewSet):
             arr_response = []
             data = request.data
 
-            logging.info("== Request data ==")
-            logging.info(data)
-
             try:
                 if "form_data" in data:
                     data["form_data"] = json.loads(data["form_data"])
 
                 if request.FILES:
                     # save uploaded images
-                    photo = save_uploaded_images(request.FILES, upload_subdir="assets/uploads/photos/")
+                    photo = save_uploaded_images(
+                        request.FILES, upload_subdir="assets/uploads/photos/"
+                    )
 
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
@@ -86,16 +86,33 @@ class FormDataView(viewsets.ViewSet):
                     },
                 )
 
-                # create response
-                res = {"uuid": data["uuid"], "synced": 1, "message": "success"}
-                arr_response.append(res)
-                logging.info("== Data submitted successfully ==")
-                logging.info(json.dumps(arr_response, indent=2, default=str))
+                # save photo
+                if photo:
+                    FormData.objects.filter(uuid=data["uuid"]).update(photo=photo)
 
-                return Response({"success": True, "data": arr_response}, status=status.HTTP_201_CREATED)
+                # get default response from form definition
+                form_data = FormData.objects.get(uuid=data["uuid"])
+
+                if form_data.form.response:
+                    response = {
+                        "uuid": data["uuid"],
+                        "synced": 1,
+                        "message": form_data.form.response,
+                    }
+                    return Response(
+                        {"success": True, "data": response}, status=status.HTTP_201_CREATED,
+                    )
+
+                return Response(
+                    {"uuid": data["uuid"], "synced": 1, "message": "Form data created successfully"},
+                    status=status.HTTP_201_CREATED,
+                )
             except Exception as e:
                 logging.info("== Error creating form data ==")
                 logging.info(str(e))
-                return Response({"success": False,"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"success": False, "message": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             return Response(status=status.HTTP_204_NO_CONTENT)
