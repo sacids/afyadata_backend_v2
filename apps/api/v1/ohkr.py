@@ -173,15 +173,14 @@ class DiseaseView(viewsets.ViewSet):
             )
     
 
-
 class ClinicalResponseView(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
-    """API List for Clinical Responses"""
+    """API List for Responses"""
     def get_serializer_class(self):
         if self.action in ["list", "featured"]:
-            return DiseaseSerializer
+            return ClinicalResponseSerializer
         return super().get_serializer_class()
     
     def lists(self, request):
@@ -189,6 +188,17 @@ class ClinicalResponseView(viewsets.ViewSet):
         responses = ClinicalResponse.objects.order_by('name').all()
         serializer = ClinicalResponseSerializer(responses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def details(self, request, pk=None):
+        """Get clinical sign information"""
+        pass
+
+    def retrieve(self, request, tags=None):
+        """Get clinical sign"""
+        pass    
+
+    def create(self, request):
+        pass
     
 
 class ClinicalSignView(viewsets.ViewSet):
@@ -267,3 +277,30 @@ class ClinicalSignView(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
     
+
+class SpecieResponseView(viewsets.ViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    """API List for Response"""
+    def get_serializer_class(self):
+        if self.action in ["list", "featured"]:
+            return SpecieResponseSerializer
+        return super().get_serializer_class()
+    
+    def lists(self, request):
+        """Get all responses"""
+        responses = SpecieResponse.objects.all()
+        serializer = SpecieResponseSerializer(responses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def details(self, request, pk=None):
+        """Get clinical sign information"""
+        pass
+
+    def retrieve(self, request, tags=None):
+        """Get clinical sign"""
+        pass    
+
+    def create(self, request):
+        pass

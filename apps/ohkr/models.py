@@ -78,7 +78,6 @@ class ClinicalSign(models.Model):
     code          = models.CharField(max_length=10, null=True, blank=True)
     external_id   = models.CharField(max_length = 150, null=True, blank=True)
     language_code = models.CharField(max_length = 10, null=True, blank=True)
-    responses     = models.ManyToManyField(ClinicalResponse, null=True, blank=True)
     active        = models.BooleanField(default=False)
     created_at    = models.DateTimeField(auto_now_add=True, null=True)
     updated_at    = models.DateTimeField(auto_now=True, null=True) 
@@ -97,6 +96,21 @@ class ClinicalSign(models.Model):
         verbose_name_plural = "4. Clinical Signs"
 
 
+class SpecieResponse(models.Model):
+    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    specie        = models.ForeignKey(Specie, on_delete=models.CASCADE)
+    clinical_sign = models.ForeignKey(ClinicalSign, on_delete=models.CASCADE)
+    responses     = models.ManyToManyField(ClinicalResponse, null=True, blank=True)
+
+    def __str__(self):
+        return self.specie.name + " - " + self.clinical_sign.name
+
+    class Meta:
+        db_table = 'ohkr_specie_responses'
+        managed = True
+        verbose_name = "Specie Response"
+        verbose_name_plural = "5. Specie Responses"
+
 class ClinicalSignScore(models.Model):
     id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     disease       = models.ForeignKey(Disease, on_delete=models.CASCADE)
@@ -110,4 +124,4 @@ class ClinicalSignScore(models.Model):
         db_table = 'ohkr_scores'
         managed = True
         verbose_name = "Score"
-        verbose_name_plural = "5. Scores"
+        verbose_name_plural = "6. Scores"

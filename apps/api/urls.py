@@ -20,6 +20,8 @@ urlpatterns = [
     path('v1/clinical-responses', ClinicalResponseView.as_view({'get': 'lists'})),
     path('v1/clinical-signs', ClinicalSignView.as_view({'get': 'lists'})),
     path('v1/clinical-signs/create', ClinicalSignView.as_view({'post': 'create'})),
+    path('v1/specie-responses', SpecieResponseView.as_view({'get': 'lists'})),
+    path("v1/specie-responses/<str:specie_id>", SpecieResponseView.as_view({"get": "retrieve"})),
 
     # Projects
     path('v1/projects', ProjectView.as_view({'get': 'lists'})),
