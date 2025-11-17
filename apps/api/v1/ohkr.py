@@ -58,33 +58,26 @@ class SpecieView(viewsets.ViewSet):
             response.raise_for_status()
             remote_data = response.json()
 
-            # If results are nested, e.g. {"results": [...]}, adjust here
-            if isinstance(remote_data, dict) and "results" in remote_data:
-                remote_data = remote_data["results"]
-
-            if not isinstance(remote_data, list):
-                return Response(
-                    {"error": "Unexpected data format from remote API."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            print(remote_data)
 
             created, updated = 0, 0
             with transaction.atomic():
                 for item in remote_data:
-                    # Adjust keys according to your Specie model fields
-                    serializer = SpecieSerializer(data=item)
-                    if serializer.is_valid():
-                        obj, was_created = Specie.objects.update_or_create(
-                            external_id=item.get("id"),
-                            defaults=serializer.validated_data,
-                        )
-                        if was_created:
-                            created += 1
-                        else:
-                            updated += 1
-                    else:
-                        # skip invalid entry
-                        continue
+                    pass
+                    # print("== item id ==")
+                    # print(item['id'])
+                    # obj, was_created = Specie.objects.update_or_create(
+                    #     external_id=item["id"],
+                    #     defaults={
+                    #         "name": item["name"],
+                    #         "language_code": item["language_code"],
+                    #     }
+                    # )
+
+                    # if was_created:
+                    #         created += 1
+                    # else:
+                    #     updated += 1
 
             return Response(
                 {
