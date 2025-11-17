@@ -17,6 +17,7 @@ urlpatterns = [
     path('v1/species/create', SpecieView.as_view({'post': 'create'})),
     path('v1/diseases', DiseaseView.as_view({'get': 'lists'})),
     path('v1/diseases/create', DiseaseView.as_view({'post': 'create'})),
+    path('v1/clinical-responses', ClinicalResponseView.as_view({'get': 'lists'})),
     path('v1/clinical-signs', ClinicalSignView.as_view({'get': 'lists'})),
     path('v1/clinical-signs/create', ClinicalSignView.as_view({'post': 'create'})),
 

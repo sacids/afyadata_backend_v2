@@ -16,8 +16,16 @@ class DiseaseSerializer(serializers.ModelSerializer):
         model = Disease
         fields = '__all__'
 
+class ClinicalResponseSerializer(serializers.ModelSerializer):
+    """Serializer for clinical response"""
+    class Meta:
+        model = ClinicalResponse
+        fields = '__all__'
+
 class ClinicalSignSerializer(serializers.ModelSerializer):
     """Serializer for clinical sign"""
+    responses = ClinicalResponseSerializer(many=True)
+
     class Meta:
         model = ClinicalSign
         fields = '__all__'

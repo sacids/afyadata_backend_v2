@@ -7,11 +7,12 @@ class Specie(models.Model):
     name          = models.CharField(max_length = 150)
     external_id   = models.CharField(max_length = 150, null=True, blank=True)
     language_code = models.CharField(max_length = 10, null=True, blank=True)
+    active        = models.BooleanField(default=False)
     created_at    = models.DateTimeField(auto_now_add=True, null=True)
     updated_at    = models.DateTimeField(auto_now=True, null=True) 
     
     def __str__(self):
-        return self.title
+        return self.name
 
     class Meta:
         db_table = 'ohkr_species'
@@ -28,9 +29,10 @@ class Disease(models.Model):
     symptoms      = models.TextField(null=True, blank=True)
     diagnosis     = models.TextField(null=True, blank=True)
     treatment     = models.TextField(null=True, blank=True)
-    prevention   = models.TextField(null=True, blank=True)
+    prevention    = models.TextField(null=True, blank=True)
     external_id   = models.CharField(max_length = 150, null=True, blank=True)
     language_code = models.CharField(max_length = 10, null=True, blank=True)  
+    active        = models.BooleanField(default=False)
     created_at    = models.DateTimeField(auto_now_add=True, null=True)
     updated_at    = models.DateTimeField(auto_now=True, null=True) 
 
@@ -39,7 +41,7 @@ class Disease(models.Model):
         return self.updated_at.strftime("%Y%m%d%H%M%S")
     
     def __str__(self):
-        return self.title
+        return self.name
 
     
     class Meta:
@@ -77,6 +79,7 @@ class ClinicalSign(models.Model):
     external_id   = models.CharField(max_length = 150, null=True, blank=True)
     language_code = models.CharField(max_length = 10, null=True, blank=True)
     responses     = models.ManyToManyField(ClinicalResponse, null=True, blank=True)
+    active        = models.BooleanField(default=False)
     created_at    = models.DateTimeField(auto_now_add=True, null=True)
     updated_at    = models.DateTimeField(auto_now=True, null=True) 
 
