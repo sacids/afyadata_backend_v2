@@ -102,6 +102,7 @@ class FormDefinition(models.Model):
     form_actions  = models.CharField(max_length=255, blank=True, null=True)
     form_defn     = models.TextField(null=True,blank=True)
     children      = models.CharField(max_length=100,null=True, blank=True)
+    response      = models.CharField(max_length=200,null=True, blank=True)
     created_at    = models.DateTimeField(auto_now_add=True)
     updated_at    = models.DateTimeField(auto_now=True) 
     created_by    = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='f_created_by', blank=True, null=True)
