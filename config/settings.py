@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.dashboard',
     'apps.projects',
     'apps.setup',
+    'apps.ohkr',
     'apps.reports',
     'apps.api',
 
