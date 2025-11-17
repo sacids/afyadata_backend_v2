@@ -14,6 +14,8 @@ class Specie(models.Model):
     class Meta:
         db_table = 'ohkr_species'
         managed = True
+        verbose_name = "Specie"
+        verbose_name_plural = "1. Species"
         
 class Disease(models.Model):
     id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -32,6 +34,8 @@ class Disease(models.Model):
     class Meta:
         db_table = 'ohkr_diseases'
         managed = True
+        verbose_name = "Disease"
+        verbose_name_plural = "2. Diseases"
 
 
 class ClinicalSign(models.Model):  
@@ -46,6 +50,8 @@ class ClinicalSign(models.Model):
     class Meta:
         db_table = 'ohkr_clinical_signs'
         managed = True
+        verbose_name = "Clinical Sign"
+        verbose_name_plural = "3. Clinical Signs"
 
 class ClinicalSignScore(models.Model):
     id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -54,8 +60,10 @@ class ClinicalSignScore(models.Model):
     score         = models.IntegerField()    
 
     def __str__(self):
-        return self.disease.title+' : '+self.symptom.title
+        return self.disease.name
 
     class Meta:
         db_table = 'ohkr_scores'
         managed = True
+        verbose_name = "Score"
+        verbose_name_plural = "4. Scores"

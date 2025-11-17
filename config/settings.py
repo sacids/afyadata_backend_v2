@@ -34,6 +34,9 @@ ALLOWED_HOSTS = ["*"]
 LOGIN_URL = '/auth/login'
 LOGIN_REDIRECT_URL = '/projects/lists'
 
+#FAO URL API
+FAO_API_URL="https://reference-data-service-175434516411.europe-west1.run.app"
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',

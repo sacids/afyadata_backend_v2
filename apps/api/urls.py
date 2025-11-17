@@ -2,6 +2,7 @@ from django.urls import path
 from django.urls.resolvers import URLPattern
 from django.contrib.auth import views as auth_views
 from .v1.accounts import RegisterView, CustomTokenObtainPairView
+from .v1.ohkr import *
 from .v1.projects import *
 from .v1.surveys import *
 from .v1.form_data import *
@@ -10,6 +11,14 @@ urlpatterns = [
     # Accounts
     path('v1/register', RegisterView.as_view(), name='v1.register'),
     path("v1/token/", CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+
+    # OHKR 
+    path('v1/species', SpecieView.as_view({'get': 'lists'})),
+    path('v1/species/create', ProjectView.as_view({'post': 'create'})),
+    path('v1/diseases', DiseaseView.as_view({'get': 'lists'})),
+    path('v1/diseases/create', DiseaseView.as_view({'post': 'create'})),
+    path('v1/clinical-signs', ClinicalSignView.as_view({'get': 'lists'})),
+    path('v1/clinical-signs/create', ClinicalSignView.as_view({'post': 'create'})),
 
     # Projects
     path('v1/projects', ProjectView.as_view({'get': 'lists'})),
