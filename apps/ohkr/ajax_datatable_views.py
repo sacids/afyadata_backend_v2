@@ -6,7 +6,7 @@ from .models import *
 class DiseaseAjaxDatatableView(AjaxDatatableView):
     model = Disease
     title = 'Diseases'
-    initial_order = [["name", "desc"], ]
+    initial_order = [["name", "asc"], ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, 'all']]
     search_values_separator = '+'
 
@@ -31,7 +31,7 @@ class DiseaseAjaxDatatableView(AjaxDatatableView):
 class SpecieAjaxDatatableView(AjaxDatatableView):
     model = Specie
     title = 'Species'
-    initial_order = [["name", "desc"], ]
+    initial_order = [["name", "asc"], ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, 'all']]
     search_values_separator = '+'
 
@@ -56,7 +56,7 @@ class SpecieAjaxDatatableView(AjaxDatatableView):
 class ClinicalSignAjaxDatatableView(AjaxDatatableView):
     model = ClinicalSign
     title = 'Clinical Signs'
-    initial_order = [["name", "desc"], ]
+    initial_order = [["name", "asc"], ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, 'all']]
     search_values_separator = '+'
 
@@ -81,7 +81,7 @@ class ClinicalSignAjaxDatatableView(AjaxDatatableView):
 class ClinicalResponseAjaxDatatableView(AjaxDatatableView):
     model = ClinicalResponse
     title = 'Clinical Response'
-    initial_order = [["name", "desc"], ]
+    initial_order = [["name", "asc"], ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, 'all']]
     search_values_separator = '+'
 
