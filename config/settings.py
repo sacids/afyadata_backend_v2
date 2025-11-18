@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'apps.projects',
     'apps.setup',
     'apps.ohkr',
+    'apps.chat',
     'apps.reports',
     'apps.api',
 

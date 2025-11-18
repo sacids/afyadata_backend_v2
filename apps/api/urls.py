@@ -1,11 +1,13 @@
 from django.urls import path
 from django.urls.resolvers import URLPattern
+from rest_framework.routers import DefaultRouter
 from django.contrib.auth import views as auth_views
 from .v1.accounts import RegisterView, CustomTokenObtainPairView
 from .v1.ohkr import *
 from .v1.projects import *
 from .v1.surveys import *
 from .v1.form_data import *
+from .v1.chat import *
 
 urlpatterns = [
     # Accounts
@@ -39,5 +41,11 @@ urlpatterns = [
     # Form data
     path("v1/form-data", FormDataView.as_view({"get": "retrieve", "post": "create"})),
     path("v1/form-data/<str:pk>", FormDataView.as_view({"get": "detail"})),
+
+    # chat
+    path("v1/chat/conversations", ConversationView.as_view({"get": "retrieve", "post": "create"})),
+    path("v1/chat/conversations/<str:pk>/messages", ConversationView.as_view({"get": "messages", "post": "messages"})),
+    path("v1/chat/conversations/<str:pk>/mark-read", ConversationView.as_view({"post": "mark_read"})),
+
   
 ]

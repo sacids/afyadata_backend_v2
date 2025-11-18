@@ -1,0 +1,108 @@
+import logging
+import json
+from rest_framework import viewsets, status, permissions
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from apps.chat.models import Conversation, Message
+from apps.chat.serializers import ConversationSerializer, MessageSerializer
+
+
+class ConversationView(viewsets.ViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def retrieve(self, request):
+        """
+        GET /v1/chat/conversations
+        List conversations for the logged-in user
+        """
+        qs = Conversation.objects.filter(participants=request.user).distinct()
+        serializer = ConversationSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    def create(self, request):
+        """
+        POST /v1/chat/conversations
+        Create a new conversation
+        Expected body: { "title": "Conversation title", "form": form_id, "instance": instance_id,"participants": [user_id1, user_id2] }
+        """
+        if request.data:
+            data = request.data
+
+            try:
+                # Create or update conversation object
+                conversation, created = Conversation.objects.update_or_create(
+                    title=data["title"],
+                    form_id=data["form"],
+                    instance_id=data["instance"],
+                    defaults={
+                        "created_by_id": request.user.id
+                    }
+                )
+
+                # Add current user + provided participants
+                participant_list = [request.user.id] + data["participants"]
+                conversation.participants.set(participant_list)
+                conversation.save()
+
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Conversation created successfully",
+                        "data": ConversationSerializer(conversation, context={"request": request}).data,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+            except Exception as e:
+                return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+    @action(detail=True, methods=["get", "post"])
+    def messages(self, request, pk=None):
+        """
+        GET  /v1/chat/conversations/<pk>/messages
+        POST /v1/chat/conversations/<pk>/messages
+        """
+        try:
+            conversation = Conversation.objects.get(pk=pk, participants=request.user)
+        except Conversation.DoesNotExist:
+            return Response({"error": "Conversation not found"}, status=404)
+
+        if request.method == "GET":
+            msgs = conversation.messages.all().order_by("created_at")
+            serializer = MessageSerializer(msgs, many=True, context={"request": request})
+            return Response(serializer.data)
+
+        # POST – send message
+        serializer = MessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        msg = Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            text=serializer.validated_data["text"],
+        )
+
+        return Response(
+            MessageSerializer(msg, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"])
+    def mark_read(self, request, pk=None):
+        """
+        POST /v1/chat/conversations/<pk>/mark-read
+        Marks all unread messages (not sent by current user) as read
+        """
+        try:
+            conversation = Conversation.objects.get(pk=pk, participants=request.user)
+        except Conversation.DoesNotExist:
+            return Response({"error": "Conversation not found"}, status=404)
+
+        conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
+        return Response({"status": "ok"})
