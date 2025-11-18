@@ -60,11 +60,10 @@ class FormDataView(viewsets.ViewSet):
                 if "form_data" in data:
                     data["form_data"] = json.loads(data["form_data"])
 
+                photo = None
                 if request.FILES:
                     # save uploaded images
-                    photo = save_uploaded_images(
-                        request.FILES, upload_subdir="assets/uploads/photos/"
-                    )
+                    photo = save_uploaded_images(request.FILES, upload_subdir="assets/uploads/photos/")
 
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
@@ -87,7 +86,7 @@ class FormDataView(viewsets.ViewSet):
                 )
 
                 # save photo
-                if photo:
+                if photo is not None:
                     FormData.objects.filter(uuid=data["uuid"]).update(photo=photo)
 
                 # get default response from form definition
