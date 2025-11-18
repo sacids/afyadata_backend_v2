@@ -59,11 +59,14 @@ class FormDataView(viewsets.ViewSet):
             try:
                 if "form_data" in data:
                     data["form_data"] = json.loads(data["form_data"])
+                    logging.info(data["form_data"])
 
                 photo = None
                 if request.FILES:
                     # save uploaded images
                     photo = save_uploaded_images(request.FILES, upload_subdir="assets/uploads/photos/")
+
+                logging.info("== reached hapa")
 
                 # insert or update data
                 form_data = FormData.objects.update_or_create(
@@ -84,6 +87,9 @@ class FormDataView(viewsets.ViewSet):
                         "synced": 1,
                     },
                 )
+
+                logging.info("== form data ==")
+                logging.info(form_data)
 
                 # save photo
                 if photo is not None:
