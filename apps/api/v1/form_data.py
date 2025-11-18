@@ -56,6 +56,9 @@ class FormDataView(viewsets.ViewSet):
             arr_response = []
             data = request.data
 
+            logging.info("== request data ==")
+            logging.info(data)
+
             try:
                 if "form_data" in data:
                     data["form_data"] = json.loads(data["form_data"])
