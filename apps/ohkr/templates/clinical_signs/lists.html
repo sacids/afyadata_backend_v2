@@ -1,0 +1,62 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-row flex-wrap">
+            <div class="w-full">
+                <div class="relative overflow-x-auto">
+                    <table id="datatable_clinical_signs" class="row-border text-xl"></table>
+                </div>
+            </div>
+        </div>
+        <!-- /End replace -->
+    </div>
+</main>
+
+{% endblock %}
+
+{% block extra-js %}
+
+<script language="javascript">
+    $(document).ready(function () {
+        AjaxDatatableViewUtils.initialize_table(
+            $('#datatable_clinical_signs'),
+            "{% url 'ohkr:dt-clinical-signs' %}",
+            {
+                // extra_options (example)
+                processing: false,
+                autoWidth: false,
+                scrollX: false,
+                dom: `
+                    <"flex justify-between items-center py-2 border-b text-sm"
+                        <"flex gap-2 items-center"B>
+                        <"flex items-center"p>
+                    >
+                    t
+                `,
+                buttons: [
+                    {
+                        extend: 'csv',
+                        text: 'Download Data',
+                        filename: 'Project-Data-csv',
+                        className: 'bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600'
+                    }
+                ],
+                "pageLength": 13,
+                responsive: false,
+                language: {
+                    search: "",
+                    info: "_PAGE_ of _PAGES_",
+                },
+            }, {
+            // extra_data
+            // ...
+        },);
+    });
+
+</script>
+{% endblock extra-js %}

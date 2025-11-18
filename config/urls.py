@@ -23,6 +23,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 import apps.accounts.urls
 import apps.dashboard.urls
 import apps.projects.urls
+import apps.ohkr.urls
 import apps.api.urls
 
 urlpatterns = [
@@ -31,6 +32,7 @@ urlpatterns = [
     path('auth/', include(apps.accounts.urls)),
     path('dashboard/', include(apps.dashboard.urls)),
     path('projects/', include(apps.projects.urls)),
+    path('ohkr/', include(apps.ohkr.urls)),
 
     # API URL
     path('api/v1/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'), 
