@@ -82,14 +82,22 @@ class ConversationView(viewsets.ViewSet):
         serializer = MessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        msg = Message.objects.create(
-            conversation=conversation,
-            sender=request.user,
-            text=serializer.validated_data["text"],
+        # insert or update message based on external id use update_or_insert method
+        msg, created = Message.objects.update_or_create(
+            external_id=serializer.validated_data["external_id"],
+            defaults={
+                "conversation": conversation,
+                "sender": request.user,
+                "text": serializer.validated_data["text"],
+            }
         )
 
         return Response(
-            MessageSerializer(msg, context={"request": request}).data,
+            {
+                "success": True,
+                "message": "Message created successfully",
+                "data": MessageSerializer(msg, context={"request": request}).data,
+            },
             status=status.HTTP_201_CREATED,
         )
 
@@ -104,5 +112,8 @@ class ConversationView(viewsets.ViewSet):
         except Conversation.DoesNotExist:
             return Response({"error": "Conversation not found"}, status=404)
 
+        # mark all unread messages as read
         conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
-        return Response({"status": "ok"})
+
+        # return success
+        return Response({"success": True, "message": "Conversation marked read successfully",})
