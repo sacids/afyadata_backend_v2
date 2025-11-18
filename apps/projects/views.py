@@ -471,6 +471,29 @@ class SurveyDataView(generic.TemplateView):
 
         return render(request, self.template_name, context)
 
+class SurveyDataInstanceView(generic.TemplateView):
+    template_name = "surveys/data/instance.html"
+    
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataInstanceView, self).dispatch(*args, **kwargs)
+    
+    def get(self, request, *args, **kwargs):
+        """View a single survey instance"""
+        print('survey instance', kwargs["pk"])
+        form_data_id = kwargs["pk"]
+        form_data   = FormData.objects.get(id=form_data_id)
+        form_id     = form_data.form_id
+        aDefn       = FormDefinition.objects.get(id=form_id)
+        
+        if isinstance(aDefn.form_defn, str):
+            try:
+                jForm = json.loads(aDefn.form_defn)
+                data  = form_data.form_data
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON format: {str(e)}")
+            
+        return render(request, self.template_name, {'data': data, 'jForm': jForm})
 
 # Form data
 class ChartsDataView(generic.TemplateView):

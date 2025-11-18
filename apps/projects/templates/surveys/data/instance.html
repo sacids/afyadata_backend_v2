@@ -1,0 +1,50 @@
+{% load form_tags %}
+
+
+<div class=" pt-6 pb-20 px-10 h-full overflow-y-auto" id="detailContent">
+    <div class="max-w-3xl space-y-4">
+
+        {% for group in jForm.pages %}
+            
+            {% if group.type == 'group' %}
+                <div class="mb-10 border-b border-gray-200">
+                    <h2 class=" text-blue-800">
+                        {{ group.label }}
+                    </h2>
+                    {% for field in group.fields %}
+                        {% for key, value in field.items %}
+                        <div class="grid grid-cols-2 py-2">
+                            <div class="text-sm">
+                                {% if value.label %}
+                                    {{ value.label }}
+                                {% else %}
+                                    {{ value.name|replace:"_, " }}
+                                {% endif %}
+                            </div>
+                            <div class="text-sm">
+                            {% with field_value=data|format_field_value:value %}
+                                {% if field_value == True or field_value|lower == 'yes' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                        Yes
+                                    </span>
+                                {% elif field_value == False or field_value|lower == 'no'%}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                                        No
+                                    </span>
+                                {% elif field_value == None or field_value == '' %}
+                                    <span class="text-gray-400 italic">Not specified</span>
+                                {% else %}
+                                    {{ field_value }}
+                                {% endif %}
+                            {% endwith %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+    </div>
+
+</div>

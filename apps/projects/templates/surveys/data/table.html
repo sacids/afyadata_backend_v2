@@ -9,7 +9,8 @@
         <div class="flex flex-row flex-wrap">
             <div class="w-full">
                 <div class="relative overflow-x-auto">
-                    <table id="datatable" class="table border=1 w-full table-striped table-bordered compact nowrap text-sm">
+                    <table id="datatable"
+                        class="table border=1 w-full table-striped table-bordered compact nowrap text-sm">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -23,9 +24,27 @@
                         </thead>
                     </table>
                 </div>
+
+                <div class="fixed top-16 h-full border-t right-0  bg-white border-l transition-width overflow-hidden origin-right transform duration-700 ease-in-out"
+                    :class="isSidebarOpen ? 'w-2/3 scale-x-100' : 'w-0 scale-0'">
+
+                    <div class="border-b flex w-full space-x-4">
+                        <p class="px-4 py-2 border-r text-sm cursor-pointer" @click="isSidebarOpen = false">X</p>
+                        {% for tab in tabs %}
+                        <p class="px-4 py-2 border-r text-sm cursor-pointer font-bold"
+                            :class="tab_id === '{{tab.title}}' ? 'text-blue-800 ' : 'text-gray-400'"
+                            @click="tab_id = '{{tab.title}}'; dataDetail(instance_id, {{tab.id}})">
+                            {{tab.title}}
+                        </p>
+                        {% endfor %}
+                    </div>
+                    <div class="grow text-xs h-full overflow-y-scroll" id="data-detail">
+                    </div>
+                </div>
             </div>
         </div>
-        <!-- /End replace -->
+    </div>
+    <!-- /End replace -->
     </div>
 </main>
 
@@ -34,7 +53,7 @@
 {% block extra-js %}
 
 <script language="javascript">
-    $(document).ready(function() {
+    $(document).ready(function () {
         var table = $('#datatable').DataTable({
             processing: true,
             serverSide: true,
@@ -43,84 +62,83 @@
                 type: 'POST',
             },
             rowId: [0],
-            order: [[ {{ tbl_header|length }} + 1, 'desc' ]],
-            search: {
-                return: true,
-            },
-            dom: `
+            order: [[{{ tbl_header| length }} + 1, 'desc' ]],
+        search: {
+        return: true,
+    },
+        dom: `
                 <"flex justify-between items-center py-2 border-b text-sm"
                     <"flex gap-2 items-center"B>
                     <"flex items-center"p>
                 >
                 t
             `,
-            buttons: [
-                {
-                    extend: 'csv',
-                    text: 'Download Data',
-                    filename: 'Project-Data-csv',
-                    className: 'bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600'
-                },
-            ],
-            "pageLength": 130,
-            columnDefs: [
-                {
-                    render: function (data, type, row) {
-                         return '<span @click="dataDetail(\''+data+'\')" class="cursor-pointer text-rose-900"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-3.5">'+
-                             '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />'+
-                          '</svg><span>';
-                    },
-                    className: "bg-white hover:bg-rose-100",
-                    targets: 0,
-                },
-                {
-                     render: function (data, type, row) {
-                         return '<span @click="dataDetail(\''+row[0]+'\')" class="cursor-pointer">'+data+'<span>';
-                     },
-                    targets: '_all',
-                },
-            ],
+        buttons: [
+        {
+            extend: 'csv',
+            text: 'Download Data',
+            filename: 'Project-Data-csv',
+            className: 'bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600'
+        },
+    ],
+        "pageLength": 130,
+        columnDefs: [
+        {
+            render: function (data, type, row) {
+                return '<span @click="dataDetail(\'' + data + '\')" class="cursor-pointer text-rose-900"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-3.5">' +
+                    '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />' +
+                    '</svg><span>';
+            },
+            className: "bg-white hover:bg-rose-100",
+            targets: 0,
+        },
+        {
+            render: function (data, type, row) {
+                return '<span @click="dataDetail(\'' + row[0] + '\')" class="cursor-pointer">' + data + '<span>';
+            },
+            targets: '_all',
+        },
+    ],
 
         });
 
-        $('#Export').click(function(){
-            table.button( '1' ).trigger();
-        })
+    $('#Export').click(function () {
+        table.button('1').trigger();
+    })
 
-        $('#filter').click(function(){
-            let search_val  = $('#datatable-search2').val()
-            let min_date    = $('#min').val()
-            let max_date    = $('#max').val()
+    $('#filter').click(function () {
+        let search_val = $('#datatable-search2').val()
+        let min_date = $('#min').val()
+        let max_date = $('#max').val()
 
-            var obj         = new Object()
-            obj.search_val  = search_val
-            obj.min_date    = min_date
-            obj.max_date    = max_date
-            var jsonString  = JSON.stringify(obj);
-            
+        var obj = new Object()
+        obj.search_val = search_val
+        obj.min_date = min_date
+        obj.max_date = max_date
+        var jsonString = JSON.stringify(obj);
 
-            table.search(jsonString).draw()
-            htmx.process('#manageTable')
-        })
 
+        table.search(jsonString).draw()
         htmx.process('#manageTable')
+    })
+
+    htmx.process('#manageTable')
 
     });
 
     htmx.process('#manageTable')
 
-    function manageTable(){
-        return{
+    function manageTable() {
+        return {
 
             sidebar_title: "",
             pg_actions_url: "",
-            sidebarOpen: false,
+            isSidebarOpen: false,
 
-            dataDetail(id){
-
-                this.sidebar     = true;
-                var title   = '<p class="text-md"> Survey Form '+id+'</p>';
-                var url     = window.location.origin + '/ui/instance/' + id
+            dataDetail(id) {
+                this.isSidebarOpen  = true;
+                var title = '<p class="text-md"> Survey Form ' + id + '</p>';
+                var url = window.location.origin + '/projects/form-data/instance/' + id
 
                 $('#sidebar-title').html(title);
 
@@ -132,13 +150,10 @@
                     })
             },
 
-            doPageAction(title,url){
+            doPageAction(title, url) {
                 $('#sidebar-title').html(title);
                 $('#data-detail').html(url);
             },
-
-            
-
         }
     }
 
