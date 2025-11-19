@@ -27,6 +27,7 @@ urlpatterns = [
 
     path('forms/charts/<str:pk>', views.ChartsDataView.as_view(), name='form-data-charts'),
     path('forms/map/<str:pk>', views.MapDataView.as_view(), name='form-data-map'),
+    path("forms/points/<str:form_id>", views.form_points, name="form-data-points"),
 
 
     #ajax datatable views

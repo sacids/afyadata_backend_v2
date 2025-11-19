@@ -495,6 +495,7 @@ class SurveyDataInstanceView(generic.TemplateView):
             
         return render(request, self.template_name, {'data': data, 'jForm': jForm})
 
+
 # Form data
 class ChartsDataView(generic.TemplateView):
     template_name = "surveys/data/charts.html"
@@ -557,3 +558,31 @@ class MapDataView(generic.TemplateView):
         }
 
         return render(request, self.template_name, context)
+    
+def form_points(request, *args, **kwargs):
+    # declare points
+    points = []
+
+    # form data
+    form_data = FormData.objects.filter(form_id=kwargs["form_id"])
+
+    for row in form_data:
+        fd = row.form_data or {}
+        location = fd.get("anuani_eneo") or fd.get("location") or {}
+
+        lat = location.get("latitude")
+        lng = location.get("longitude")
+
+        # Only add if both numbers exist
+        if lat is None or lng is None:
+            continue
+
+        points.append({
+            "uuid": row.uuid,
+            "title": row.title or "",
+            "lat": float(lat),
+            "lng": float(lng),
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        })
+
+    return JsonResponse(points, safe=False)

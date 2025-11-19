@@ -38,6 +38,40 @@
     //add tile to map
     tile.addTo(map);
 
+    // 3. Fetch points from Django endpoint
+    fetch("/projects/forms/points/" + "{{ cur_form.pk }}")
+        .then(response => response.json())
+        .then(points => {
+            if (!Array.isArray(points)) return;
+
+            const bounds = [];
+
+            points.forEach(p => {
+                if (typeof p.lat !== "number" || typeof p.lng !== "number") return;
+
+                const marker = L.marker([p.lat, p.lng]).addTo(map);
+
+                const popupHtml = `
+                <strong>${p.title || 'No title'}</strong><br/>
+                UUID: ${p.uuid || ''}<br/>
+                Lat: ${p.lat.toFixed(5)}, Lng: ${p.lng.toFixed(5)}<br/>
+                Created: ${p.created_at || ''}
+            `;
+
+                marker.bindPopup(popupHtml);
+                bounds.push([p.lat, p.lng]);
+            });
+
+            // Zoom to fit all markers
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        })
+        .catch(err => {
+            console.error("Error loading form points:", err);
+        });
+
+    // map signature
     map.attributionControl.addAttribution('Sacids Foundation for One Health&copy; <a href="#">Afyadata</a>');
 </script>
 {% endblock extra-js %}
