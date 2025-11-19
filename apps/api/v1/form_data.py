@@ -100,8 +100,8 @@ class FormDataView(viewsets.ViewSet):
                     return default
                 return str(val).lower() in ("1", "true", "yes")
 
+            # default to false
             deleted = to_bool(data.get("deleted"), default=False)
-            archived = to_bool(data.get("archived"), default=False)
 
             # --- 5. Handle photo upload (if any) ---
             photo = None
@@ -127,7 +127,6 @@ class FormDataView(viewsets.ViewSet):
                     "last_updated_at": timezone.now(),
                     "submitted_at": timezone.now(),
                     "deleted": deleted,
-                    "archived": archived,
                     "synced": 1,
                     # only set photo if we received one
                     **({"photo": photo} if photo is not None else {}),
