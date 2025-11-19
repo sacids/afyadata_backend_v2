@@ -56,7 +56,7 @@ class FormDataView(viewsets.ViewSet):
         if not request.data:
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        # --- 1. Normalize incoming data (QueryDict or dict) ---
+        # Normalize incoming data (QueryDict or dict)
         raw_data = request.data
 
         # DRF can give you a QueryDict or a regular dict depending on content-type
@@ -69,7 +69,7 @@ class FormDataView(viewsets.ViewSet):
         logging.info(data)
 
         try:
-            # --- 2. Parse form_data JSON safely ---
+            # Parse form_data JSON safely
             form_data_value = data.get("form_data")
 
             if isinstance(form_data_value, str):
@@ -88,13 +88,13 @@ class FormDataView(viewsets.ViewSet):
             logging.info("== parsed form_data ==")
             logging.info(data["form_data"])
 
-            # --- 3. Parse dates (created_on) ---
+            # Parse dates (created_on)
             created_on_str = data.get("created_on")
             created_on = parse_datetime(created_on_str) if created_on_str else None
             if created_on is None:
                 created_on = timezone.now()
 
-            # --- 4. Normalize flags (deleted, archived, synced) ---
+            # Normalize flags (deleted, archived, synced)
             def to_bool(val, default=False):
                 if val is None:
                     return default
@@ -103,15 +103,12 @@ class FormDataView(viewsets.ViewSet):
             # default to false
             deleted = to_bool(data.get("deleted"), default=False)
 
-            # --- 5. Handle photo upload (if any) ---
+            # Handle photo upload (if any)
             photo = None
             if request.FILES:
-                photo = save_uploaded_images(
-                    request.FILES, upload_subdir="assets/uploads/photos/"
-                )
+                photo = save_uploaded_images(request.FILES, upload_subdir="assets/uploads/photos/")
 
-            # --- 6. Insert or update database record ---
-            # update_or_create returns (instance, created_flag)
+            #  Insert or update database record
             instance, created_flag = FormData.objects.update_or_create(
                 uuid=data["uuid"],
                 defaults={
@@ -136,8 +133,7 @@ class FormDataView(viewsets.ViewSet):
             logging.info("== inserted/updated form data ==")
             logging.info({"id": instance.id, "uuid": instance.uuid, "created": created_flag})
 
-            # --- 7. Build response back to mobile app ---
-            # reload related form if needed
+            # Build response back to mobile app
             instance.refresh_from_db()
 
             if getattr(instance.form, "response", None):
@@ -153,14 +149,10 @@ class FormDataView(viewsets.ViewSet):
                     "message": "Form data created successfully" if created_flag else "Form data updated successfully",
                 }
 
-            return Response(
-                {"success": True, "data": response_payload},
-                status=status.HTTP_201_CREATED,
-            )
+            # Return Response
+            logging.exception("== Success creating form data ==")
+            return Response({"success": True, "data": response_payload}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logging.exception("== Error creating form data ==")
-            return Response(
-                {"success": False, "message": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
