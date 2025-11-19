@@ -2,6 +2,7 @@ import logging
 import json
 from datetime import datetime, date
 from django.utils.dateparse import parse_datetime
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -50,77 +51,117 @@ class FormDataView(viewsets.ViewSet):
         except:
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def create(self, request):
-        """Create new form data"""
-        if request.data:
-            arr_response = []
-            data = request.data
-
-            logging.info("== request data ==")
-            logging.info(data)
-
-            try:
-                if "form_data" in data:
-                    data["form_data"] = json.loads(data["form_data"])
-                    logging.info(data["form_data"])
-
-                photo = None
-                if request.FILES:
-                    # save uploaded images
-                    photo = save_uploaded_images(request.FILES, upload_subdir="assets/uploads/photos/")
-
-                logging.info("== reached hapa")
-
-                # insert or update data
-                form_data = FormData.objects.update_or_create(
-                    uuid=data["uuid"],
-                    defaults={
-                        "form_data": data["form_data"],
-                        "original_uuid": data["original_uuid"],
-                        "title": data["title"],
-                        "created_by_name": data["created_by_name"],
-                        "form_id": data["form"],
-                        "gps": data["gps"],
-                        "created_at": data["created_on"],
-                        "created_by": request.user,
-                        "updated_at": datetime.now(),
-                        "last_updated_at": datetime.now(),
-                        "submitted_at": datetime.now(),
-                        "deleted": data["deleted"],
-                        "synced": 1,
-                    },
-                )
-
-                logging.info("== form data ==")
-                logging.info(form_data)
-
-                # save photo
-                if photo is not None:
-                    FormData.objects.filter(uuid=data["uuid"]).update(photo=photo)
-
-                # get default response from form definition
-                form_data = FormData.objects.get(uuid=data["uuid"])
-
-                if form_data.form.response:
-                    response = {
-                        "uuid": data["uuid"],
-                        "synced": 1,
-                        "message": form_data.form.response,
-                    }
-                    return Response(
-                        {"success": True, "data": response}, status=status.HTTP_201_CREATED,
-                    )
-
-                return Response(
-                    {"uuid": data["uuid"], "synced": 1, "message": "Form data created successfully"},
-                    status=status.HTTP_201_CREATED,
-                )
-            except Exception as e:
-                logging.info("== Error creating form data ==")
-                logging.info(str(e))
-                return Response(
-                    {"success": False, "message": str(e)},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        else:
+    def create(self, request, *args, **kwargs):
+        """Create new form data coming from mobile app"""
+        if not request.data:
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # --- 1. Normalize incoming data (QueryDict or dict) ---
+        raw_data = request.data
+
+        # DRF can give you a QueryDict or a regular dict depending on content-type
+        if hasattr(raw_data, "dict"):  # QueryDict-like (form-data)
+            data = raw_data.dict()
+        else:  # already a normal dict (e.g. JSON body)
+            data = dict(raw_data)
+
+        logging.info("== request data ==")
+        logging.info(data)
+
+        try:
+            # --- 2. Parse form_data JSON safely ---
+            form_data_value = data.get("form_data")
+
+            if isinstance(form_data_value, str):
+                try:
+                    data["form_data"] = json.loads(form_data_value)
+                except json.JSONDecodeError:
+                    # If JSON is broken, log and keep it as raw string
+                    logging.warning("Invalid JSON in form_data, keeping as string")
+                    data["form_data"] = form_data_value
+            elif form_data_value is None:
+                data["form_data"] = {}
+            else:
+                # Already parsed (e.g. app sent JSON & DRF parsed it)
+                data["form_data"] = form_data_value
+
+            logging.info("== parsed form_data ==")
+            logging.info(data["form_data"])
+
+            # --- 3. Parse dates (created_on) ---
+            created_on_str = data.get("created_on")
+            created_on = parse_datetime(created_on_str) if created_on_str else None
+            if created_on is None:
+                created_on = timezone.now()
+
+            # --- 4. Normalize flags (deleted, archived, synced) ---
+            def to_bool(val, default=False):
+                if val is None:
+                    return default
+                return str(val).lower() in ("1", "true", "yes")
+
+            deleted = to_bool(data.get("deleted"), default=False)
+            archived = to_bool(data.get("archived"), default=False)
+
+            # --- 5. Handle photo upload (if any) ---
+            photo = None
+            if request.FILES:
+                photo = save_uploaded_images(
+                    request.FILES, upload_subdir="assets/uploads/photos/"
+                )
+
+            # --- 6. Insert or update database record ---
+            # update_or_create returns (instance, created_flag)
+            instance, created_flag = FormData.objects.update_or_create(
+                uuid=data["uuid"],
+                defaults={
+                    "form_data": data["form_data"],
+                    "original_uuid": data.get("original_uuid", data["uuid"]),
+                    "title": data.get("title", ""),
+                    "created_by_name": data.get("created_by_name", ""),
+                    "form_id": data.get("form"),
+                    "gps": data.get("gps"),
+                    "created_at": created_on,
+                    "created_by": request.user if request.user.is_authenticated else None,
+                    "updated_at": timezone.now(),
+                    "last_updated_at": timezone.now(),
+                    "submitted_at": timezone.now(),
+                    "deleted": deleted,
+                    "archived": archived,
+                    "synced": 1,
+                    # only set photo if we received one
+                    **({"photo": photo} if photo is not None else {}),
+                },
+            )
+
+            logging.info("== inserted/updated form data ==")
+            logging.info({"id": instance.id, "uuid": instance.uuid, "created": created_flag})
+
+            # --- 7. Build response back to mobile app ---
+            # reload related form if needed
+            instance.refresh_from_db()
+
+            if getattr(instance.form, "response", None):
+                response_payload = {
+                    "uuid": instance.uuid,
+                    "synced": 1,
+                    "message": instance.form.response,
+                }
+            else:
+                response_payload = {
+                    "uuid": instance.uuid,
+                    "synced": 1,
+                    "message": "Form data created successfully" if created_flag else "Form data updated successfully",
+                }
+
+            return Response(
+                {"success": True, "data": response_payload},
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logging.exception("== Error creating form data ==")
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
