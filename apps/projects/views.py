@@ -582,6 +582,7 @@ def form_points(request, *args, **kwargs):
             "title": row.title or "",
             "lat": float(lat),
             "lng": float(lng),
+            "form_data": row.form_data,
             "created_at": row.created_at.isoformat() if row.created_at else None,
         })
 
