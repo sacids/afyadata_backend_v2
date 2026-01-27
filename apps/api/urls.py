@@ -30,6 +30,7 @@ urlpatterns = [
     path('v1/projects/<str:tags>', ProjectView.as_view({'get': 'retrieve'})),
     path('v1/project/detail/<str:pk>', ProjectView.as_view({'get': 'details'})),
     path('v1/project/request-access', ProjectView.as_view({'post': 'request_access'})),
+    path('v1/project/unsubscribe', ProjectView.as_view({'post': 'unsubscribe'})),
     path('v1/project/create', ProjectView.as_view({'post': 'create'})),
 
     # Form definition

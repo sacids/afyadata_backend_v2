@@ -51,7 +51,7 @@ class SurveyAddForm(forms.ModelForm):
 
     class Meta:
         model = FormDefinition
-        fields = ["title", "short_title", "code", "xlsform", "response", "short_description", "description"]
+        fields = ["title", "short_title","code", "xlsform", "is_root" ,"response", "short_description", "description"]
         tailwind_css = "text-xs rounded-md"
 
         widgets = {
@@ -61,6 +61,7 @@ class SurveyAddForm(forms.ModelForm):
             'code': forms.NumberInput(attrs={'class': tailwind_css, 'id': 'code', 'placeholder': 'Write code...', 'required': '' }),
             'sort_order': forms.NumberInput(attrs={'class': tailwind_css, 'id': 'sort_order', 'required': '' }),
             'xlsform': forms.FileInput(attrs={'class': tailwind_css, 'accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel', 'required': '' }),
+            'is_root': forms.CheckboxInput(attrs={'class': tailwind_css, 'id': 'is_root' }),
             'response': forms.TextInput(attrs={'class': tailwind_css, 'id': 'response', 'placeholder': 'Write default response...' }),
             'short_description': forms.Textarea(attrs={'class': tailwind_css, 'id': 'short_description', 'placeholder': 'Write short description...', 'rows': 1 }),
             'description': forms.Textarea(attrs={'class': tailwind_css, 'id': 'description', 'placeholder': 'Write description...', 'rows': 2 }),
@@ -82,7 +83,7 @@ class SurveyUpdateForm(forms.ModelForm):
 
     class Meta:
         model = FormDefinition
-        fields = ["title", "short_title", "code", "xlsform", "response" ,"short_description", "description"]
+        fields = ["title", "short_title", "code", "xlsform","is_root", "response" ,"short_description", "description"]
         tailwind_css = "text-xs rounded-md"
 
         widgets = {
@@ -92,6 +93,7 @@ class SurveyUpdateForm(forms.ModelForm):
             'code': forms.NumberInput(attrs={'class': tailwind_css, 'id': 'code', 'placeholder': 'Write code...', 'required': '' }),
             'sort_order': forms.NumberInput(attrs={'class': tailwind_css, 'id': 'sort_order', 'required': '' }),
             'xlsform': forms.FileInput(attrs={'class': tailwind_css, 'accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel', 'required': '' }),
+            'is_root': forms.CheckboxInput(attrs={'class': tailwind_css, 'id': 'is_root' }),
             'response': forms.TextInput(attrs={'class': tailwind_css, 'id': 'response', 'placeholder': 'Write default response...' }),
             'short_description': forms.Textarea(attrs={'class': tailwind_css, 'id': 'short_description', 'placeholder': 'Write short description...', 'rows': 1 }),
             'description': forms.Textarea(attrs={'class': tailwind_css, 'id': 'description', 'placeholder': 'Write description...', 'rows': 2 }),
