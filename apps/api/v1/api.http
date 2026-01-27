@@ -1,0 +1,29 @@
+@hostname = https://afyadata-v2.sacids.org/api/v1/
+@login_url = {{hostname}}token/
+@form_definition_url = {{hostname}}/api/v2/form-defn/
+
+
+@accesstoken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5NzYwNTcxLCJpYXQiOjE3Njg4OTY1NzEsImp0aSI6IjUwYTI3OWJkZDg2MzRmMGJiOTFkZDg4ZmIyM2M0YWU3IiwidXNlcl9pZCI6MzcsInVzZXIiOnsiaWQiOjM3LCJ1c2VybmFtZSI6IkJQMkEuMjUwNjA1LjAzMS5BMy5TOTExQlhYUzhFWUs1IiwiZW1haWwiOiJCUDJBLjI1MDYwNS4wMzEuQTMuUzkxMUJYWFM4RVlLNUBzYWNpZHMub3JnIiwiZmlyc3RfbmFtZSI6IkVyaWMgYmVkYSIsImxhc3RfbmFtZSI6IkVyaWMgYmVkYSIsImdyb3VwcyI6W119fQ.TD8Hhb3HfBSRYNM2oFhG_KpW-9aqkv0SOGGQuikchNM
+###
+# Login to get access token
+# @name login
+POST {{login_url}}
+Content-Type: application/json
+
+{
+  "username": "samwel.ngeleja",
+  "password": "Cromis@2024"
+}
+
+
+###
+# Verify token
+# @name verify_token
+GET {{hostname}}projects/unsubscribe?code=S02
+Authorization: Bearer {{accesstoken}}
+Content-Type: application/json
+
+{
+    "code": "S02"
+}
+

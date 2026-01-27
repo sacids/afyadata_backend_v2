@@ -101,6 +101,7 @@ class FormDefinition(models.Model):
     xlsform       = models.FileField(upload_to='jform/defn/', max_length=100, null=True, blank=True)
     form_actions  = models.CharField(max_length=255, blank=True, null=True)
     form_defn     = models.TextField(null=True,blank=True)
+    is_root       = models.BooleanField(default=True)
     children      = models.CharField(max_length=100,null=True, blank=True)
     response      = models.CharField(max_length=200,null=True, blank=True)
     created_at    = models.DateTimeField(auto_now_add=True)
