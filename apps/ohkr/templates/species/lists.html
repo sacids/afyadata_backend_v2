@@ -5,15 +5,42 @@
 {% block content %}
 
 <main class="bg-white h-full">
-    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-row flex-wrap">
-            <div class="w-full">
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+
+        <!-- Card -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+
+            <!-- Card Header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-800">
+                        Species
+                    </h2>
+                    <p class="text-xs text-gray-500">
+                        List of all species
+                    </p>
+                </div>
+
+                <!-- Optional actions -->
+                <div class="flex items-center space-x-2">
+                    <button
+                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                        <i class='bx bxs-file-export px-1' ></i> Export
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="p-4">
                 <div class="relative overflow-x-auto">
-                    <table id="datatable_species" class="row-border text-xl"></table>
+                    <div id="message_wrp" class="mb-3" hx-preserve></div>
+
+                    <table id="datatable_species" class="w-full text-xs text-left text-gray-700 border-collapse">
+                    </table>
                 </div>
             </div>
         </div>
-        <!-- /End replace -->
+        <!-- End Card -->
     </div>
 </main>
 
