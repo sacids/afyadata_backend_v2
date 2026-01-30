@@ -54,6 +54,27 @@ class ProjectView(viewsets.ViewSet):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+    def information(self, request):
+        """Get project informationusing code"""
+        code = request.data.get("code")
+        if not code:
+            return Response(
+                {"error": True, "message": "Missing project code"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            project = Project.objects.get(code=request.data["code"])
+            serializer = ProjectSerializer(project)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except:
+            return Response(
+                {"error": True, "message": "Project does not exist"},
+                status=status.HTTP_200_OK,
+            )
+
 
     def request_access(self, request):
         """Request access to project"""
@@ -113,6 +134,7 @@ class ProjectView(viewsets.ViewSet):
                 {"error": True, "message": "Project does not exist"},
                 status=status.HTTP_200_OK,
             )
+
 
     def unsubscribe(self, request, pk=None):
         """Unsubscribe from project"""
