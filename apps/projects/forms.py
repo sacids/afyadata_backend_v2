@@ -73,6 +73,7 @@ class ProjectForm(forms.ModelForm):
         }
 
 
+
 class SurveyAddForm(forms.ModelForm):
     """
     A class to create form

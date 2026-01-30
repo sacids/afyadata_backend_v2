@@ -47,6 +47,7 @@ class Project(models.Model):
     updated_at      = models.DateTimeField(auto_now=True) 
     created_by      = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='p_created_by', blank=True, null=True)
     updated_by      = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='p_updated_by', blank=True, null=True)
+    deleted         = models.BooleanField(default=False)
     
     class Meta:
         """Meta definition for form definition."""

@@ -3,6 +3,7 @@ import random
 import string
 from datetime import datetime, date
 from django.contrib.sites.shortcuts import get_current_site
+from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.views import generic
@@ -109,7 +110,7 @@ class ProjectCreateView(generic.CreateView):
         return super(ProjectCreateView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        context = {"title": "Create New Project", "form": ProjectForm()}
+        context = {"title": "Create Project", "form": ProjectForm()}
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
@@ -177,12 +178,12 @@ class ProjectUpdateView(generic.UpdateView):
 
     def post(self, request, *args, **kwargs):
         project = Project.objects.get(pk=kwargs["pk"])
-        project_form = ProjectForm(request.POST, instance=project)
+        form = ProjectForm(request.POST, instance=project)
 
-        if project_form.is_valid():
-            project = project_form.save(commit=False)
+        if form.is_valid():
+            project = form.save(commit=False)
             project.updated_by = request.user
-            project_form.save()
+            form.save()
 
             # success response
             return HttpResponse(
@@ -191,8 +192,16 @@ class ProjectUpdateView(generic.UpdateView):
         else:
             # error response
             return HttpResponse(
-                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">{project_form.errors}</div>'
+                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">{form.errors}</div>'
             )
+
+
+class ProjectDeleteConfirmView(generic.DetailView):
+    model = Project
+    template_name = "projects/_delete_confirm_modal.html"
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(Project, pk=self.kwargs["pk"])
 
 
 class ProjectDeleteView(generic.TemplateView):
@@ -201,7 +210,7 @@ class ProjectDeleteView(generic.TemplateView):
     def get(self, request, *args, **kwargs):
         try:
             project = Project.objects.get(pk=kwargs["pk"])
-            # project.deleted = 1
+            project.deleted = 1
             project.save()
 
             return JsonResponse(
@@ -210,6 +219,28 @@ class ProjectDeleteView(generic.TemplateView):
         except:
             return JsonResponse(
                 {"error": True, "error_msg": "Failed to delete project"}, status=404
+            )
+
+
+class ProjectActivateView(generic.TemplateView):
+    """View to activate or deactivate a project"""
+    def get(self, request, *args, **kwargs):
+        try:
+            project = Project.objects.get(pk=kwargs["pk"])
+            if project.active:
+                project.active = False
+            else:
+                project.active = True
+            project.save()
+
+            # success response
+            return HttpResponse(
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project status updated succesfully</div>'
+            )
+        except:
+            # error response
+            return HttpResponse(
+                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">Project not found</div>'
             )
 
 
@@ -373,7 +404,9 @@ class SurveyUpdateView(generic.UpdateView):
         # Add links to context
         context["links"] = {
             "Information": reverse_lazy("projects:lists"),
-            "Members": reverse_lazy("projects:members", kwargs={"pk": survey.project.pk}),
+            "Members": reverse_lazy(
+                "projects:members", kwargs={"pk": survey.project.pk}
+            ),
             "Forms": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": survey.project.pk}
@@ -432,7 +465,7 @@ class SurveyDeleteView(generic.DeleteView):
         return HttpResponse(
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form deleted Succesfully</div>'
         )
-    
+
 
 # Form data
 class SurveyDataView(generic.TemplateView):
@@ -441,14 +474,16 @@ class SurveyDataView(generic.TemplateView):
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(SurveyDataView, self).dispatch(*args, **kwargs)
-    
+
     def get(self, request, *args, **kwargs):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         context = {"cur_form": cur_form}
 
         context["title"] = cur_form.title
-        context["datatable_list"] = reverse("projects:form-data-list", kwargs={"pk": cur_form.pk})
+        context["datatable_list"] = reverse(
+            "projects:form-data-list", kwargs={"pk": cur_form.pk}
+        )
 
         # get jform
         data = utils.load_json(cur_form.form_defn)
@@ -458,43 +493,51 @@ class SurveyDataView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": cur_form.project.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {
+                "name": cur_form.project.title,
+                "url": reverse_lazy(
+                    "projects:forms", kwargs={"pk": cur_form.project.pk}
+                ),
+            },
             {"name": "Data", "url": ""},
         ]
 
         # Add links to context
         context["links"] = {
-            "Summary": '#',
+            "Summary": "#",
             "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
-            "Charts": reverse_lazy("projects:form-data-charts", kwargs={"pk": kwargs["pk"]}),
-            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),   
+            "Charts": reverse_lazy(
+                "projects:form-data-charts", kwargs={"pk": kwargs["pk"]}
+            ),
+            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
         }
 
         return render(request, self.template_name, context)
 
+
 class SurveyDataInstanceView(generic.TemplateView):
     template_name = "surveys/data/instance.html"
-    
+
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(SurveyDataInstanceView, self).dispatch(*args, **kwargs)
-    
+
     def get(self, request, *args, **kwargs):
         """View a single survey instance"""
-        print('survey instance', kwargs["pk"])
+        print("survey instance", kwargs["pk"])
         form_data_id = kwargs["pk"]
-        form_data   = FormData.objects.get(id=form_data_id)
-        form_id     = form_data.form_id
-        aDefn       = FormDefinition.objects.get(id=form_id)
-        
+        form_data = FormData.objects.get(id=form_data_id)
+        form_id = form_data.form_id
+        aDefn = FormDefinition.objects.get(id=form_id)
+
         if isinstance(aDefn.form_defn, str):
             try:
                 jForm = json.loads(aDefn.form_defn)
-                data  = form_data.form_data
+                data = form_data.form_data
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON format: {str(e)}")
-            
-        return render(request, self.template_name, {'data': data, 'jForm': jForm})
+
+        return render(request, self.template_name, {"data": data, "jForm": jForm})
 
 
 # Form data
@@ -504,7 +547,7 @@ class ChartsDataView(generic.TemplateView):
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(ChartsDataView, self).dispatch(*args, **kwargs)
-    
+
     def get(self, request, *args, **kwargs):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
@@ -514,15 +557,22 @@ class ChartsDataView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": cur_form.project.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {
+                "name": cur_form.project.title,
+                "url": reverse_lazy(
+                    "projects:forms", kwargs={"pk": cur_form.project.pk}
+                ),
+            },
             {"name": "Charts", "url": ""},
         ]
 
         # Add links to context
         context["links"] = {
-            "Summary": '#',
+            "Summary": "#",
             "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
-            "Charts": reverse_lazy("projects:form-data-charts", kwargs={"pk": kwargs["pk"]}),
+            "Charts": reverse_lazy(
+                "projects:form-data-charts", kwargs={"pk": kwargs["pk"]}
+            ),
             "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -536,7 +586,7 @@ class MapDataView(generic.TemplateView):
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(MapDataView, self).dispatch(*args, **kwargs)
-    
+
     def get(self, request, *args, **kwargs):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
@@ -546,20 +596,28 @@ class MapDataView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": cur_form.project.title, "url": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk})},
+            {
+                "name": cur_form.project.title,
+                "url": reverse_lazy(
+                    "projects:forms", kwargs={"pk": cur_form.project.pk}
+                ),
+            },
             {"name": "Map", "url": ""},
         ]
 
         # Add links to context
         context["links"] = {
-            "Summary": '#',
+            "Summary": "#",
             "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
-            "Charts": reverse_lazy("projects:form-data-charts", kwargs={"pk": kwargs["pk"]}),
-            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),  
+            "Charts": reverse_lazy(
+                "projects:form-data-charts", kwargs={"pk": kwargs["pk"]}
+            ),
+            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
         }
 
         return render(request, self.template_name, context)
-    
+
+
 def form_points(request, *args, **kwargs):
     # declare points
     points = []
@@ -578,13 +636,15 @@ def form_points(request, *args, **kwargs):
         if lat is None or lng is None:
             continue
 
-        points.append({
-            "uuid": row.uuid,
-            "title": row.title or "",
-            "lat": float(lat),
-            "lng": float(lng),
-            "form_data": row.form_data,
-            "created_at": row.created_at.isoformat() if row.created_at else None,
-        })
+        points.append(
+            {
+                "uuid": row.uuid,
+                "title": row.title or "",
+                "lat": float(lat),
+                "lng": float(lng),
+                "form_data": row.form_data,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+        )
 
     return JsonResponse(points, safe=False)
