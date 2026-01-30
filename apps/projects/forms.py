@@ -1,8 +1,8 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Field
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout, Row, Column, Field
 from .models import *
-from .utils import generate_unique_code
 
 
 class ProjectForm(forms.ModelForm):
@@ -73,7 +73,6 @@ class ProjectForm(forms.ModelForm):
         }
 
 
-
 class SurveyAddForm(forms.ModelForm):
     """
     A class to create form
@@ -85,26 +84,23 @@ class SurveyAddForm(forms.ModelForm):
         self.helper.form_show_labels = True
         self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
 
-        if not self.instance.pk:
-            self.initial["code"] = generate_unique_code(FormDefinition)
-
     class Meta:
         model = FormDefinition
         fields = [
             "title",
             "short_title",
+            "code",
+            "is_root",
             "xlsform",
             "response",
             "short_description",
             "description",
-            "is_root",
         ]
-        tailwind_css = "text-xs rounded-md"
 
         widgets = {
             "title": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "title",
                     "placeholder": "Write title...",
                     "required": "",
@@ -112,21 +108,29 @@ class SurveyAddForm(forms.ModelForm):
             ),
             "short_title": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "short_title",
                     "placeholder": "Write short title...",
                     "required": "",
                 }
             ),
+            "code": forms.TextInput(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "code",
+                    "placeholder": "Write code...",
+                    "required": "",
+                }
+            ),
             "children": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "children",
                     "placeholder": "Write children...",
                 }
             ),
             "sort_order": forms.NumberInput(
-                attrs={"class": tailwind_css, "id": "sort_order", "required": ""}
+                attrs={"class": "font-normal text-sm rounded-md", "id": "sort_order", "required": ""}
             ),
             "xlsform": forms.FileInput(
                 attrs={
@@ -136,18 +140,18 @@ class SurveyAddForm(forms.ModelForm):
                 }
             ),
             "is_root": forms.CheckboxInput(
-                attrs={"class": tailwind_css, "id": "is_root"}
+                attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
             ),
             "response": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "response",
                     "placeholder": "Write default response message...",
                 }
             ),
             "short_description": forms.Textarea(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "short_description",
                     "placeholder": "Write short description...",
                     "rows": 1,
@@ -155,19 +159,13 @@ class SurveyAddForm(forms.ModelForm):
             ),
             "description": forms.Textarea(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "description",
                     "placeholder": "Write description...",
                     "rows": 2,
                 }
             ),
         }
-
-    def clean_is_root(self):
-        """
-        Convert checkbox value to 0 / 1
-        """
-        return 1 if self.cleaned_data.get("is_root") else 0
 
 
 class SurveyUpdateForm(forms.ModelForm):
@@ -179,9 +177,7 @@ class SurveyUpdateForm(forms.ModelForm):
         super(SurveyUpdateForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_show_labels = True
-        self.helper.label_class = (
-            "text-gray-700 text-xs font-medium mb-2"  # Tailwind label class
-        )
+        self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
 
     class Meta:
         model = FormDefinition
@@ -199,7 +195,7 @@ class SurveyUpdateForm(forms.ModelForm):
         widgets = {
             "title": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "title",
                     "placeholder": "Write title...",
                     "required": "",
@@ -207,7 +203,7 @@ class SurveyUpdateForm(forms.ModelForm):
             ),
             "short_title": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "short_title",
                     "placeholder": "Write short title...",
                     "required": "",
@@ -215,34 +211,34 @@ class SurveyUpdateForm(forms.ModelForm):
             ),
             "children": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "children",
                     "placeholder": "Write children...",
                 }
             ),
             "sort_order": forms.NumberInput(
-                attrs={"class": tailwind_css, "id": "sort_order", "required": ""}
+                attrs={"class": "font-normal text-sm rounded-md", "id": "sort_order", "required": ""}
             ),
             "xlsform": forms.FileInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "block w-full border border-gray-200 focus:ring-gray-200 focus:ring-2 focus:outline-none focus:ring-offset-2 dark:focus:ring-offset-gray-800 dark:focus:ring-white dark:focus:ring-2 rounded-md text-sm px-3 py-1",
                     "accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel",
                     "required": "",
                 }
             ),
             "is_root": forms.CheckboxInput(
-                attrs={"class": tailwind_css, "id": "is_root"}
+                attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
             ),
             "response": forms.TextInput(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "response",
                     "placeholder": "Write default response...",
                 }
             ),
             "short_description": forms.Textarea(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "short_description",
                     "placeholder": "Write short description...",
                     "rows": 1,
@@ -250,16 +246,10 @@ class SurveyUpdateForm(forms.ModelForm):
             ),
             "description": forms.Textarea(
                 attrs={
-                    "class": tailwind_css,
+                    "class": "font-normal text-sm rounded-md",
                     "id": "description",
                     "placeholder": "Write description...",
                     "rows": 2,
                 }
             ),
         }
-
-    def clean_is_root(self):
-        """
-        Convert checkbox value to 0 / 1
-        """
-        return 1 if self.cleaned_data.get("is_root") else 0

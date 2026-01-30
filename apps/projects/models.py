@@ -99,7 +99,7 @@ class FormDefinition(models.Model):
     short_title   = models.CharField(max_length=10, null=True, blank=True)
     code          = models.IntegerField(unique=True, null=True)
     form_type     = models.TextField(null=True, blank=True)
-    is_root       = models.IntegerField(default=1)
+    is_root       = models.BooleanField(default=False)
     form_actions  = models.CharField(max_length=255, blank=True, null=True)
     form_category = models.TextField(null=True, blank=True)
     xlsform       = models.FileField(upload_to='jform/defn/', max_length=100, null=True, blank=True)

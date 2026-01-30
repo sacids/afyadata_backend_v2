@@ -5,46 +5,78 @@
 {% block content %}
 
 <main class="bg-white h-full" x-data="manageTable()" id="manageTable">
-    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-row flex-wrap">
-            <div class="w-full">
-                <div class="relative overflow-x-auto">
-                    <table id="datatable"
-                        class="table border=1 w-full table-striped table-bordered compact nowrap text-sm">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                {% for k,col in tbl_header.items %}
-                                <th>{{col}}</th>
-                                {% endfor %}
-                                <th>Created on</th>
-                                <th>Created By</th>
-                                <th>Username</th>
-                            </tr>
-                        </thead>
-                    </table>
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+
+        <!-- Card -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+
+            <!-- Card Header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-800">
+                        {{ title|default:'Form Data' }}
+                    </h2>
+                    <p class="text-xs text-gray-500">
+                        List of all form data
+                    </p>
                 </div>
 
-                <div class="fixed top-16 h-full border-t right-0  bg-white border-l transition-width overflow-hidden origin-right transform duration-700 ease-in-out"
-                    :class="isSidebarOpen ? 'w-2/3 scale-x-100' : 'w-0 scale-0'">
+                <!-- Optional actions -->
+                <div class="flex items-center space-x-2">
+                    <button
+                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                        <i class='bx bxs-file-export px-1' ></i> Export
+                    </button>
 
-                    <div class="border-b flex w-full space-x-4">
-                        <p class="px-4 py-2 border-r text-sm cursor-pointer" @click="isSidebarOpen = false">X</p>
-                        {% for tab in tabs %}
-                        <p class="px-4 py-2 border-r text-sm cursor-pointer font-bold"
-                            :class="tab_id === '{{tab.title}}' ? 'text-blue-800 ' : 'text-gray-400'"
-                            @click="tab_id = '{{tab.title}}'; dataDetail(instance_id, {{tab.id}})">
-                            {{tab.title}}
-                        </p>
-                        {% endfor %}
+                    <button
+                        class="inline-flex items-center rounded-sm bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+                       <i class='bx bxs-chat px-1'></i> Messages
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="flex flex-row flex-wrap">
+                <div class="w-full p-4">
+                    <div class="relative overflow-x-auto">
+                        <div id="message_wrp" class="mb-3" hx-preserve></div>
+
+                        <table id="datatable"
+                            class="table border=1 w-full table-striped table-bordered compact nowrap text-sm">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    {% for k,col in tbl_header.items %}
+                                    <th>{{col}}</th>
+                                    {% endfor %}
+                                    <th>Created on</th>
+                                    <th>Created By</th>
+                                    <th>Username</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
-                    <div class="grow text-xs h-full overflow-y-scroll" id="data-detail">
+
+                    <div class="fixed top-16 h-full border-t right-0  bg-white border-l transition-width overflow-hidden origin-right transform duration-700 ease-in-out"
+                        :class="isSidebarOpen ? 'w-2/3 scale-x-100' : 'w-0 scale-0'">
+
+                        <div class="border-b flex w-full space-x-4">
+                            <p class="px-4 py-2 border-r text-sm cursor-pointer" @click="isSidebarOpen = false">X</p>
+                            {% for tab in tabs %}
+                            <p class="px-4 py-2 border-r text-sm cursor-pointer font-bold"
+                                :class="tab_id === '{{tab.title}}' ? 'text-blue-800 ' : 'text-gray-400'"
+                                @click="tab_id = '{{tab.title}}'; dataDetail(instance_id, {{tab.id}})">
+                                {{tab.title}}
+                            </p>
+                            {% endfor %}
+                        </div>
+                        <div class="grow text-xs h-full overflow-y-scroll" id="data-detail">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- /End replace -->
+        <!-- End Card -->
     </div>
 </main>
 
@@ -74,12 +106,12 @@
                 t
             `,
         buttons: [
-        {
-            extend: 'csv',
-            text: 'Download Data',
-            filename: 'Project-Data-csv',
-            className: 'bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600'
-        },
+        // {
+        //     extend: 'csv',
+        //     text: 'Download Data',
+        //     filename: 'Project-Data-csv',
+        //     className: 'bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600'
+        // },
     ],
         "pageLength": 130,
         columnDefs: [
@@ -136,7 +168,7 @@
             isSidebarOpen: false,
 
             dataDetail(id) {
-                this.isSidebarOpen  = true;
+                this.isSidebarOpen = true;
                 var title = '<p class="text-md"> Survey Form ' + id + '</p>';
                 var url = window.location.origin + '/projects/form-data/instance/' + id
 
