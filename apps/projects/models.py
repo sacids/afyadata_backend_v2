@@ -35,7 +35,7 @@ class Project(models.Model):
 
     id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title           = models.CharField(max_length=50)
-    code            = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    code            = models.CharField(max_length=10, blank=True, null=True, unique=True)
     tags            = models.ManyToManyField(Tag, null=True, blank=True)
     access          = models.CharField(max_length=20, choices=ACCESS_CHOICES, default='private')
     auto_join       = models.BooleanField(default=False)

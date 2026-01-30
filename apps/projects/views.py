@@ -130,6 +130,7 @@ class ProjectCreateView(generic.CreateView):
 
         if form.is_valid():
             project = form.save(commit=False)
+            project.code = utils.generate_unique_code(Project, "code", 5)
             project.created_by = request.user
             project.save()
 
@@ -185,7 +186,7 @@ class ProjectUpdateView(generic.UpdateView):
 
             # success response
             return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project created succesfully</div>'
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project updated succesfully</div>'
             )
         else:
             # error response

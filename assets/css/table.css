@@ -119,3 +119,7 @@ Button
     border-radius: 2px;
     transition: all 300ms ease;
 }
+
+select option {
+    font-size: 0.75rem; /* text-xs */
+}
