@@ -35,33 +35,22 @@ class Project(models.Model):
         ("public", "Public"),
     )
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=50)
-    code = models.CharField(max_length=50, blank=True, null=True, unique=True)
-    tags = models.ManyToManyField(Tag, null=True, blank=True)
-    access = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="private")
-    auto_join = models.BooleanField(default=False)
-    accept_member = models.BooleanField(default=True)  # accept member
-    accept_data = models.BooleanField(default=True)  # accept data or not
-    active = models.BooleanField(default=True)  # active or not
-    description = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.DO_NOTHING,
-        related_name="p_created_by",
-        blank=True,
-        null=True,
-    )
-    updated_by = models.ForeignKey(
-        User,
-        on_delete=models.DO_NOTHING,
-        related_name="p_updated_by",
-        blank=True,
-        null=True,
-    )
-
+    id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title           = models.CharField(max_length=50)
+    code            = models.CharField(max_length=10, blank=True, null=True, unique=True)
+    tags            = models.ManyToManyField(Tag, null=True, blank=True)
+    access          = models.CharField(max_length=20, choices=ACCESS_CHOICES, default='private')
+    auto_join       = models.BooleanField(default=False)
+    accept_member   = models.BooleanField(default=True) # accept member
+    accept_data     = models.BooleanField(default=True) # accept data or not
+    active          = models.BooleanField(default=True) # active or not
+    description     = models.TextField(null=True, blank=True)
+    created_at      = models.DateTimeField(auto_now_add=True)
+    updated_at      = models.DateTimeField(auto_now=True) 
+    created_by      = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='p_created_by', blank=True, null=True)
+    updated_by      = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='p_updated_by', blank=True, null=True)
+    deleted         = models.BooleanField(default=False)
+    
     class Meta:
         """Meta definition for form definition."""
 
@@ -104,18 +93,17 @@ class ProjectMember(models.Model):
 
 class FormDefinition(models.Model):
     """Model definition for form_definition"""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(Project, related_name="forms", on_delete=models.CASCADE)
-    form_id = models.TextField(null=True, blank=True)
-    depends_on = models.IntegerField(default=0)
-    title = models.CharField(max_length=100)
-    version = models.CharField(max_length=20, null=True, blank=True)
-    short_title = models.CharField(max_length=10, null=True, blank=True)
-    code = models.IntegerField(unique=True, null=True)
-    form_type = models.TextField(null=True, blank=True)
-    is_root = models.IntegerField(default=1)
-    form_actions = models.CharField(max_length=255, blank=True, null=True)
+    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project       = models.ForeignKey(Project, related_name='forms', on_delete=models.CASCADE)
+    form_id       = models.TextField(null=True, blank=True)
+    depends_on    = models.IntegerField(default=0)
+    title         = models.CharField(max_length=100)
+    version       = models.CharField(max_length=20, null=True, blank=True)
+    short_title   = models.CharField(max_length=10, null=True, blank=True)
+    code          = models.IntegerField(unique=True, null=True)
+    form_type     = models.TextField(null=True, blank=True)
+    is_root       = models.BooleanField(default=False)
+    form_actions  = models.CharField(max_length=255, blank=True, null=True)
     form_category = models.TextField(null=True, blank=True)
     xlsform = models.FileField(
         upload_to="jform/defn/", max_length=100, null=True, blank=True

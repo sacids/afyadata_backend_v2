@@ -10,7 +10,10 @@ table.dataTable th {
     font-size: 12px;
     text-align: left;
     font-weight: 400;
-    color: #888;
+    color: #424242 !important;
+    border-bottom: #e5e7eb solid 1px !important;
+    border-right: dashed 1px #e5e7eb !important;
+    padding: 10px 10px !important;
 }
 
 table.dataTable tbody tr:hover {
@@ -118,4 +121,8 @@ Button
     line-height: 1.4;
     border-radius: 2px;
     transition: all 300ms ease;
+}
+
+select option {
+    font-size: 0.75rem; /* text-xs */
 }

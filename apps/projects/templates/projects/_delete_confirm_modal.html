@@ -1,0 +1,30 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/40" hx-get="about:blank" hx-target="#modal_container" hx-swap="innerHTML">
+    </div>
+
+    <div class="relative w-full max-w-md rounded-lg bg-white shadow-lg border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h3 class="text-sm font-semibold text-gray-800">Confirm delete</h3>
+        </div>
+
+        <div class="px-5 py-4">
+            <p class="text-sm text-gray-600">
+                Are you sure you want to delete <span class="font-semibold">{{ project.title }}</span>?
+            </p>
+        </div>
+
+        <div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
+            <button type="button"
+                class="bg-white border border-gray-300 text-gray-700 text-sm px-3 py-2 rounded-sm hover:bg-gray-50"
+                hx-get="about:blank" hx-target="#modal_container" hx-swap="innerHTML">
+                Cancel
+            </button>
+
+            <button type="button" class="bg-red-600 text-white text-sm px-3 py-2 rounded-sm hover:bg-red-700"
+                hx-delete="{% url 'projects:delete' project.id %}" hx-target="#modal_container" hx-swap="innerHTML"
+                hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'>
+                Delete
+            </button>
+        </div>
+    </div>
+</div>

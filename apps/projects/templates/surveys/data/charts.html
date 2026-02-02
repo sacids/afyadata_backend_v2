@@ -4,16 +4,36 @@
 
 {% block content %}
 
-<main class="bg-white h-full">
-    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-row flex-wrap">
-            <div class="w-full">
-                <div class="relative overflow-x-auto">
-                    
+<main class="bg-white h-full" x-data="manageTable()" id="manageTable">
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+
+        <!-- Card -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+
+            <!-- Card Header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-800">
+                        {{ title|default:'Charts' }}
+                    </h2>
+                    <p class="text-xs text-gray-500">
+                        All data charts
+                    </p>
+                </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="flex flex-row flex-wrap">
+                <div class="w-full p-4">
+                    <div class="relative overflow-x-auto">
+                        <div id="message_wrp" class="mb-3" hx-preserve></div>
+
+                        
+                    </div>
                 </div>
             </div>
         </div>
-        <!-- /End replace -->
+        <!-- End Card -->
     </div>
 </main>
 
