@@ -32,15 +32,26 @@ class ConversationView(viewsets.ViewSet):
         if request.data:
             data = request.data
 
+            from apps.projects.models import FormData
+
+            try:
+                form_instance = FormData.objects.get(uuid=data["instance"])
+            except FormData.DoesNotExist:
+                return Response(
+                    {
+                        "success": False,
+                        "message": f"FormData with uuid {data['instance']} not found",
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
             try:
                 # Create or update conversation object
                 conversation, created = Conversation.objects.update_or_create(
                     title=data["title"],
                     form_id=data["form"],
-                    instance_id=data["instance"],
-                    defaults={
-                        "created_by_id": request.user.id
-                    }
+                    instance_id=form_instance.id,
+                    defaults={"created_by_id": request.user.id},
                 )
 
                 # Add current user + provided participants
@@ -52,15 +63,19 @@ class ConversationView(viewsets.ViewSet):
                     {
                         "success": True,
                         "message": "Conversation created successfully",
-                        "data": ConversationSerializer(conversation, context={"request": request}).data,
+                        "data": ConversationSerializer(
+                            conversation, context={"request": request}
+                        ).data,
                     },
                     status=status.HTTP_201_CREATED,
                 )
             except Exception as e:
-                return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"success": False, "message": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             return Response(status=status.HTTP_204_NO_CONTENT)
-
 
     @action(detail=True, methods=["get", "post"])
     def messages(self, request, pk=None):
@@ -75,7 +90,9 @@ class ConversationView(viewsets.ViewSet):
 
         if request.method == "GET":
             msgs = conversation.messages.all().order_by("created_at")
-            serializer = MessageSerializer(msgs, many=True, context={"request": request})
+            serializer = MessageSerializer(
+                msgs, many=True, context={"request": request}
+            )
             return Response(serializer.data)
 
         # POST – send message
@@ -89,7 +106,7 @@ class ConversationView(viewsets.ViewSet):
                 "conversation": conversation,
                 "sender": request.user,
                 "text": serializer.validated_data["text"],
-            }
+            },
         )
 
         return Response(
@@ -113,7 +130,14 @@ class ConversationView(viewsets.ViewSet):
             return Response({"error": "Conversation not found"}, status=404)
 
         # mark all unread messages as read
-        conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
+        conversation.messages.filter(is_read=False).exclude(sender=request.user).update(
+            is_read=True
+        )
 
         # return success
-        return Response({"success": True, "message": "Conversation marked read successfully",})
+        return Response(
+            {
+                "success": True,
+                "message": "Conversation marked read successfully",
+            }
+        )
