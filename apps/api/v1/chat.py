@@ -23,6 +23,7 @@ class ConversationView(viewsets.ViewSet):
         serializer = ConversationSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
 
+
     def create(self, request):
         """
         POST /v1/chat/conversations
@@ -117,6 +118,7 @@ class ConversationView(viewsets.ViewSet):
             },
             status=status.HTTP_201_CREATED,
         )
+
 
     @action(detail=True, methods=["post"])
     def mark_read(self, request, pk=None):

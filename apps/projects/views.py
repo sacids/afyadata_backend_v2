@@ -1,4 +1,5 @@
 import json
+import logging
 import random
 import string
 from datetime import datetime, date
@@ -485,10 +486,6 @@ class SurveyDataView(generic.TemplateView):
             "projects:form-data-list", kwargs={"pk": cur_form.pk}
         )
 
-        # get jform
-        data = utils.load_json(cur_form.form_defn)
-        context["tbl_header"] = utils.get_table_header(data)
-
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
@@ -512,6 +509,11 @@ class SurveyDataView(generic.TemplateView):
             "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
         }
 
+        # get jform
+        data = utils.load_json(cur_form.form_defn)
+        context["tbl_header"] = utils.get_table_header(data)
+
+        # render view
         return render(request, self.template_name, context)
 
 
