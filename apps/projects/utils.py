@@ -194,8 +194,31 @@ def get_key_at_index(dictionary, n):
             return key
     raise IndexError(f"Dictionary index {n} out of range (size: {len(dictionary)})")
 
-
 def get_table_header(jform):
+    headers = {}
+
+    for page in jform.get("pages", []):
+        if page.get("type") != "group":
+            continue
+
+        for field in page.get("fields", []):
+            field_name = field.get("name")
+            if not field_name:
+                continue
+
+            # Pick the first key that starts with "label"
+            for key, value in field.items():
+                if key.startswith("label") and value:
+                    headers[field_name] = value
+                    break
+            else:
+                # Fallback if no label exists
+                headers[field_name] = field_name
+
+    return headers
+
+
+def get_table_header1(jform):
     header = {}
     for item in jform["pages"]:
         if item["type"] == "group":

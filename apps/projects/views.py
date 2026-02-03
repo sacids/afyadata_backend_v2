@@ -511,9 +511,6 @@ class SurveyDataView(generic.TemplateView):
 
         # get jform
         data = utils.load_json(cur_form.form_defn)
-        logging.info("== data ==")
-        logging.info(data)
-
         context["tbl_header"] = utils.get_table_header(data)
 
         # render view
