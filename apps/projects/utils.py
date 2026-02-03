@@ -206,14 +206,18 @@ def get_table_header(jform):
             if not field_name:
                 continue
 
-            # Pick the first key that starts with "label"
-            for key, value in field.items():
-                if key.startswith("label") and value:
-                    headers[field_name] = value
-                    break
-            else:
-                # Fallback if no label exists
-                headers[field_name] = field_name
+            # Collect all label variants
+            label_variants = {
+                k: v
+                for k, v in field.items()
+                if k.startswith("label")
+            }
+
+            # Fallback if no label exists
+            if not label_variants:
+                label_variants = {"label": field_name}
+
+            headers[field_name] = label_variants
 
     return headers
 
