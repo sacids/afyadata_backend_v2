@@ -15,6 +15,10 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.utils.safestring import mark_safe
 
+from django.db.models import Count, Sum, Avg, Max, Min
+from django.db.models.functions import Cast, TruncMonth, TruncYear
+from django.db.models import FloatField, IntegerField
+
 from django.db.models.fields.json import KeyTextTransform
 from datetime import date, datetime
 from django.http import JsonResponse, HttpResponse
@@ -225,6 +229,7 @@ class ProjectDeleteView(generic.TemplateView):
 
 class ProjectActivateView(generic.TemplateView):
     """View to activate or deactivate a project"""
+
     def get(self, request, *args, **kwargs):
         try:
             project = Project.objects.get(pk=kwargs["pk"])
@@ -542,7 +547,6 @@ class SurveyDataInstanceView(generic.TemplateView):
         return render(request, self.template_name, {"data": data, "jForm": jForm})
 
 
-# Form data
 class ChartsDataView(generic.TemplateView):
     template_name = "surveys/data/charts.html"
 
@@ -551,20 +555,14 @@ class ChartsDataView(generic.TemplateView):
         return super(ChartsDataView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         context = {"cur_form": cur_form}
+        context["title"] = cur_form.title
 
-        # breadcrumbs
         context["breadcrumbs"] = [
-            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {
-                "name": cur_form.project.title,
-                "url": reverse_lazy(
-                    "projects:forms", kwargs={"pk": cur_form.project.pk}
-                ),
-            },
+            {"name": "Dashboard", "url": "…"},
+            {"name": "Projects", "url": "…"},
+            {"name": cur_form.project.title, "url": "…"},
             {"name": "Charts", "url": ""},
         ]
 
@@ -578,7 +576,141 @@ class ChartsDataView(generic.TemplateView):
             "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
         }
 
-        return render(request, self.template_name, context)
+        return self.render_to_response(context)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Expected JSON body:
+        {
+          "x_axis": "form_data.wilaya" | "form_data.kata" | "created_at_month" | "created_at_year",
+          "y_axis": "form_data.idadi_cal" | "form_data.idadi_kufa_wakubwa" | null,
+          "agg": "count"|"sum"|"avg"|"max"|"min",
+          "date_from": "2018-01-01",
+          "date_to": "2018-12-31"
+        }
+        """
+        print("== charts post ==")
+        print(request.body)
+
+
+        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            payload = request.POST  # fallback for form-encoded
+
+        x_axis = payload.get("x_axis")
+        y_axis = payload.get("y_axis")  # can be None for count
+        agg = (payload.get("agg") or "count").lower()
+        date_from = payload.get("date_from")
+        date_to = payload.get("date_to")
+
+        # Base queryset (adjust field names to your actual model)
+        qs = FormData.objects.filter(form_id=cur_form.id, deleted=0)
+
+        # Date filters (optional)
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+        # ---------- Whitelists (IMPORTANT for security) ----------
+        # Allowed x-axis options
+        allowed_x = {
+            "created_at_month": "created_at_month",
+            "created_at_year": "created_at_year",
+            # JSON keys under form_data:
+            "form_data.kata": "form_data__kata",
+            "form_data.wilaya": "form_data__wilaya",
+        }
+
+        # Allowed y-axis (numeric JSON fields)
+        allowed_y = {
+            "form_data.idadi_cal": "form_data__idadi_cal",
+            "form_data.idadi_call": "form_data__idadi_call",
+            "form_data.idadi_dalili_wakubwa": "form_data__idadi_dalili_wakubwa",
+            "form_data.idadi_dalili_wadogo": "form_data__idadi_dalili_wadogo",
+            "form_data.idadi_kufa_wakubwa": "form_data__idadi_kufa_wakubwa",
+            "form_data.idadi_kufa_wadogo": "form_data__idadi_kufa_wadogo",
+        }
+
+        allowed_aggs = {"count", "sum", "avg", "max", "min"}
+
+        if x_axis not in allowed_x:
+            return JsonResponse({"error": "Invalid x_axis"}, status=400)
+        if agg not in allowed_aggs:
+            return JsonResponse({"error": "Invalid agg"}, status=400)
+        if agg != "count" and (y_axis not in allowed_y):
+            return JsonResponse(
+                {"error": "Invalid y_axis for numeric aggregation"}, status=400
+            )
+
+        # Apply JSON filters (whitelist keys too)
+        # for k, v in (filters or {}).items():
+        #     if k in allowed_x:
+        #         qs = qs.filter(**{allowed_x[k]: v})
+
+        # ---------- Build group-by (x-axis) ----------
+        x_key = allowed_x[x_axis]
+
+        if x_axis == "created_at_month":
+            qs = qs.annotate(x=TruncMonth("created_at")).values("x")
+        elif x_axis == "created_at_year":
+            qs = qs.annotate(x=TruncYear("created_at")).values("x")
+        else:
+            print("x_axis", x_axis)
+            print("x_key", x_key)
+            # JSON field group by
+            # qs = qs.values(x_key).annotate(
+            #     x=Cast(x_key, output_field=FloatField()) if False else None
+            # )
+            # easier: just group by the JSON key as text
+            qs = qs.values(x_key)
+
+        # ---------- Aggregate (y-axis + agg) ----------
+        if agg == "count":
+            qs = qs.annotate(value=Count("id"))
+        else:
+            y_key = allowed_y[y_axis]
+            # Cast JSON text -> numeric
+            y_expr = Cast(y_key, output_field=FloatField())
+
+            if agg == "sum":
+                qs = qs.annotate(value=Sum(y_expr))
+            elif agg == "avg":
+                qs = qs.annotate(value=Avg(y_expr))
+            elif agg == "max":
+                qs = qs.annotate(value=Max(y_expr))
+            elif agg == "min":
+                qs = qs.annotate(value=Min(y_expr))
+
+        # Order & serialize
+        if x_axis in ("created_at_month", "created_at_year"):
+            qs = qs.order_by("x")
+            labels = [
+                (
+                    row["x"].strftime("%Y-%m")
+                    if x_axis == "created_at_month"
+                    else row["x"].strftime("%Y")
+                )
+                for row in qs
+            ]
+            data = [row["value"] or 0 for row in qs]
+        else:
+            qs = qs.order_by(x_key)
+            labels = [row[x_key] if row[x_key] is not None else "Unknown" for row in qs]
+            data = [row["value"] or 0 for row in qs]
+
+        return JsonResponse(
+            {
+                "x_axis": x_axis,
+                "y_axis": y_axis,
+                "agg": agg,
+                "labels": labels,
+                "data": data,
+            }
+        )
 
 
 # Form data
