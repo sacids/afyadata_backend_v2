@@ -541,6 +541,21 @@ class SurveyDataInstanceView(generic.TemplateView):
             try:
                 jForm = json.loads(aDefn.form_defn)
                 data = form_data.form_data
+
+                # choose language
+                lang = "Swahili (sw)"  # or "English (en)"
+
+                # build maps (only if fields exist in form)
+                dalili_map = utils.build_option_map(jForm, "dalili", lang=lang)
+                dalil_mifugo_map = utils.build_option_map(jForm, "dalil_mifugo", lang=lang)
+
+                # add mapped values to data (new keys so you don't lose original)
+                if "dalili" in data:
+                    data["dalili_labels"] = utils.map_codes_to_labels(data.get("dalili"), dalili_map)
+
+                if "dalil_mifugo" in data:
+                    data["dalil_mifugo_labels"] = utils.map_codes_to_labels(data.get("dalil_mifugo"), dalil_mifugo_map)
+
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON format: {str(e)}")
 

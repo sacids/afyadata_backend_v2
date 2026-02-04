@@ -359,3 +359,7 @@ def normalize_select_multiple(val):
         # ODK style: "A02 A08"
         return s.split()
     return []
+
+def map_codes_to_labels(val, option_map: dict):
+    codes = normalize_select_multiple(val)
+    return [option_map.get(code, code) for code in codes]
