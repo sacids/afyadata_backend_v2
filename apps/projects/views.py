@@ -629,10 +629,16 @@ def form_points(request, *args, **kwargs):
 
     for row in form_data:
         fd = row.form_data or {}
-        location = fd.get("anuani_eneo") or fd.get("location") or {}
 
-        lat = location.get("latitude")
-        lng = location.get("longitude")
+        # get location from gps field
+        location = row.gps
+
+        # separate location
+        if location is not None:
+            location = location.split(",")
+
+        lat = location[0]
+        lng = location[1]
 
         # Only add if both numbers exist
         if lat is None or lng is None:
