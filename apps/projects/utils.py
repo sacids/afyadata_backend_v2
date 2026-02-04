@@ -49,6 +49,15 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
         aDefn = FormDefinition.objects.get(id=pk)
         cols = get_table_config(aDefn.form_defn)
 
+        #form definition
+        jForm = json.loads(aDefn.form_defn)
+        dalili_fields = ["dalili", "dalil_mfugo"]
+        dalili_map = {}
+        for field in dalili_fields:
+            tmp = build_option_map(jForm, field, lang="Swahili (sw)")
+            if tmp:
+                dalili_map.update(tmp)
+
         # Get all foreign key field names
         fk_fields = [
             f.name
@@ -130,6 +139,7 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
 
         # Prepare response data
         final_data = []
+
         for record in paginated_data:
             try:
                 form_data = record.form_data if record.form_data else {}
@@ -143,6 +153,12 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
                     # Handle foreign key fields
                     related_obj = getattr(record, field_name)
                     row.append(str(related_obj) if related_obj else "")
+                elif field_name == "dalili" or field_name == "dalil_mfugo":
+                    # Handle dalili field          
+                    codes = normalize_select_multiple(form_data.get("dalili") or form_data.get("dalil_mfugo", []))
+                    labels = [dalili_map.get(code, code) for code in codes]  # fallback to code if missing
+                    row.append(", ".join(labels))
+                    # row.append("Label" if form_data.get("dalili", "") == "1" else "")
                 elif hasattr(record, field_name):
                     # Regular model fields
                     row.append(str(getattr(record, field_name)))
@@ -311,3 +327,35 @@ def generate_unique_code(model, field='code', length=5):
         code = generate_code(length)
         if not model.objects.filter(**{field: code}).exists():
             return code
+        
+def build_option_map(jform: dict, field_name: str, lang="Swahili (sw)"):
+    label_key = f"label::{lang}"
+    for page in jform.get("pages", []):
+        for field_group in page.get("fields", []):
+            if field_name in field_group:
+                field = field_group[field_name]
+                options = field.get("options", [])
+                return {
+                    opt["name"]: (opt.get(label_key) or opt.get("label::English (en)") or opt["name"])
+                    for opt in options
+                }
+    return {}
+
+def normalize_select_multiple(val):
+    if val is None:
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            return []
+        # if stored as JSON list string: '["A02","A08"]'
+        if s.startswith("["):
+            try:
+                return json.loads(s)
+            except Exception:
+                pass
+        # ODK style: "A02 A08"
+        return s.split()
+    return []

@@ -589,10 +589,6 @@ class ChartsDataView(generic.TemplateView):
           "date_to": "2018-12-31"
         }
         """
-        print("== charts post ==")
-        print(request.body)
-
-
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
 
         try:
