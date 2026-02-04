@@ -327,6 +327,7 @@ def generate_unique_code(model, field='code', length=5):
         code = generate_code(length)
         if not model.objects.filter(**{field: code}).exists():
             return code
+    
         
 def build_option_map(jform: dict, field_name: str, lang="Swahili (sw)"):
     label_key = f"label::{lang}"
@@ -340,6 +341,7 @@ def build_option_map(jform: dict, field_name: str, lang="Swahili (sw)"):
                     for opt in options
                 }
     return {}
+
 
 def normalize_select_multiple(val):
     if val is None:

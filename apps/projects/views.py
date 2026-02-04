@@ -551,10 +551,10 @@ class SurveyDataInstanceView(generic.TemplateView):
 
                 # add mapped values to data (new keys so you don't lose original)
                 if "dalili" in data:
-                    data["dalili_labels"] = utils.map_codes_to_labels(data.get("dalili"), dalili_map)
+                    data["dalili"] = utils.map_codes_to_labels(data.get("dalili"), dalili_map)
 
                 if "dalil_mifugo" in data:
-                    data["dalil_mifugo_labels"] = utils.map_codes_to_labels(data.get("dalil_mifugo"), dalil_mifugo_map)
+                    data["dalil_mifugo"] = utils.map_codes_to_labels(data.get("dalil_mifugo"), dalil_mifugo_map)
 
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON format: {str(e)}")
