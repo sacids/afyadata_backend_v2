@@ -4,43 +4,356 @@
 
 {% block content %}
 
-<main class="bg-white h-full" x-data="manageTable()" id="manageTable">
-    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+<main class="bg-white h-full"
+      x-data="chartsBuilder({
+        postUrl: '{% url 'projects:form-data-charts' pk=cur_form.pk %}',
+        csrfToken: '{{ csrf_token }}'
+      })"
+      class="min-h-screen">
 
-        <!-- Card -->
+  <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left: Builder / filters -->
+      <aside class="lg:col-span-4">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div class="px-5 py-4 border-b border-gray-200">
+            <h2 class="text-sm font-semibold text-gray-800">Chart Builder</h2>
+            <p class="text-xs text-gray-500">Choose x-axis, y-axis, and aggregation.</p>
+          </div>
 
-            <!-- Card Header -->
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div class="p-5 space-y-5">
+
+            <!-- Chart config -->
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">X-axis</label>
+                <select x-model="form.x_axis" title="x-axis"
+                        class="w-full rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                  <optgroup label="Form data fields">
+                    <option value="form_data.wilaya">Wilaya (District)</option>
+                    <option value="form_data.kata">Kata (Ward)</option>
+                    <option value="form_data.sex">Sex</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Aggregate</label>
+                <select x-model="form.agg" title="agg"
+                        class="w-full rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                  <option value="count">Count</option>
+                  <option value="sum">Sum</option>
+                  <option value="avg">Average</option>
+                  <option value="max">Max</option>
+                  <option value="min">Min</option>
+                </select>
+              </div>
+
+              <div x-show="form.agg !== 'count'" x-cloak>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Y-axis (numeric field)</label>
+                <select x-model="form.y_axis" title="y-axis"
+                        class="w-full rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                  <option value="">-- Select numeric field --</option>
+                  <option value="form_data.idadi_cal">idadi_cal</option>
+                  <option value="form_data.idadi_call">idadi_call</option>
+                  <option value="form_data.idadi_dalili_wakubwa">idadi_dalili_wakubwa</option>
+                  <option value="form_data.idadi_dalili_wadogo">idadi_dalili_wadogo</option>
+                  <option value="form_data.idadi_kufa_wakubwa">idadi_kufa_wakubwa</option>
+                  <option value="form_data.idadi_kufa_wadogo">idadi_kufa_wadogo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="pt-2 border-t border-gray-100">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-semibold text-gray-700">Filters</h3>
+                <button type="button"
+                        @click="resetFilters()"
+                        class="text-xs text-gray-500 hover:text-gray-700">
+                  Reset
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <h2 class="text-sm font-semibold text-gray-800">
-                        {{ title|default:'Charts' }}
-                    </h2>
-                    <p class="text-xs text-gray-500">
-                        All data charts
-                    </p>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">From</label>
+                  <input type="date" x-model="form.date_from" title="date_from"
+                         class="w-full rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">To</label>
+                  <input type="date" x-model="form.date_to" title="date_to"
+                         class="w-full rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+              </div>
             </div>
 
-            <!-- Card Body -->
-            <div class="flex flex-row flex-wrap">
-                <div class="w-full p-4">
-                    <div class="relative overflow-x-auto">
-                        <div id="message_wrp" class="mb-3" hx-preserve></div>
+            <!-- Actions -->
+            <div class="pt-2">
+              <button type="button" title="generate chart"
+                      @click="loadChart()"
+                      :disabled="loading"
+                      class="w-full inline-flex justify-center items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <template x-if="!loading">
+                  <span>Generate chart</span>
+                </template>
+                <template x-if="loading">
+                  <span>Loading…</span>
+                </template>
+              </button>
 
-                        
-                    </div>
-                </div>
+              <button type="button" title="download json"
+                      @click="downloadJson()"
+                      class="mt-2 w-full inline-flex justify-center items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                Download JSON
+              </button>
             </div>
+
+          </div>
         </div>
-        <!-- End Card -->
+      </aside>
+
+      <!-- Right: chart -->
+      <section class="lg:col-span-8">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-semibold text-gray-800">Preview</h2>
+              <p class="text-xs text-gray-500" x-text="subtitle"></p>
+            </div>
+
+            <div class="flex gap-2">
+              <button type="button"
+                      @click="chartType='bar'; redraw()"
+                      class="text-xs px-3 py-1 rounded border"
+                      :class="chartType==='bar' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'">
+                Bar
+              </button>
+              <button type="button"
+                      @click="chartType='line'; redraw()"
+                      class="text-xs px-3 py-1 rounded border"
+                      :class="chartType==='line' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'">
+                Line
+              </button>
+            </div>
+          </div>
+
+          <div class="p-5">
+            <div class="relative">
+              <canvas id="chartCanvas" height="120"></canvas>
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="rounded-md border border-gray-200 p-3">
+                <div class="text-xs text-gray-500">Points</div>
+                <div class="text-sm font-semibold text-gray-900" x-text="stats.points"></div>
+              </div>
+              <div class="rounded-md border border-gray-200 p-3">
+                <div class="text-xs text-gray-500">Total</div>
+                <div class="text-sm font-semibold text-gray-900" x-text="stats.total"></div>
+              </div>
+              <div class="rounded-md border border-gray-200 p-3">
+                <div class="text-xs text-gray-500">Max</div>
+                <div class="text-sm font-semibold text-gray-900" x-text="stats.max"></div>
+              </div>
+              <div class="rounded-md border border-gray-200 p-3">
+                <div class="text-xs text-gray-500">Min</div>
+                <div class="text-sm font-semibold text-gray-900" x-text="stats.min"></div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <details class="rounded-md border border-gray-200 p-3">
+                <summary class="cursor-pointer text-sm font-medium text-gray-800">Request payload</summary>
+                <pre class="mt-2 text-xs text-gray-600 whitespace-pre-wrap" x-text="JSON.stringify(lastPayload, null, 2)"></pre>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
+  </div>
 </main>
 
 {% endblock %}
 
 {% block extra-js %}
-<script language="javascript">
+<!-- Chart.js (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+<script>
+function chartsBuilder({ postUrl, csrfToken }) {
+  return {
+    postUrl,
+    csrfToken,
+
+    loading: false,
+    message: '',
+    messageType: 'success',
+
+    chart: null,
+    chartType: 'bar',
+    subtitle: 'Choose options and generate.',
+
+    lastPayload: {},
+    lastResponse: { labels: [], data: [] },
+
+    // main form state
+    form: {
+      x_axis: 'form_data.wilaya',
+      y_axis: 'form_data.idadi_cal',
+      agg: 'count',
+      date_from: '',
+      date_to: '',
+    },
+
+    // simple UI filters mapped to JSON keys
+    filters: {},
+
+    stats: { points: 0, total: 0, max: 0, min: 0 },
+
+    init() {
+      // auto-load default chart
+      this.loadChart();
+    },
+
+    resetFilters() {
+      this.form.date_from = '';
+      this.form.date_to = '';
+    },
+
+    buildPayload() {
+      const f = {};
+
+      const payload = {
+        x_axis: this.form.x_axis,
+        agg: this.form.agg,
+        y_axis: this.form.agg === 'count' ? null : this.form.y_axis,
+        filters: f,
+        date_from: this.form.date_from || null,
+        date_to: this.form.date_to || null,
+      };
+
+      this.lastPayload = payload;
+      return payload;
+    },
+
+    async loadChart() {
+      // basic validation
+      if (this.form.agg !== 'count' && !this.form.y_axis) {
+        this.messageType = 'error';
+        this.message = 'Please select a numeric Y-axis field for this aggregation.';
+        return;
+      }
+
+      this.loading = true;
+      this.message = '';
+      this.subtitle = 'Loading chart data…';
+
+      try {
+        const payload = this.buildPayload();
+
+        const res = await fetch(this.postUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': this.csrfToken,
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
+
+        this.lastResponse = data;
+        this.subtitle = `${data.agg.toUpperCase()} by ${data.x_axis}${data.y_axis ? (' → ' + data.y_axis) : ''}`;
+
+        this.computeStats(data.data || []);
+        this.draw(data.labels || [], data.data || []);
+
+        this.messageType = 'success';
+        this.message = 'Chart updated successfully.';
+      } catch (err) {
+        this.messageType = 'error';
+        this.message = err.message || 'Failed to load chart.';
+        this.subtitle = 'Error loading chart data.';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    computeStats(arr) {
+      const nums = (arr || []).map(v => Number(v || 0));
+      const total = nums.reduce((a,b) => a + b, 0);
+      const max = nums.length ? Math.max(...nums) : 0;
+      const min = nums.length ? Math.min(...nums) : 0;
+
+      this.stats = {
+        points: nums.length,
+        total: total,
+        max: max,
+        min: min,
+      };
+    },
+
+    draw(labels, series) {
+      const ctx = document.getElementById('chartCanvas');
+
+      if (this.chart) {
+        this.chart.destroy();
+      }
+
+      this.chart = new Chart(ctx, {
+        type: this.chartType,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Value',
+            data: series,
+            backgroundColor: '#800000',   // ← maroon bars
+            borderColor: '#660000',       // slightly darker border
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            x: {
+              ticks: { maxRotation: 0, autoSkip: true }
+            },
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    },
+
+    redraw() {
+      // redraw with current response data without refetching
+      this.draw(this.lastResponse.labels || [], this.lastResponse.data || []);
+    },
+
+    downloadJson() {
+      const blob = new Blob([JSON.stringify(this.lastResponse, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'chart_data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+}
 </script>
 {% endblock extra-js %}

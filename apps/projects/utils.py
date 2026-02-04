@@ -2,6 +2,7 @@ import json
 import calendar
 import random
 import string
+import logging
 from datetime import date, datetime
 from django.http import JsonResponse
 import os
@@ -194,40 +195,18 @@ def get_key_at_index(dictionary, n):
             return key
     raise IndexError(f"Dictionary index {n} out of range (size: {len(dictionary)})")
 
+
 def get_table_header(jform):
-    headers = {}
-
-    for page in jform.get("pages", []):
-        if page.get("type") != "group":
-            continue
-
-        for field in page.get("fields", []):
-            field_name = field.get("name")
-            if not field_name:
-                continue
-
-            # Collect all label-like keys
-            label_keys = [
-                key for key in field.keys()
-                if key.startswith("label")
-            ]
-
-            if label_keys:
-                # Use the FIRST label found
-                headers[field_name] = field[label_keys[0]]
-            else:
-                # Fallback to field name
-                headers[field_name] = field_name
-
-    return headers
-
-
-def get_table_header1(jform):
     header = {}
     for item in jform["pages"]:
         if item["type"] == "group":
             for k, v in item["fields"][0].items():
-                header[k] = v["label"]
+                label = v.get("label")
+                if not label:
+                    label_key = next((key for key in v if key.startswith("label")), None)
+                    if label_key is not None:
+                        label = v[label_key]
+                header[k] = label
     return header
 
 

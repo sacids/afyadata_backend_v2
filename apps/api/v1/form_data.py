@@ -65,9 +65,6 @@ class FormDataView(viewsets.ViewSet):
         else:  # already a normal dict (e.g. JSON body)
             data = dict(raw_data)
 
-        logging.info("== request data ==")
-        logging.info(data)
-
         try:
             # Parse form_data JSON safely
             form_data_value = data.get("form_data")
@@ -85,8 +82,6 @@ class FormDataView(viewsets.ViewSet):
                 # Already parsed (e.g. app sent JSON & DRF parsed it)
                 data["form_data"] = form_data_value
 
-            logging.info("== parsed form_data ==")
-            logging.info(data["form_data"])
 
             # Parse dates (created_on)
             created_on_str = data.get("created_on")
