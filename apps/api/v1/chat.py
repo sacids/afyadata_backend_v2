@@ -36,7 +36,7 @@ class ConversationView(viewsets.ViewSet):
             from apps.projects.models import FormData
 
             try:
-                form_instance = FormData.objects.get(uuid=data["instance"])
+                form_instance = FormData.objects.get(original_uuid=data["instance"])
             except FormData.DoesNotExist:
                 return Response(
                     {
