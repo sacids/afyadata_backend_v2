@@ -23,7 +23,6 @@ class ConversationView(viewsets.ViewSet):
         serializer = ConversationSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
 
-
     def create(self, request):
         """
         POST /v1/chat/conversations
@@ -49,10 +48,9 @@ class ConversationView(viewsets.ViewSet):
             try:
                 # Create or update conversation object
                 conversation, created = Conversation.objects.update_or_create(
-                    title=data["title"],
                     form_id=data["form"],
                     instance_id=form_instance.id,
-                    defaults={"created_by_id": request.user.id},
+                    defaults={"title": data["title"], "created_by_id": request.user.id},
                 )
 
                 # Add current user + provided participants
@@ -99,10 +97,17 @@ class ConversationView(viewsets.ViewSet):
         # POST – send message
         serializer = MessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        external_id = serializer.validated_data.get("external_id")
+
+        if not external_id:
+            return Response(
+                {"error": "external_id is required for idempotent messaging"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # insert or update message based on external id use update_or_insert method
         msg, created = Message.objects.update_or_create(
-            external_id=serializer.validated_data["external_id"],
+            external_id=external_id,
             defaults={
                 "conversation": conversation,
                 "sender": request.user,
@@ -116,9 +121,8 @@ class ConversationView(viewsets.ViewSet):
                 "message": "Message created successfully",
                 "data": MessageSerializer(msg, context={"request": request}).data,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
-
 
     @action(detail=True, methods=["post"])
     def mark_read(self, request, pk=None):

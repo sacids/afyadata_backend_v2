@@ -41,7 +41,7 @@ class Message(models.Model):
     id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(Conversation,related_name="messages",on_delete=models.CASCADE)
     sender       = models.ForeignKey(User,related_name="sent_messages", on_delete=models.CASCADE)
-    external_id  = models.CharField(max_length = 150, null=True, blank=True)
+    external_id  = models.CharField(max_length = 150, null=True, blank=True, unique=True, db_index=True)
     language_code = models.CharField(max_length = 10, null=True, blank=True, default="en")
     text         = models.TextField()
     created_at   = models.DateTimeField(auto_now_add=True)
