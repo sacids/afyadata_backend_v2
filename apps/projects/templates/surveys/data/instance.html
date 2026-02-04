@@ -1,13 +1,12 @@
 {% load form_tags %}
 
-
-<div class=" pt-6 pb-20 px-10 h-full overflow-y-auto" id="detailContent">
-    <div class="max-w-3xl space-y-4">
+<div class=" pt-6 pb-20 px-10 inset-y-0 right-0 w-full h-full overflow-y-scroll overscroll-contain" id="detailContent">
+    <div class="max-w-3xl space-y-4 mb-20">
 
         {% for group in jForm.pages %}
             
             {% if group.type == 'group' %}
-                <div class="mb-10 border-b border-gray-200">
+                <div class="my-6 mb-10 border-b border-gray-200">
                     <h2 class=" text-blue-800">
                         {{ group.label }}
                     </h2>
