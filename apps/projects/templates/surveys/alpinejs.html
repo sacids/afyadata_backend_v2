@@ -135,9 +135,13 @@
                 this.viewMode = 'table';
                 this.tabId = '';
 
+                console.log(this.parentId);
+
                 fetch(`/projects/forms/${this.activeFormId}/data?parent_id=${this.parentId}`)
                     .then(response => response.json())
                     .then(data => {
+                        console.log("==data ==")
+                        console.log(data);
                         this.form_cols = data.cols;
                         this.form_data = data.data;
 
