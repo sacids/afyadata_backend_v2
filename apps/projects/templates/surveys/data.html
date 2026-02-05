@@ -1,0 +1,160 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+
+<main class="bg-white min-h-screen" x-data="initData()">
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left: Builder / filters -->
+            <aside class="lg:col-span-2">
+                <div @click="loadData(currentData.id)"
+                    class="rounded-lg shadow-sm border mb-2 cursor-pointer transition-all" :class="activeFormId === currentData.id
+                            ? 'bg-orange-50 border-orange-400'
+                            : 'bg-white border-gray-200 hover:bg-gray-50'">
+
+                    <div class="px-5 py-4">
+                        <h2 class="text-sm font-semibold"
+                            :class="activeFormId === currentData.id ? 'text-orange-700' : 'text-gray-800'"
+                            x-text="currentData.title"></h2>
+
+                        <p class="text-xs"
+                            :class="activeFormId === currentData.id ? 'text-orange-600' : 'text-gray-500'"
+                            x-text="currentData.form_code"></p>
+                    </div>
+                </div>
+
+                <template x-for="(val, index) in forms" :key="val.id">
+                    <div @click="loadTable(val.id)"
+                        class="rounded-lg shadow-sm border mb-2 cursor-pointer transition-all" :class="activeFormId === val.id
+                            ? 'bg-orange-50 border-orange-400'
+                            : 'bg-white border-gray-200 hover:bg-gray-50'">
+
+                        <div class="px-5 py-4">
+                            <h2 class="text-sm font-semibold"
+                                :class="activeFormId === val.id ? 'text-orange-700' : 'text-gray-800'"
+                                x-text="val.title"></h2>
+
+                            <p class="text-xs" :class="activeFormId === val.id ? 'text-orange-600' : 'text-gray-500'"
+                                x-text="val.code"></p>
+                        </div>
+                    </div>
+                </template>
+            </aside>
+
+            <!-- Right: chart -->
+            <section class="lg:col-span-10">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-sm font-semibold text-gray-800" x-text="title"></h2>
+                            <p class="text-xs text-gray-500" x-text="subtitle"></p>
+                        </div>
+
+                        <template x-if="tabId && tabId !== ''">
+                            <div class="flex items-center space-x-2">
+                                <button type="button"
+                                    :class="{'bg-orange-50 border-orange-400': tabId === 'information', 'bg-white border-gray-200 hover:bg-gray-50': tabId !== 'information'}"
+                                    class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bxs-info-square px-1'></i> Information
+                                </button>
+
+                                <button type="button"
+                                    class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bxs-chat px-1'></i> Message
+                                </button>
+
+                                <button type="button"
+                                    class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bx-sitemap px-1'></i> Sitemap
+                                </button>
+                            </div>
+                        </template>
+
+                        <template x-if="viewMode && viewMode !== ''">
+                            <div class="flex items-center space-x-2">
+                                <button type="button" @click="loadTable(activeFormId)"
+                                    :class="{'bg-orange-50 border-orange-400': viewMode === 'table', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'table'}"
+                                    class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bxs-data px-1'></i> Data View
+                                </button>
+
+                                <button type="button" @click="showChart(activeFormId)"
+                                    :class="{'bg-orange-50 border-orange-400': viewMode === 'chart', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'chart'}"
+                                    class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bxs-bar-chart-alt-2 px-1'></i> Charts
+                                </button>
+
+                                <button type="button" @click="showMap(activeFormId)"
+                                    :class="{'bg-orange-50 border-orange-400': viewMode === 'map', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'map'}"
+                                    class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bx-map px-1'></i> Maps
+                                </button>
+
+                                <button type="button" @click="exportData(activeFormId)"
+                                    class="inline-flex items-center rounded-sm border border-green-700 bg-white px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-700 hover:text-white">
+                                    <i class='bx bxs-file-export px-1'></i> Export
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div id="content_area" class="p-5">
+                        <!-- Detail View -->
+                        <div x-show="tabId === 'information'" x-transition>
+                            <div class="relative overflow-x-auto">
+                                <div x-show="data_instance">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <template x-for="[k,v] in Object.entries(data_instance)" :key="k">
+                                            <div class="text-sm">
+                                                <div class="text-gray-500 font-medium" x-text="k"></div>
+                                                <div class="text-gray-800" x-text="v ?? '-'"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div x-show="!data_instance" class="text-xs text-gray-500">
+                                    Click a row in the table to see details here.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TABLE VIEW -->
+                        <div x-show="tabId === '' && viewMode === 'table'" x-transition>
+                            <div class="relative overflow-x-auto">
+                                <table id="datatable_form"
+                                    class="w-full text-xs text-left text-gray-700 border-collapse">
+                                    <thead></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- CHART VIEW -->
+                        <div x-show="tabId === '' && viewMode === 'chart'" x-transition>
+                            {% include 'projects/charts/form.html' %}
+                        </div>
+
+                        <!-- MAP VIEW -->
+                        <div x-show="tabId === '' && viewMode === 'map'" x-transition>
+                            <div class="relative overflow-x-auto">
+                                <div id="mapContainer" class="w-full h-[560px]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</main>
+
+{% endblock %}
+
+{% block extra-js %}
+{{ cur_data_json|json_script:"current-data" }}
+{{ children_forms_json|json_script:"children-forms" }}
+
+{% include 'surveys/alpinejs.html' %}
+
+{% endblock extra-js %}

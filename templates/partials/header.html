@@ -178,7 +178,7 @@
     </div>
 </nav>
 
-<header class="bg-slate-700">
+<header class="bg-slate-800">
     <div class="mx-auto max-w-7xl py-3 px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between">
             <!-- Title on the left -->
@@ -209,14 +209,19 @@
 </header>
 
 {% if links %}
-<header class="bg-gray-200">
+<header class="bg-gray-700">
     <div class="mx-auto max-w-7xl py-0 px-4 sm:px-6">
-        <div class="text-sm text-center text-gray-800">
+        <div class="text-sm text-center text-white">
             <ul class="flex flex-wrap">
                 {% for name, url in links.items %}
                 <li>
                     <a href="{{ url }}"
-                        class="inline-block py-2 px-3 font-normal text-sm border-b-2 border-transparent hover:text-gray-900 hover:font-medium">
+                       class="inline-block py-2 px-3 font-normal text-sm border-b-2
+                       {% if request.path == url %}
+                           border-transparent text-orange-400 font-medium
+                       {% else %}
+                           border-transparent hover:text-orange-400
+                       {% endif %}">
                         {{ name }}
                     </a>
                 </li>

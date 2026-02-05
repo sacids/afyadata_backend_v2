@@ -111,7 +111,10 @@ class ProjectView(viewsets.ViewSet):
                         project=project, member=request.user, active=True
                     )
                     return Response(
-                        {"error": False, "message": "Your request has approved"},
+                        {
+                            "error": False, 
+                            "message": "Your request has approved"
+                        },
                         status=status.HTTP_200_OK,
                     )
                 else:

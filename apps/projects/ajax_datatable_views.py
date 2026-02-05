@@ -183,20 +183,15 @@ class FormsAjaxDatatableView(AjaxDatatableView):
         row["created_at"] = obj.created_at.strftime("%d-%m-%Y")
         row["updated_at"] = obj.updated_at.strftime("%d-%m-%Y")
         row["title"] = (
-            f'<a href="{reverse("projects:form-data", kwargs={"pk": obj.id})}" class="text-blue-600 hover:underline">{obj.title}</a>'
+            f'<a href="{reverse("projects:edit-form", kwargs={"pk": obj.id})}" class="text-blue-600 hover:underline">{obj.title}</a>'
         )
 
         row["actions"] = (
             '<div class="hstack flex gap-1 text-[.50rem]">'
-            '<a href="'
-            + reverse("projects:edit-form", kwargs=({"pk": obj.id}))
-            + '" class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
-            '<i class="bx bx-edit-alt bx-xs"></i>'
-            "</a>&nbsp;&nbsp;"
-            '<a href="#" class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer delete">'
-            '<i class="bx bx-trash bx-xs"></i>'
-            "</a>"
-            "</div>"
+                '<a href="#" class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer delete">'
+                '<i class="bx bx-trash bx-xs"></i>'
+                '</a>'
+            '</div>'
         )
 
 
