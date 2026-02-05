@@ -599,6 +599,7 @@ class SurveyDataInstanceView(generic.TemplateView):
         # convert form data to JSON
         cur_data_json = {
             "id": form_data.form.id,
+            "data_id": form_data.uuid,
             "title": form_data.title.replace("'", ""),
             "form_title": form_data.form.title,
             "form_code": form_data.form.code,
