@@ -109,7 +109,7 @@ class FormDataView(viewsets.ViewSet):
                 defaults={
                     "form_data": data["form_data"],
                     "original_uuid": data.get("original_uuid", data["uuid"]),
-                    "parent_id": data["parent_id"],
+                    "parent_id": data.get("parent_id", None),
                     "title": data.get("title", ""),
                     "created_by_name": data.get("created_by_name", ""),
                     "form_id": data.get("form"),
