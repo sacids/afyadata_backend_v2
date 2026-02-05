@@ -105,8 +105,8 @@ class ProjectView(viewsets.ViewSet):
                     status=status.HTTP_200_OK,
                 )
             else:
-                # check if project is auto_join is true
-                if project.auto_join:
+                # first check if is private
+                if project.access == "private":
                     ProjectMember.objects.create(
                         project=project, member=request.user, active=True
                     )
@@ -118,20 +118,33 @@ class ProjectView(viewsets.ViewSet):
                         status=status.HTTP_200_OK,
                     )
                 else:
-                    ProjectMember.objects.create(
-                        project=project, member=request.user, active=False
-                    )
+                    # check if project is auto_join is true
+                    if project.auto_join:
+                        ProjectMember.objects.create(
+                            project=project, member=request.user, active=True
+                        )
+                        return Response(
+                            {
+                                "error": False, 
+                                "message": "Your request has approved"
+                            },
+                            status=status.HTTP_200_OK,
+                        )
+                    else:
+                        ProjectMember.objects.create(
+                            project=project, member=request.user, active=False
+                        )
 
-                    # TODO: send notification to project owner
+                        # TODO: send notification to project owner
 
-                    # response
-                    return Response(
-                        {
-                            "error": False,
-                            "message": "Your request received, awaiting approval",
-                        },
-                        status=status.HTTP_200_OK,
-                    )
+                        # response
+                        return Response(
+                            {
+                                "error": False,
+                                "message": "Your request received, awaiting approval",
+                            },
+                            status=status.HTTP_200_OK,
+                        )
         except:
             return Response(
                 {"error": True, "message": "Project does not exist"},

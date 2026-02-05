@@ -122,7 +122,7 @@ class FormDataView(viewsets.ViewSet):
                     "deleted": deleted,
                     "synced": 1,
                     # only set photo if we received one
-                    #**({"photo": photo} if photo is not None else {}),
+                    # **({"photo": photo} if photo is not None else {}),
                 },
             )
 
