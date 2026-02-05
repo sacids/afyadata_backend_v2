@@ -483,7 +483,6 @@ class SurveyUpdateView(generic.UpdateView):
                 survey.form_id = survey_cfg["meta"]["form_id"]
                 survey.version = survey_cfg["meta"]["version"]
                 survey.form_defn = json.dumps(survey_cfg)
-                print(survey_cfg)
                 survey.save()
             except Exception as error:
                 return HttpResponse(
