@@ -9,6 +9,8 @@
         return {
             title: current_data.title,
             subtitle: current_data.form_title,
+            description: current_data.form_title,
+            parentId: current_data.id,
             activeFormId: current_data.id,
             currentData: current_data,
             forms: forms,
@@ -133,7 +135,7 @@
                 this.viewMode = 'table';
                 this.tabId = '';
 
-                fetch(`/projects/forms/${this.activeFormId}/data`)
+                fetch(`/projects/forms/${this.activeFormId}/data?parent_id=${this.parentId}`)
                     .then(response => response.json())
                     .then(data => {
                         this.form_cols = data.cols;
@@ -167,7 +169,6 @@
 
             chart: null,
             chartType: 'bar',
-            subtitle: 'Choose options and generate.',
 
             lastPayload: {},
             lastResponse: { labels: [], data: [] },
@@ -194,6 +195,7 @@
                 const f = {};
 
                 const payload = {
+                    parent_id: this.parentId,
                     x_axis: this.form.x_axis,
                     agg: this.form.agg,
                     y_axis: this.form.agg === 'count' ? null : this.form.y_axis,
@@ -217,7 +219,7 @@
                 this.loading = true;
                 this.message = '';
                 this.subtitle = 'Loading chart data…';
-                this.postUrl = "/projects/forms/" + form_id + "/data/charts";
+                this.postUrl = `/projects/forms/${form_id}/data/charts}`;
 
                 try {
                     const payload = this.buildPayload();
@@ -354,7 +356,7 @@
                 const formId = this.activeFormId; // your Alpine state
                 if (!formId) return;
 
-                fetch(`/projects/forms/${formId}/data/points`)
+                fetch(`/projects/forms/${formId}/data/points?parent_id=${this.parentId}`)
                     .then(r => r.json())
                     .then(points => {
                         if (!Array.isArray(points)) return;

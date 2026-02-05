@@ -569,6 +569,9 @@ class SurveyDataView(generic.DetailView):
         # get data
         adata = FormData.objects.filter(form_id=cur_form.id)
 
+        if "parent_id" in request.GET and request.GET["parent_id"]:
+            adata = adata.filter(parent_id=request.GET["parent_id"])
+
         arr_data = []
         for item in adata:
             # use item.uuid (change if your field name is different)
@@ -707,6 +710,7 @@ class ChartsDataView(generic.TemplateView):
         except Exception:
             payload = request.POST  # fallback for form-encoded
 
+        parent_id = payload.get("parent_id")
         x_axis = payload.get("x_axis")
         y_axis = payload.get("y_axis")  # can be None for count
         agg = (payload.get("agg") or "count").lower()
@@ -715,6 +719,10 @@ class ChartsDataView(generic.TemplateView):
 
         # Base queryset (adjust field names to your actual model)
         qs = FormData.objects.filter(form_id=cur_form.id, deleted=0)
+
+        # Parent filter (optional)
+        if parent_id:
+            qs = qs.filter(parent_id=parent_id)
 
         # Date filters (optional)
         if date_from:
@@ -843,9 +851,12 @@ def form_points(request, *args, **kwargs):
     points = []
 
     # form data
-    form_data = FormData.objects.filter(form_id=kwargs["form_id"])
+    adata = FormData.objects.filter(form_id=kwargs["form_id"])
 
-    for row in form_data:
+    if "parent_id" in request.GET and request.GET["parent_id"]:
+        adata = adata.filter(parent_id=request.GET["parent_id"])
+
+    for row in adata:
         fd = row.form_data or {}
 
         # get location from gps field
