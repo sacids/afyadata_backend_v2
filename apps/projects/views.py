@@ -530,6 +530,9 @@ class SurveyDataExportView(generic.View):
         # get data
         adata = FormData.objects.filter(form_id=cur_form.id)
 
+        if "parent_id" in request.GET and request.GET["parent_id"]:
+            adata = adata.filter(parent_id=request.GET["parent_id"])
+
         # create filename
         now = datetime.now()
         filename = f"{cur_form.title.replace(' ', '_')}_{now.strftime('%Y%m%d_%H%M%S')}.csv"

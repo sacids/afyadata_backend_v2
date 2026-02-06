@@ -135,13 +135,9 @@
                 this.viewMode = 'table';
                 this.tabId = '';
 
-                console.log(this.parentId);
-
                 fetch(`/projects/forms/${this.activeFormId}/data?parent_id=${this.parentId}`)
                     .then(response => response.json())
                     .then(data => {
-                        console.log("==data ==")
-                        console.log(data);
                         this.form_cols = data.cols;
                         this.form_data = data.data;
 
@@ -151,7 +147,7 @@
             },
 
             exportData(form_id) {
-                window.location.href = `/projects/forms/${form_id}/data/export`;
+                window.location.href = `/projects/forms/${form_id}/data/export?parent_id=${this.parentId}`;
             },
 
                         //load form_defn
