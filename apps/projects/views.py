@@ -610,7 +610,11 @@ class SurveyDataInstanceView(generic.TemplateView):
         cur_form = FormDefinition.objects.get(id=form_data.form.pk)
 
         # get childrens
-        children_codes = [int(code) for code in cur_form.children.split(",") if code.strip().isdigit()]
+        children_codes = [
+            int(c)
+            for c in (cur_form.children or "").split(",")
+            if c.strip().isdigit()
+        ]
 
         children_forms = (
             FormDefinition.objects.filter(
