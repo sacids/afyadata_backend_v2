@@ -113,11 +113,11 @@ class FormDataView(viewsets.ViewSet):
                 defaults={
                     "form_data": data["form_data"],
                     "original_uuid": data.get("original_uuid", data["uuid"]),
-                    "parent_id": data.get("parent_id", None),
+                    "parent_id": data.get("parent_uuid", None),
                     "title": data.get("title", ""),
                     "created_by_name": data.get("created_by_name", ""),
                     "form_id": data.get("form"),
-                    "gps": data.get("gps"),
+                    "gps": data.get("gps", None),
                     "created_at": created_on,
                     "created_by": request.user if request.user.is_authenticated else None,
                     "updated_at": timezone.now(),
