@@ -864,17 +864,15 @@ def form_points(request, *args, **kwargs):
         adata = adata.filter(parent_id=request.GET["parent_id"])
 
     for row in adata:
-        fd = row.form_data or {}
-
         # get location from gps field
         location = row.gps
 
         # separate location
         if location is not None:
-            location = location.split(",")
+            location = json.loads(location)
 
-        lat = location[0]
-        lng = location[1]
+        lat = location.get("latitude", None)
+        lng = location.get("longitude", None)
 
         # Only add if both numbers exist
         if lat is None or lng is None:
