@@ -55,6 +55,10 @@ class FormDataView(viewsets.ViewSet):
         """Create new form data coming from mobile app"""
         if not request.data:
             return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        # Logging incoming data
+        logging.info("Incoming data")
+        logging.info(request.data)
 
         # Normalize incoming data (QueryDict or dict)
         raw_data = request.data
