@@ -868,10 +868,10 @@ def form_points(request, *args, **kwargs):
         location = row.gps
 
         # separate location
-        if location is not None:
-            location = location.split(",")
-            lat = location[0]
-            lng = location[1]    
+        if location and location.strip():
+            location = json.loads(location)
+            lat = location.get("latitude")
+            lng = location.get("longitude")
         else:
             lat = None
             lng = None
