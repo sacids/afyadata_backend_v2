@@ -8,6 +8,8 @@ from .v1.projects import *
 from .v1.surveys import *
 from .v1.form_data import *
 from .v1.chat import *
+from .v1.language import LanguageViewSet, LanguageVersionViewSet, language_export, bulk_upload
+
 
 urlpatterns = [
     # Accounts
@@ -48,6 +50,15 @@ urlpatterns = [
     path("v1/chat/conversations", ConversationView.as_view({"get": "retrieve", "post": "create"})),
     path("v1/chat/conversations/<str:pk>/messages", ConversationView.as_view({"get": "messages", "post": "messages"})),
     path("v1/chat/conversations/<str:pk>/mark-read", ConversationView.as_view({"post": "mark_read"})),
+    
+    
+    #Language
+    path('admin/languages/<str:code>/export/', language_export, name='language-export'),
+    path('admin/languages/bulk-upload/', bulk_upload, name='bulk-upload'),
+    
+    # Mobile app endpoints (compatible with LanguageManager)
+    path('v1/languages/', LanguageViewSet.as_view({'get': 'available'}), name='available-languages'),
+    path('v1/translations/<str:code>/', LanguageViewSet.as_view({'get': 'translations'}), name='language-translations'),
 
   
 ]
