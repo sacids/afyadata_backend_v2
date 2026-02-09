@@ -102,6 +102,7 @@ class FormDefinition(models.Model):
     short_title   = models.CharField(max_length=10, null=True, blank=True)
     code          = models.IntegerField(unique=True, null=True)
     form_type     = models.TextField(null=True, blank=True)
+    icon_type     = models.CharField(max_length=50, null=True, blank=True, default="entypo:clipboard")
     is_root       = models.BooleanField(default=False)
     form_actions  = models.CharField(max_length=255, blank=True, null=True)
     form_category = models.TextField(null=True, blank=True)

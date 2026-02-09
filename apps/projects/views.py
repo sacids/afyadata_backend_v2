@@ -2,7 +2,10 @@ import json
 import logging
 import random
 import string
+import csv
+from datetime import datetime
 from datetime import datetime, date
+from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.sites.shortcuts import get_current_site
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseRedirect
@@ -25,7 +28,7 @@ from django.http import JsonResponse, HttpResponse
 from . import x2jform
 from . import utils
 
-from .models import *
+from .models import Project, FormDefinition, FormData
 from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm
 
 
@@ -50,7 +53,7 @@ class ProjectListView(generic.ListView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": ""},
+            {"name": "Projects", "url": "#"},
         ]
 
         # Add links to context
@@ -120,7 +123,7 @@ class ProjectCreateView(generic.CreateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": "Create New", "url": ""},
+            {"name": "Create New", "url": "#"},
         ]
 
         # Add links to context
@@ -164,13 +167,13 @@ class ProjectUpdateView(generic.UpdateView):
         project = Project.objects.get(pk=kwargs["pk"])
         form = ProjectForm(instance=project)
 
-        context = {"title": "Edit Project", "project": project, "form": form}
+        context = {"title": project.title, "project": project, "form": form}
 
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": "Edit Project", "url": ""},
+            {"name": project.title, "url": "#"},
         ]
 
         # Add links to context
@@ -266,20 +269,65 @@ class ProjectMembersListView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": "Members", "url": ""},
+            {"name": project.title, "url": ""},
         ]
 
         context["links"] = {
-            "Information": reverse_lazy("projects:lists"),
             "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
             "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
         # render view
         return render(request, "projects/members.html", context=context)
+
+
+class ProjectDataView(generic.TemplateView):
+    """View to list all project data"""
+
+    def get(self, request, *args, **kwargs):
+        # get project
+        project = Project.objects.get(pk=kwargs["pk"])
+
+        # get root forms
+        root_forms = FormDefinition.objects.filter(
+            project=project, is_root=True
+        ).order_by("code")
+
+        root_forms_json = list(
+            root_forms.values(
+                "id", "code", "title", "short_title", "description", "short_description"
+            )
+        )
+
+        context = {
+            "title": project.title,
+            "project": project,
+            "forms_json": root_forms_json,
+        }
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": project.title, "url": ""},
+        ]
+
+        # Add links to context
+        context["links"] = {
+            "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
+            "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
+            "Upload Form": reverse_lazy(
+                "projects:upload-form", kwargs={"pk": kwargs["pk"]}
+            ),
+            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
+        }
+
+        # render view
+        return render(request, "projects/data.html", context=context)
 
 
 class SurveyListView(generic.TemplateView):
@@ -301,13 +349,14 @@ class SurveyListView(generic.TemplateView):
             {"name": "Forms", "url": ""},
         ]
 
+        # Add links to context
         context["links"] = {
-            "Information": reverse_lazy("projects:lists"),
             "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
             "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
         # render view
@@ -335,12 +384,12 @@ class SurveyCreateView(generic.CreateView):
         ]
 
         context["links"] = {
-            "Information": reverse_lazy("projects:lists"),
             "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
             "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
         # render view
@@ -395,7 +444,7 @@ class SurveyUpdateView(generic.UpdateView):
 
         # context
         context = {
-            "title": "Edit Form",
+            "title": survey.title,
             "survey": survey,
             "form": SurveyUpdateForm(instance=survey),
         }
@@ -404,19 +453,14 @@ class SurveyUpdateView(generic.UpdateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": "Edit Form", "url": ""},
+            {"name": survey.title, "url": "#"},
         ]
 
         # Add links to context
         context["links"] = {
-            "Information": reverse_lazy("projects:lists"),
-            "Members": reverse_lazy(
-                "projects:members", kwargs={"pk": survey.project.pk}
-            ),
-            "Forms": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),
-            "Upload Form": reverse_lazy(
-                "projects:upload-form", kwargs={"pk": survey.project.pk}
-            ),
+            "Edit Form": "#",
+            "Actions": "#",
+            "Rules (OHKR)": "#",
         }
 
         # render view
@@ -439,7 +483,6 @@ class SurveyUpdateView(generic.UpdateView):
                 survey.form_id = survey_cfg["meta"]["form_id"]
                 survey.version = survey_cfg["meta"]["version"]
                 survey.form_defn = json.dumps(survey_cfg)
-                print(survey_cfg)
                 survey.save()
             except Exception as error:
                 return HttpResponse(
@@ -473,10 +516,43 @@ class SurveyDeleteView(generic.DeleteView):
         )
 
 
-# Form data
-class SurveyDataView(generic.TemplateView):
-    template_name = "surveys/data/table.html"
+class SurveyDataExportView(generic.View):
+    """Export form data into csv"""
 
+    def get(self, request, *args, **kwargs):
+        # get form
+        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        data = utils.load_json(cur_form.form_defn)
+
+        tbl_header_dict = utils.get_table_header(data)  # {key: label}
+        header_keys = list(tbl_header_dict.keys())
+
+        # get data
+        adata = FormData.objects.filter(form_id=cur_form.id)
+
+        if "parent_id" in request.GET and request.GET["parent_id"]:
+            adata = adata.filter(parent_id=request.GET["parent_id"])
+
+        # create filename
+        now = datetime.now()
+        filename = f"{cur_form.title.replace(' ', '_')}_{now.strftime('%Y%m%d_%H%M%S')}.csv"
+
+        # create csv response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(["UUID"] + [tbl_header_dict[k] for k in header_keys])
+        for item in adata:
+            row_uuid = str(item.uuid)
+            row = [row_uuid] + [item.form_data.get(k, '') for k in header_keys]
+            writer.writerow(row)
+
+        return response
+
+
+# Form data
+class SurveyDataView(generic.DetailView):
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(SurveyDataView, self).dispatch(*args, **kwargs)
@@ -484,12 +560,87 @@ class SurveyDataView(generic.TemplateView):
     def get(self, request, *args, **kwargs):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
-        context = {"cur_form": cur_form}
+        data = utils.load_json(cur_form.form_defn)
 
-        context["title"] = cur_form.title
-        context["datatable_list"] = reverse(
-            "projects:form-data-list", kwargs={"pk": cur_form.pk}
+        tbl_header_dict = utils.get_table_header(data)  # {key: label}
+        header_keys = list(tbl_header_dict.keys())
+
+        # Headers: add UUID column first
+        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys]
+
+        # get data
+        adata = FormData.objects.filter(form_id=cur_form.id)
+
+        if "parent_id" in request.GET and request.GET["parent_id"]:
+            adata = adata.filter(parent_id=request.GET["parent_id"])
+
+        arr_data = []
+        for item in adata:
+            # use item.uuid (change if your field name is different)
+            row_uuid = str(item.uuid)
+
+            row = [row_uuid] + [item.form_data.get(k) for k in header_keys]
+            arr_data.append(row)
+
+        return JsonResponse(
+            {
+                "cols": cols,
+                "data": arr_data,
+            }
         )
+
+
+# Survey data instance
+class SurveyDataInstanceView(generic.TemplateView):
+    """View to list all project form data"""
+
+    def get(self, request, *args, **kwargs):
+        # get form data
+        data_id = kwargs["data_id"]
+        form_data = FormData.objects.get(uuid=data_id)
+
+        # convert form data to JSON
+        cur_data_json = {
+            "id": form_data.form.id,
+            "data_id": form_data.uuid,
+            "title": form_data.title.replace("'", ""),
+            "form_title": form_data.form.title,
+            "form_code": form_data.form.code,
+            "form_data": form_data.form_data,
+        }
+
+        # get form
+        cur_form = FormDefinition.objects.get(id=form_data.form.pk)
+
+        # get childrens
+        children_codes = [
+            int(c)
+            for c in (cur_form.children or "").split(",")
+            if c.strip().isdigit()
+        ]
+
+        children_forms = (
+            FormDefinition.objects.filter(
+                project=cur_form.project,
+                code__in=children_codes
+            ).order_by("code")
+            if children_codes
+            else FormDefinition.objects.none()
+        )
+
+        children_forms_json = list(
+            children_forms.values(
+                "id", "code", "title", "short_title", "description", "short_description"
+            )
+        )
+
+        context = {
+            "title": cur_form.title,
+            "cur_data_json": cur_data_json,
+            "cur_form": cur_form,
+            "project": cur_form.project,
+            "children_forms_json": children_forms_json,
+        }
 
         # breadcrumbs
         context["breadcrumbs"] = [
@@ -498,68 +649,26 @@ class SurveyDataView(generic.TemplateView):
             {
                 "name": cur_form.project.title,
                 "url": reverse_lazy(
-                    "projects:forms", kwargs={"pk": cur_form.project.pk}
+                    "projects:data", kwargs={"pk": cur_form.project.pk}
                 ),
             },
-            {"name": "Data", "url": ""},
+            {"name": cur_form.title, "url": ""},
         ]
 
         # Add links to context
         context["links"] = {
-            "Summary": "#",
-            "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
-            "Charts": reverse_lazy(
-                "projects:form-data-charts", kwargs={"pk": kwargs["pk"]}
+            "Members": reverse_lazy(
+                "projects:members", kwargs={"pk": cur_form.project.pk}
             ),
-            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
+            "Forms": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk}),
+            "Upload Form": reverse_lazy(
+                "projects:upload-form", kwargs={"pk": cur_form.project.pk}
+            ),
+            "Data": reverse_lazy("projects:data", kwargs={"pk": cur_form.project.pk}),
         }
 
-        # get jform
-        data = utils.load_json(cur_form.form_defn)
-        context["tbl_header"] = utils.get_table_header(data)
-
         # render view
-        return render(request, self.template_name, context)
-
-
-class SurveyDataInstanceView(generic.TemplateView):
-    template_name = "surveys/data/instance.html"
-
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(SurveyDataInstanceView, self).dispatch(*args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        """View a single survey instance"""
-        print("survey instance", kwargs["pk"])
-        form_data_id = kwargs["pk"]
-        form_data = FormData.objects.get(id=form_data_id)
-        form_id = form_data.form_id
-        aDefn = FormDefinition.objects.get(id=form_id)
-
-        if isinstance(aDefn.form_defn, str):
-            try:
-                jForm = json.loads(aDefn.form_defn)
-                data = form_data.form_data
-
-                # choose language
-                lang = "Swahili (sw)"  # or "English (en)"
-
-                # build maps (only if fields exist in form)
-                dalili_map = utils.build_option_map(jForm, "dalili", lang=lang)
-                dalil_mifugo_map = utils.build_option_map(jForm, "dalil_mifugo", lang=lang)
-
-                # add mapped values to data (new keys so you don't lose original)
-                if "dalili" in data:
-                    data["dalili"] = utils.map_codes_to_labels(data.get("dalili"), dalili_map)
-
-                if "dalil_mifugo" in data:
-                    data["dalil_mifugo"] = utils.map_codes_to_labels(data.get("dalil_mifugo"), dalil_mifugo_map)
-
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON format: {str(e)}")
-
-        return render(request, self.template_name, {"data": data, "jForm": jForm})
+        return render(request, "surveys/data.html", context=context)
 
 
 class ChartsDataView(generic.TemplateView):
@@ -595,22 +704,20 @@ class ChartsDataView(generic.TemplateView):
 
     def post(self, request, *args, **kwargs):
         """
-        Expected JSON body:
-        {
-          "x_axis": "form_data.wilaya" | "form_data.kata" | "created_at_month" | "created_at_year",
-          "y_axis": "form_data.idadi_cal" | "form_data.idadi_kufa_wakubwa" | null,
-          "agg": "count"|"sum"|"avg"|"max"|"min",
-          "date_from": "2018-01-01",
-          "date_to": "2018-12-31"
-        }
+        Get chart data
         """
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        data = utils.load_json(cur_form.form_defn)
+
+        tbl_header_dict = utils.get_table_header(data)
+        header_keys = list(tbl_header_dict.keys())
 
         try:
             payload = json.loads(request.body.decode("utf-8"))
         except Exception:
             payload = request.POST  # fallback for form-encoded
 
+        parent_id = payload.get("parent_id")
         x_axis = payload.get("x_axis")
         y_axis = payload.get("y_axis")  # can be None for count
         agg = (payload.get("agg") or "count").lower()
@@ -620,39 +727,27 @@ class ChartsDataView(generic.TemplateView):
         # Base queryset (adjust field names to your actual model)
         qs = FormData.objects.filter(form_id=cur_form.id, deleted=0)
 
+        # Parent filter (optional)
+        if parent_id:
+            qs = qs.filter(parent_id=parent_id)
+
         # Date filters (optional)
         if date_from:
             qs = qs.filter(created_at__date__gte=date_from)
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
 
-        # ---------- Whitelists (IMPORTANT for security) ----------
         # Allowed x-axis options
-        allowed_x = {
-            "created_at_month": "created_at_month",
-            "created_at_year": "created_at_year",
-            # JSON keys under form_data:
-            "form_data.kata": "form_data__kata",
-            "form_data.wilaya": "form_data__wilaya",
-        }
+        allowed_x_y = {k: f"form_data__{k}" for k in header_keys}
 
-        # Allowed y-axis (numeric JSON fields)
-        allowed_y = {
-            "form_data.idadi_cal": "form_data__idadi_cal",
-            "form_data.idadi_call": "form_data__idadi_call",
-            "form_data.idadi_dalili_wakubwa": "form_data__idadi_dalili_wakubwa",
-            "form_data.idadi_dalili_wadogo": "form_data__idadi_dalili_wadogo",
-            "form_data.idadi_kufa_wakubwa": "form_data__idadi_kufa_wakubwa",
-            "form_data.idadi_kufa_wadogo": "form_data__idadi_kufa_wadogo",
-        }
-
+        # Allowed aggregation functions
         allowed_aggs = {"count", "sum", "avg", "max", "min"}
 
-        if x_axis not in allowed_x:
+        if x_axis not in allowed_x_y:
             return JsonResponse({"error": "Invalid x_axis"}, status=400)
         if agg not in allowed_aggs:
             return JsonResponse({"error": "Invalid agg"}, status=400)
-        if agg != "count" and (y_axis not in allowed_y):
+        if agg != "count" and (y_axis not in allowed_x_y):
             return JsonResponse(
                 {"error": "Invalid y_axis for numeric aggregation"}, status=400
             )
@@ -663,27 +758,20 @@ class ChartsDataView(generic.TemplateView):
         #         qs = qs.filter(**{allowed_x[k]: v})
 
         # ---------- Build group-by (x-axis) ----------
-        x_key = allowed_x[x_axis]
+        x_key = allowed_x_y[x_axis]
 
-        if x_axis == "created_at_month":
-            qs = qs.annotate(x=TruncMonth("created_at")).values("x")
-        elif x_axis == "created_at_year":
-            qs = qs.annotate(x=TruncYear("created_at")).values("x")
-        else:
-            print("x_axis", x_axis)
-            print("x_key", x_key)
-            # JSON field group by
-            # qs = qs.values(x_key).annotate(
-            #     x=Cast(x_key, output_field=FloatField()) if False else None
-            # )
-            # easier: just group by the JSON key as text
-            qs = qs.values(x_key)
+        # JSON field group by
+        # qs = qs.values(x_key).annotate(
+        #     x=Cast(x_key, output_field=FloatField()) if False else None
+        # )
+        # easier: just group by the JSON key as text
+        qs = qs.values(x_key)
 
         # ---------- Aggregate (y-axis + agg) ----------
         if agg == "count":
             qs = qs.annotate(value=Count("id"))
         else:
-            y_key = allowed_y[y_axis]
+            y_key = allowed_x_y[y_axis]
             # Cast JSON text -> numeric
             y_expr = Cast(y_key, output_field=FloatField())
 
@@ -697,21 +785,9 @@ class ChartsDataView(generic.TemplateView):
                 qs = qs.annotate(value=Min(y_expr))
 
         # Order & serialize
-        if x_axis in ("created_at_month", "created_at_year"):
-            qs = qs.order_by("x")
-            labels = [
-                (
-                    row["x"].strftime("%Y-%m")
-                    if x_axis == "created_at_month"
-                    else row["x"].strftime("%Y")
-                )
-                for row in qs
-            ]
-            data = [row["value"] or 0 for row in qs]
-        else:
-            qs = qs.order_by(x_key)
-            labels = [row[x_key] if row[x_key] is not None else "Unknown" for row in qs]
-            data = [row["value"] or 0 for row in qs]
+        qs = qs.order_by(x_key)
+        labels = [row[x_key] if row[x_key] is not None else "Unknown" for row in qs]
+        data = [row["value"] or 0 for row in qs]
 
         return JsonResponse(
             {
@@ -763,25 +839,42 @@ class MapDataView(generic.TemplateView):
         return render(request, self.template_name, context)
 
 
+def form_definition(request, *args, **kwargs):
+    # get form
+    try:
+        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        data = utils.load_json(cur_form.form_defn)
+
+        tbl_header_dict = utils.get_table_header(data)
+
+        return JsonResponse({"data": data, "cols": tbl_header_dict})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
 def form_points(request, *args, **kwargs):
     # declare points
     points = []
 
     # form data
-    form_data = FormData.objects.filter(form_id=kwargs["form_id"])
+    adata = FormData.objects.filter(form_id=kwargs["form_id"])
 
-    for row in form_data:
-        fd = row.form_data or {}
+    if "parent_id" in request.GET and request.GET["parent_id"]:
+        adata = adata.filter(parent_id=request.GET["parent_id"])
 
+    for row in adata:
         # get location from gps field
         location = row.gps
 
         # separate location
-        if location is not None:
-            location = location.split(",")
-
-        lat = location[0]
-        lng = location[1]
+        if location and location.strip():
+            location = json.loads(location)
+            lat = location.get("latitude")
+            lng = location.get("longitude")
+        else:
+            lat = None
+            lng = None
 
         # Only add if both numbers exist
         if lat is None or lng is None:
@@ -793,7 +886,7 @@ def form_points(request, *args, **kwargs):
                 "title": row.title or "",
                 "lat": float(lat),
                 "lng": float(lng),
-                "form_data": row.form_data,
+                "form_data": row.form_data if row.form_data else {},
                 "created_at": row.created_at.isoformat() if row.created_at else None,
             }
         )
