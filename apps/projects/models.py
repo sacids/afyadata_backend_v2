@@ -161,7 +161,6 @@ class FormAttachment(models.Model):
         ("pdf", "PDF"),
     )
 
-    uuid = models.TextField(max_length=100, blank=True, null=True)
     form = models.ForeignKey(FormDefinition, related_name="form_attachments", on_delete=models.CASCADE)
     title = models.CharField(max_length=150, blank=True, null=True)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='json')
@@ -231,7 +230,7 @@ class FormData(models.Model):
 
         indexes = [models.Index(fields=["uuid", "form", "created_at"])]
         verbose_name = "Form data"
-        verbose_name_plural = "5. Form data"
+        verbose_name_plural = "4. Form data"
         db_table = "ad_form_data"
 
     def __str__(self):

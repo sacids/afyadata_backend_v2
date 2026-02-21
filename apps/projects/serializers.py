@@ -18,17 +18,28 @@ class ProjectMemberSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class FormAttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for form attachment"""
+    class Meta:
+        model = FormAttachment
+        fields = "__all__"
+
+
 class FormDefinitionSerializer(serializers.ModelSerializer):
     """Serializer for form definition"""
+    attachments = FormAttachmentSerializer(many=True, read_only=True)
+
     class Meta:
         model = FormDefinition
         fields = "__all__"
+
 
 class FormDefnMetaSerializer(serializers.ModelSerializer):
     """Serializer for form definition"""
     class Meta:
         model = FormDefinition
         fields = ['id','version', 'short_title']
+
 
 class FormDataSerializer(serializers.ModelSerializer):
     """Serializer for form data"""
