@@ -59,7 +59,7 @@ class ProjectListView(generic.ListView):
         # Add links to context
         context["links"] = {
             "Project Lists": reverse_lazy("projects:lists"),
-            "Create New": reverse_lazy("projects:create"),
+            "Create Project": reverse_lazy("projects:create"),
         }
 
         return context
@@ -123,13 +123,13 @@ class ProjectCreateView(generic.CreateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": "Create New", "url": "#"},
+            {"name": "Create Project", "url": "#"},
         ]
 
         # Add links to context
         context["links"] = {
             "Project Lists": reverse_lazy("projects:lists"),
-            "Create New": reverse_lazy("projects:create"),
+            "Create Project": reverse_lazy("projects:create"),
         }
 
         return render(request, "projects/create.html", context)
@@ -145,12 +145,18 @@ class ProjectCreateView(generic.CreateView):
 
             # success response
             return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project created succesfully</div>'
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project created.</div>'
             )
         else:
             # error response
+            errors = []
+            for field_errors in form.errors.values():
+                errors.extend(field_errors)
+
             return HttpResponse(
-                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">{form.errors}</div>'
+                '<div class="bg-red-100 text-red-900 rounded-sm text-sm px-4 py-3">'
+                + "<br>".join(errors)
+                + "</div>"
             )
 
 
@@ -195,12 +201,18 @@ class ProjectUpdateView(generic.UpdateView):
 
             # success response
             return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project updated succesfully</div>'
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project updated.</div>'
             )
         else:
             # error response
+            errors = []
+            for field_errors in form.errors.values():
+                errors.extend(field_errors)
+
             return HttpResponse(
-                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">{form.errors}</div>'
+                '<div class="bg-red-100 text-red-900 rounded-sm text-sm px-4 py-3">'
+                + "<br>".join(errors)
+                + "</div>"
             )
 
 
@@ -244,7 +256,7 @@ class ProjectActivateView(generic.TemplateView):
 
             # success response
             return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project status updated succesfully</div>'
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project status updated.</div>'
             )
         except:
             # error response
@@ -278,6 +290,7 @@ class ProjectMembersListView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -323,6 +336,7 @@ class ProjectDataView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -356,6 +370,7 @@ class SurveyListView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -389,6 +404,7 @@ class SurveyCreateView(generic.CreateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -664,6 +680,7 @@ class SurveyDataInstanceView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": cur_form.project.pk}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": cur_form.project.pk}),
         }
 

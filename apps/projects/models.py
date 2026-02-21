@@ -36,11 +36,11 @@ class Project(models.Model):
     )
 
     id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title           = models.CharField(max_length=50)
+    title           = models.CharField(max_length=50, error_messages={"required": "Title is required"})
     code            = models.CharField(max_length=10, blank=True, null=True, unique=True)
     tags            = models.ManyToManyField(Tag, null=True, blank=True)
     access          = models.CharField(max_length=20, choices=ACCESS_CHOICES, default='private')
-    auto_join       = models.BooleanField(default=False)
+    auto_join       = models.BooleanField(default=False) # auto join the project
     accept_member   = models.BooleanField(default=True) # accept member
     accept_data     = models.BooleanField(default=True) # accept data or not
     active          = models.BooleanField(default=True) # active or not
@@ -53,7 +53,6 @@ class Project(models.Model):
     
     class Meta:
         """Meta definition for form definition."""
-
         indexes = [models.Index(fields=["title", "code"])]
         db_table = "ad_projects"
         managed = True
@@ -97,17 +96,17 @@ class FormDefinition(models.Model):
     project       = models.ForeignKey(Project, related_name='forms', on_delete=models.CASCADE)
     form_id       = models.TextField(null=True, blank=True)
     depends_on    = models.IntegerField(default=0)
-    title         = models.CharField(max_length=100)
+    title         = models.CharField(max_length=100, error_messages={"required": "Title is required"})
     version       = models.CharField(max_length=20, null=True, blank=True)
     short_title   = models.CharField(max_length=10, null=True, blank=True)
-    code          = models.IntegerField(unique=True, null=True)
+    code          = models.IntegerField(unique=True, null=True, error_messages={"required": "Code is required", "unique": "Code must be unique"})
     form_type     = models.TextField(null=True, blank=True)
     icon_type     = models.CharField(max_length=50, null=True, blank=True, default="entypo:clipboard")
     is_root       = models.BooleanField(default=False)
     form_actions  = models.CharField(max_length=255, blank=True, null=True)
     form_category = models.TextField(null=True, blank=True)
     xlsform = models.FileField(
-        upload_to="jform/defn/", max_length=100, null=True, blank=True
+        upload_to="jform/defn/", max_length=100, null=True, blank=True, error_messages={"required": "Xform is required"}
     )
     form_defn = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -151,9 +150,40 @@ class FormDefinition(models.Model):
         return self.title if self.title else self.pk
 
 
+class FormAttachment(models.Model):
+    "Model attachment for form definition"
+
+    TYPE_CHOICES = (
+        ("image", "IMAGE"),
+        ("json", "JSON"),
+        ("csv", "CSV"),
+        ("xls", "XLS"),
+        ("pdf", "PDF"),
+    )
+
+    uuid = models.TextField(max_length=100, blank=True, null=True)
+    form = models.ForeignKey(FormDefinition, related_name="form_attachments", on_delete=models.CASCADE)
+    title = models.CharField(max_length=150, blank=True, null=True)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='json')
+    attachment = models.FileField(
+        upload_to="assets/uploads/form_attachments/", max_length=200, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta definition for form attachment."""
+        indexes = [models.Index(fields=["title"])]
+        verbose_name = "Form attachment"
+        verbose_name_plural = "4. Form Attachments"
+        db_table = "ad_form_attachments"
+
+    def __str__(self):
+        return self.title if self.title else self.pk
+
+
 class FormData(models.Model):
     """Model definition for form_data"""
-
     uuid = models.TextField(max_length=100, blank=True, null=True)
     original_uuid = models.TextField(max_length=100, blank=True, null=True)
     parent_id = models.TextField(max_length=100, blank=True, null=True)
@@ -201,7 +231,7 @@ class FormData(models.Model):
 
         indexes = [models.Index(fields=["uuid", "form", "created_at"])]
         verbose_name = "Form data"
-        verbose_name_plural = "4. Form data"
+        verbose_name_plural = "5. Form data"
         db_table = "ad_form_data"
 
     def __str__(self):

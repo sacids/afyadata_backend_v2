@@ -1,6 +1,5 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field
 from .models import *
 
@@ -15,12 +14,6 @@ class ProjectForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.form_show_labels = True
         self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
-        self.helper.layout = Layout(
-            Field(
-                "access",
-                css_class="text-xs rounded-md bg-white border border-gray-300 px-4 py-2 block w-full text-gray-700",
-            )
-        )
 
     class Meta:
         model = Project
@@ -46,19 +39,17 @@ class ProjectForm(forms.ModelForm):
             "access": forms.Select(
                 attrs={
                     "class": (
-                        "font-normal text-sm rounded-md"
-                        "h-9 "
-                        "bg-white "
-                        "border border-gray-300 "
-                        "rounded-md "
-                        "px-3 py-1 "
-                        "block w-full "
-                        "text-gray-700 "
-                        "appearance-none "
-                        "focus:outline-none focus:ring-1 focus:ring-gray-300"
+                    'w-full text-sm leading-tight '
+                    'h-10 '
+                    'bg-white '
+                    'border border-gray-300 '
+                    'rounded-md '
+                    'px-3 pr-10 '
+                    'text-gray-700 '
+                    'appearance-none '   
+                    'bg-none ' 
                     ),
-                    "id": "access",
-                    "required": "",
+                    "id": "access"
                 }
             ),
             "auto_join": forms.CheckboxInput(
@@ -88,12 +79,10 @@ class SurveyAddForm(forms.ModelForm):
         model = FormDefinition
         fields = [
             "title",
-            "short_title",
             "code",
             "is_root",
+            "children",
             "xlsform",
-            "response",
-            "short_description",
             "description",
         ]
 
@@ -106,14 +95,6 @@ class SurveyAddForm(forms.ModelForm):
                     "required": "",
                 }
             ),
-            "short_title": forms.TextInput(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "short_title",
-                    "placeholder": "Write short title...",
-                    "required": "",
-                }
-            ),
             "code": forms.TextInput(
                 attrs={
                     "class": "font-normal text-sm rounded-md",
@@ -122,6 +103,9 @@ class SurveyAddForm(forms.ModelForm):
                     "required": "",
                 }
             ),
+            "is_root": forms.CheckboxInput(
+                attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
+            ),
             "children": forms.TextInput(
                 attrs={
                     "class": "font-normal text-sm rounded-md",
@@ -129,32 +113,11 @@ class SurveyAddForm(forms.ModelForm):
                     "placeholder": "Write children...",
                 }
             ),
-            "sort_order": forms.NumberInput(
-                attrs={"class": "font-normal text-sm rounded-md", "id": "sort_order", "required": ""}
-            ),
             "xlsform": forms.FileInput(
                 attrs={
                     "class": "block w-full border border-gray-200 focus:ring-gray-200 focus:ring-2 focus:outline-none focus:ring-offset-2 dark:focus:ring-offset-gray-800 dark:focus:ring-white dark:focus:ring-2 rounded-md text-sm px-3 py-1",
                     "accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel",
                     "required": "",
-                }
-            ),
-            "is_root": forms.CheckboxInput(
-                attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
-            ),
-            "response": forms.TextInput(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "response",
-                    "placeholder": "Write default response message...",
-                }
-            ),
-            "short_description": forms.Textarea(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "short_description",
-                    "placeholder": "Write short description...",
-                    "rows": 1,
                 }
             ),
             "description": forms.Textarea(
