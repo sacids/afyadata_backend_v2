@@ -216,3 +216,46 @@ class SurveyUpdateForm(forms.ModelForm):
                 }
             ),
         }
+
+
+class SurveyAttachmentForm(forms.ModelForm):
+    """
+    A class to create attachment
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SurveyAttachmentForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_show_labels = True
+        self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
+
+    class Meta:
+        model = FormAttachment
+        fields = [
+            "title",
+            "type",
+            "attachment"
+        ]
+
+        widgets = {
+            "title": forms.TextInput(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "title",
+                    "placeholder": "Write attachment title...",
+                    "required": "",
+                }
+            ),
+            "type": forms.Select(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "children"
+                }
+            ),
+            "attachment": forms.FileInput(
+                attrs={
+                    "class": "block w-full border border-gray-200 focus:ring-gray-200 focus:ring-2 focus:outline-none focus:ring-offset-2 dark:focus:ring-offset-gray-800 dark:focus:ring-white dark:focus:ring-2 rounded-md text-sm px-3 py-1",
+                    "required": "",
+                }
+            )
+        }

@@ -37,7 +37,12 @@ class FormDataView(viewsets.ViewSet):
 
     def detail(self, request, pk=None):
         """Get form data information"""
-        pass
+        try:
+            form_data = FormData.objects.get(pk=pk)
+            serializer = FormDataSerializer(form_data, many=True)
+            return Response(serializer.data)
+        except:
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request):
         """Get form data based on form definition"""

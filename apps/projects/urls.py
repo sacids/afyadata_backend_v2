@@ -22,7 +22,10 @@ urlpatterns = [
     path('forms/<str:pk>/upload', views.SurveyCreateView.as_view(), name='upload-form'),
     path('forms/<str:pk>/edit', views.SurveyUpdateView.as_view(), name='edit-form'),
     path('forms/<str:pk>/delete', views.SurveyDeleteView.as_view(), name='delete-form'),
-     path("forms/<str:pk>/definition", views.form_definition, name="form-definition"),
+    path("forms/<str:pk>/definition", views.form_definition, name="form-definition"),
+
+    # rules + OHKR
+    path('forms/<str:pk>/rules', views.SurveyRulesView.as_view(), name='form-rules'),
 
     # form data
     path('forms/<str:pk>/data', views.SurveyDataView.as_view(), name='form-data'),

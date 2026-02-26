@@ -30,6 +30,7 @@ from . import utils
 
 from .models import Project, FormDefinition, FormData
 from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm
+from apps.ohkr.models import ClinicalSign
 
 
 class ProjectListView(generic.ListView):
@@ -476,7 +477,8 @@ class SurveyUpdateView(generic.UpdateView):
         context["links"] = {
             "Edit Form": "#",
             "Actions": "#",
-            "Rules (OHKR)": "#",
+            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Attachments": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]})
         }
 
         # render view
@@ -530,6 +532,83 @@ class SurveyDeleteView(generic.DeleteView):
         return HttpResponse(
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form deleted Succesfully</div>'
         )
+
+
+class SurveyRulesView(generic.TemplateView):
+    """Survey Attachment"""
+    def get(self, request, *args, **kwargs):
+        # survey
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        # context
+        context = {
+            "title": survey.title,
+            "survey": survey,
+            "clinical_signs" : ClinicalSign.objects.order_by('name').all()
+        }
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": survey.title, "url": "#"},
+        ]
+
+        # Add links to context
+        context["links"] = {
+            "Edit Form": "#",
+            "Actions": "#",
+            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Attachments": '#'
+        }
+
+        # render view
+        return render(request, "surveys/rules.html", context=context)
+    
+    def post(self, request, *args, **kwargs):
+        # survey
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        # success response
+        return HttpResponse(
+            '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">OHKR file created</div>'
+        )
+
+class SurveyAttachmentView(generic.TemplateView):
+    """Survey Attachment"""
+    def get(self, request, *args, **kwargs):
+        # survey
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        # context
+        context = {
+            "title": survey.title,
+            "survey": survey,
+            # "form": SurveyUpdateForm(instance=survey),
+        }
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": survey.title, "url": "#"},
+        ]
+
+        # Add links to context
+        context["links"] = {
+            "Edit Form": "#",
+            "Actions": "#",
+            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Attachments": '#'
+        }
+
+        # render view
+        return render(request, "surveys/attachments.html", context=context)
+    
+    def post(self, request, *args, **kwargs):
+        # survey
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+
 
 
 class SurveyDataExportView(generic.View):

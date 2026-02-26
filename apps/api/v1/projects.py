@@ -87,13 +87,12 @@ class ProjectView(viewsets.ViewSet):
             project = Project.objects.get(code=request.data["code"])
 
             # check if user is already a member
-            if ProjectMember.objects.filter(
-                project=project, member=request.user, active=True
-            ).exists():
+            if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
+
                 # Return project details
-                project_data = ProjectSerializer(
-                    project
-                ).data  # or build a dict manually
+                project_data = ProjectSerializer(project).data  # or build a dict manually
+
+                # response
                 return Response(
                     {
                         "error": False,
@@ -108,6 +107,8 @@ class ProjectView(viewsets.ViewSet):
                     ProjectMember.objects.create(
                         project=project, member=request.user, active=True
                     )
+
+                    # response
                     return Response(
                         {"error": False, "message": "Your request has approved"},
                         status=status.HTTP_200_OK,

@@ -29,7 +29,6 @@ class FormAttachmentSerializer(serializers.ModelSerializer):
 
 class FormDefinitionSerializer(serializers.ModelSerializer):
     """Serializer for form definition"""
-
     form_attachments = FormAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
@@ -39,9 +38,6 @@ class FormDefinitionSerializer(serializers.ModelSerializer):
 
 class FormDefnMetaSerializer(serializers.ModelSerializer):
     """Serializer for form definition"""
-
-    form_attachments = FormAttachmentSerializer(many=True, read_only=True)
-
     class Meta:
         model = FormDefinition
         fields = ["id", "version", "short_title"]
