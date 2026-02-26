@@ -581,9 +581,6 @@ class SurveyAttachmentView(generic.TemplateView):
         # survey
         survey = FormDefinition.objects.get(pk=kwargs["pk"])
 
-        print("form attachments")
-        print(survey.attachments.all())
-
         # context
         context = {
             "title": survey.title,
@@ -611,10 +608,30 @@ class SurveyAttachmentView(generic.TemplateView):
         return render(request, "surveys/attachments.html", context=context)
     
     def post(self, request, *args, **kwargs):
-        # survey
         survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        form = SurveyAttachmentForm(request.POST, request.FILES)
 
+        if form.is_valid():
+            cur_obj = form.save(commit=False)
+            cur_obj.form = survey
+            #TODO: work on the versioning of the attachment
+            cur_obj.save()
 
+            # success response
+            return HttpResponse(
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form attachment uploaded.</div>'
+            )
+        else:
+            # error response
+            errors = []
+            for field_errors in form.errors.values():
+                errors.extend(field_errors)
+
+            return HttpResponse(
+                '<div class="bg-red-100 text-red-900 rounded-sm text-sm px-4 py-3">'
+                + "<br>".join(errors)
+                + "</div>"
+            )
 
 class SurveyDataExportView(generic.View):
     """Export form data into csv"""
