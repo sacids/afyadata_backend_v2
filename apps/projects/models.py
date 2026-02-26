@@ -152,14 +152,14 @@ class FormAttachment(models.Model):
     "Model attachment for form definition"
 
     TYPE_CHOICES = (
-        ("image", "IMAGE"),
-        ("json", "JSON"),
-        ("csv", "CSV"),
-        ("xls", "XLS"),
-        ("pdf", "PDF"),
+        ("image", "image"),
+        ("json", "json"),
+        ("csv", "csv"),
+        ("xls", "xls"),
+        ("pdf", "pdf"),
     )
 
-    form = models.ForeignKey(FormDefinition, related_name="form_attachments", on_delete=models.CASCADE)
+    form = models.ForeignKey(FormDefinition, related_name="attachments", on_delete=models.CASCADE)
     title = models.CharField(max_length=150, blank=True, null=True)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='json')
     attachment = models.FileField(

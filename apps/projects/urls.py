@@ -25,7 +25,8 @@ urlpatterns = [
     path("forms/<str:pk>/definition", views.form_definition, name="form-definition"),
 
     # rules + OHKR
-    path('forms/<str:pk>/rules', views.SurveyRulesView.as_view(), name='form-rules'),
+    path('forms/<str:pk>/attachments', views.SurveyAttachmentView.as_view(), name='form-attachments'),
+    path('forms/<str:pk>/rules', views.SurveyRuleView.as_view(), name='form-rules'),
 
     # form data
     path('forms/<str:pk>/data', views.SurveyDataView.as_view(), name='form-data'),

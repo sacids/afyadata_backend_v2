@@ -29,7 +29,7 @@ from . import x2jform
 from . import utils
 
 from .models import Project, FormDefinition, FormData
-from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm
+from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm, SurveyAttachmentForm
 from apps.ohkr.models import ClinicalSign
 
 
@@ -478,7 +478,7 @@ class SurveyUpdateView(generic.UpdateView):
             "Edit Form": "#",
             "Actions": "#",
             "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
-            "Attachments": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]})
+            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
         # render view
@@ -534,7 +534,7 @@ class SurveyDeleteView(generic.DeleteView):
         )
 
 
-class SurveyRulesView(generic.TemplateView):
+class SurveyRuleView(generic.TemplateView):
     """Survey Attachment"""
     def get(self, request, *args, **kwargs):
         # survey
@@ -556,10 +556,10 @@ class SurveyRulesView(generic.TemplateView):
 
         # Add links to context
         context["links"] = {
-            "Edit Form": "#",
+            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
-            "Attachments": '#'
+            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
         # render view
@@ -574,17 +574,22 @@ class SurveyRulesView(generic.TemplateView):
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">OHKR file created</div>'
         )
 
+
 class SurveyAttachmentView(generic.TemplateView):
     """Survey Attachment"""
     def get(self, request, *args, **kwargs):
         # survey
         survey = FormDefinition.objects.get(pk=kwargs["pk"])
 
+        print("form attachments")
+        print(survey.attachments.all())
+
         # context
         context = {
             "title": survey.title,
             "survey": survey,
-            # "form": SurveyUpdateForm(instance=survey),
+            "attachments": survey.attachments.all(),
+            "form": SurveyAttachmentForm()
         }
 
         # breadcrumbs
@@ -596,7 +601,7 @@ class SurveyAttachmentView(generic.TemplateView):
 
         # Add links to context
         context["links"] = {
-            "Edit Form": "#",
+            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
             "Attachments": '#'

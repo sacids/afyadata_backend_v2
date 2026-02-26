@@ -29,7 +29,7 @@ class FormAttachmentSerializer(serializers.ModelSerializer):
 
 class FormDefinitionSerializer(serializers.ModelSerializer):
     """Serializer for form definition"""
-    form_attachments = FormAttachmentSerializer(many=True, read_only=True)
+    attachments = FormAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = FormDefinition
@@ -38,16 +38,15 @@ class FormDefinitionSerializer(serializers.ModelSerializer):
 
 class FormDefnMetaSerializer(serializers.ModelSerializer):
     """Serializer for form definition"""
+    attachments = FormAttachmentSerializer(many=True, read_only=True)
+    
     class Meta:
         model = FormDefinition
-        fields = ["id", "version", "short_title"]
+        fields = ["id", "version", "short_title", "attachments"]
 
 
 class FormDataSerializer(serializers.ModelSerializer):
     """Serializer for form data"""
-
-    # form_data  = serializers.StringRelatedField(many=False)
-
     class Meta:
         model = FormData
         fields = "__all__"

@@ -1,0 +1,149 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% load humanize %}
+
+{% block content %}
+<main class="bg-white h-full" id="attachments-page">
+    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
+
+        <!-- Card -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 w-full mx-auto">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-800">
+                        {{ title|default:"Form Attachments" }}
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Manage attachments for <span class="font-medium">{{ survey.title|default:"this form" }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="p-4">
+                <div id="message_wrp"></div>
+
+                <!-- Grid: col-lg-8 + col-lg-4 (Tailwind equivalent) -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+                    <!-- LEFT: Attachments list (lg:8) -->
+                    <div class="lg:col-span-8">
+                        <div class="border border-gray-200 rounded-sm">
+                            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                                <h3 class="text-sm font-semibold text-gray-800">Attachments</h3>
+                                <span class="text-xs text-gray-500">
+                                    {{ attachments|length }} item{{ attachments|length|pluralize }}
+                                </span>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50 text-gray-600">
+                                        <tr>
+                                            <th class="text-left font-medium px-4 py-2">Title</th>
+                                            <th class="text-left font-medium px-4 py-2">Type</th>
+                                            <th class="text-left font-medium px-4 py-2">File</th>
+                                            <th class="text-left font-medium px-4 py-2">Uploaded</th>
+                                            <th class="text-right font-medium px-4 py-2">Actions</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody class="divide-y divide-gray-100">
+                                        {% for a in attachments %}
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-2 text-gray-800">
+                                                {{ a.title|default:"—" }}
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                <span
+                                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs border border-gray-200 text-gray-700 bg-white">
+                                                    {{ a.get_type_display }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                {% if a.attachment %}
+                                                <a href="{{ a.attachment.url }}" target="_blank"
+                                                    class="text-slate-700 hover:underline">
+                                                    View / Download
+                                                </a>
+                                                {% else %}
+                                                <span class="text-gray-400">No file</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="px-4 py-2 text-gray-600">
+                                                {{ a.created_at|naturaltime }}
+                                            </td>
+                                            <td class="px-4 py-2 text-right whitespace-nowrap">
+                                                
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                                                No attachments yet. Upload one from the right panel.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Upload form (lg:4) -->
+                    <div class="lg:col-span-4">
+                        <div class="border border-gray-200 rounded-sm">
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <h3 class="text-sm font-semibold text-gray-800">Upload attachment</h3>
+                                <p class="text-xs text-gray-500 mt-1">Add an image, CSV, JSON, PDF, etc.</p>
+                            </div>
+
+                            <div class="p-4">
+                                <form method="post" enctype="multipart/form-data" hx-encoding="multipart/form-data"
+                                    hx-post="{% url 'projects:form-attachments' survey.pk %}" hx-target="#message_wrp">
+
+                                    {% csrf_token %}
+
+                                    <!-- Form -->
+                                    {% for field in form.visible_fields %}
+                                    <div class="mb-3">
+                                        {{ field|as_crispy_field }}
+                                    </div>
+                                    {% endfor %}
+
+                                    <div class="flex justify-end space-x-2 pt-4">
+                                        <button type="reset"
+                                            class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm font-normal py-2 px-3 rounded-sm">
+                                            Clear
+                                        </button>
+
+                                        <button type="submit"
+                                            class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-sm text-sm px-3 py-2 text-center">
+                                            Upload
+                                        </button>
+                                    </div>
+
+                                    <div class="mt-3 text-xs text-gray-500">
+                                        Allowed types: image, json, csv, xls, pdf.
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /grid -->
+            </div>
+        </div><!-- /card -->
+    </div>
+</main>
+{% endblock %}
+
+{% block extra-js %}
+<script>
+    $(document).ready(function () {
+        htmx.process("#attachments-page");
+    });
+</script>
+{% endblock extra-js %}
