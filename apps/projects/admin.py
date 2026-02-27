@@ -25,6 +25,11 @@ class ProjectAdmin(admin.ModelAdmin):
     list_per_page = 25
 
 
+class FormAttachmentInline(admin.TabularInline):
+    model = FormAttachment
+    ordering = ("title",)
+    extra = 0
+
 @admin.register(FormDefinition)
 class FormDefinitionAdmin(admin.ModelAdmin):
     list_display = (
@@ -42,6 +47,7 @@ class FormDefinitionAdmin(admin.ModelAdmin):
     search_fields = ("title", "short_title", "version", "code", "description")
     ordering = ("sort_order", "-created_at")
     readonly_fields = ("created_at", "updated_at")
+    inlines = [FormAttachmentInline]
     fieldsets = (
         (
             "Basic Information",

@@ -69,11 +69,7 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
 
         row["active"] = (
             '<span class="px-2 py-0.5 text-xs font-medium rounded-full '
-            + (
-                "bg-green-100 text-green-600"
-                if obj.active
-                else "bg-red-100 text-red-600"
-            )
+            + ("bg-green-100 text-green-600" if obj.active else "bg-red-100 text-red-600")
             + '"> {} </span>'.format("Active" if obj.active else "Inactive")
         )
 
@@ -90,11 +86,11 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
             'hx-target="#message_wrp" '
             'hx-swap="innerHTML" '
             'hx-confirm="{}" '
-            'hx-on::after-request="setTimeout(() => window.location.reload(), 800)" '
-            'class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm {} cursor-pointer">'
-            '<i class="bx bxs-info-square bx-xs"></i>'
+            'hx-on::after-request="setTimeout(() => window.location.reload(), 300)" '
+            'class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-blue-100 text-gray-600 hover:bg-gray-200 cursor-pointer">'
+            '<i class="bx bx-info-square bx-xs"></i>'
             '</a>'
-
+            
             # Delete
             '<a href="#" '
             'hx-get="{}" '
@@ -108,9 +104,6 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
             reverse("projects:edit", kwargs={"pk": obj.id}),
             reverse("projects:activate", kwargs={"pk": obj.id}),
             "Deactivate this project?" if obj.active else "Activate this project?",
-            "bg-green-100 text-green-600 hover:bg-green-200"
-            if obj.active
-            else "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
             reverse("projects:delete", kwargs={"pk": obj.id}),  
         )
 
@@ -150,6 +143,12 @@ class FormsAjaxDatatableView(AjaxDatatableView):
             "searchable": False,
         },
         {
+            "name": "active",
+            "title": "Status",
+            "visible": True,
+            "searchable": False,
+        },
+        {
             "name": "created_at",
             "title": "Created On",
             "visible": True,
@@ -179,6 +178,11 @@ class FormsAjaxDatatableView(AjaxDatatableView):
         form_data = FormData.objects.filter(form=obj).count()
         row["submission_count"] = f'<div class="text-right">{form_data}</div>'
 
+        row["active"] = (
+            '<span class="px-2 py-0.5 text-xs font-medium rounded-full '
+            + ("bg-green-100 text-green-600" if obj.active else "bg-red-100 text-red-600")
+            + '"> {} </span>'.format("Active" if obj.active else "Inactive")
+        )
 
         row["created_at"] = obj.created_at.strftime("%d-%m-%Y")
         row["updated_at"] = obj.updated_at.strftime("%d-%m-%Y")

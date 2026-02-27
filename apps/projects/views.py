@@ -29,7 +29,8 @@ from . import x2jform
 from . import utils
 
 from .models import Project, FormDefinition, FormData
-from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm
+from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm, SurveyAttachmentForm
+from apps.ohkr.models import ClinicalSign
 
 
 class ProjectListView(generic.ListView):
@@ -59,7 +60,7 @@ class ProjectListView(generic.ListView):
         # Add links to context
         context["links"] = {
             "Project Lists": reverse_lazy("projects:lists"),
-            "Create New": reverse_lazy("projects:create"),
+            "Create Project": reverse_lazy("projects:create"),
         }
 
         return context
@@ -123,13 +124,13 @@ class ProjectCreateView(generic.CreateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": "Create New", "url": "#"},
+            {"name": "Create Project", "url": "#"},
         ]
 
         # Add links to context
         context["links"] = {
             "Project Lists": reverse_lazy("projects:lists"),
-            "Create New": reverse_lazy("projects:create"),
+            "Create Project": reverse_lazy("projects:create"),
         }
 
         return render(request, "projects/create.html", context)
@@ -145,12 +146,18 @@ class ProjectCreateView(generic.CreateView):
 
             # success response
             return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project created succesfully</div>'
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project created.</div>'
             )
         else:
             # error response
+            errors = []
+            for field_errors in form.errors.values():
+                errors.extend(field_errors)
+
             return HttpResponse(
-                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">{form.errors}</div>'
+                '<div class="bg-red-100 text-red-900 rounded-sm text-sm px-4 py-3">'
+                + "<br>".join(errors)
+                + "</div>"
             )
 
 
@@ -195,12 +202,18 @@ class ProjectUpdateView(generic.UpdateView):
 
             # success response
             return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project updated succesfully</div>'
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project updated.</div>'
             )
         else:
             # error response
+            errors = []
+            for field_errors in form.errors.values():
+                errors.extend(field_errors)
+
             return HttpResponse(
-                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">{form.errors}</div>'
+                '<div class="bg-red-100 text-red-900 rounded-sm text-sm px-4 py-3">'
+                + "<br>".join(errors)
+                + "</div>"
             )
 
 
@@ -244,7 +257,7 @@ class ProjectActivateView(generic.TemplateView):
 
             # success response
             return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project status updated succesfully</div>'
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project status updated.</div>'
             )
         except:
             # error response
@@ -278,6 +291,7 @@ class ProjectMembersListView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -323,6 +337,7 @@ class ProjectDataView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -356,6 +371,7 @@ class SurveyListView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -389,6 +405,7 @@ class SurveyCreateView(generic.CreateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": kwargs["pk"]}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
         }
 
@@ -460,7 +477,8 @@ class SurveyUpdateView(generic.UpdateView):
         context["links"] = {
             "Edit Form": "#",
             "Actions": "#",
-            "Rules (OHKR)": "#",
+            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
         # render view
@@ -515,6 +533,105 @@ class SurveyDeleteView(generic.DeleteView):
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form deleted Succesfully</div>'
         )
 
+
+class SurveyRuleView(generic.TemplateView):
+    """Survey Attachment"""
+    def get(self, request, *args, **kwargs):
+        # survey
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        # context
+        context = {
+            "title": survey.title,
+            "survey": survey,
+            "clinical_signs" : ClinicalSign.objects.order_by('name').all()
+        }
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": survey.title, "url": "#"},
+        ]
+
+        # Add links to context
+        context["links"] = {
+            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "Actions": "#",
+            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
+        }
+
+        # render view
+        return render(request, "surveys/rules.html", context=context)
+    
+    def post(self, request, *args, **kwargs):
+        # survey
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        # success response
+        return HttpResponse(
+            '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">OHKR file created</div>'
+        )
+
+
+class SurveyAttachmentView(generic.TemplateView):
+    """Survey Attachment"""
+    def get(self, request, *args, **kwargs):
+        # survey
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+
+        # context
+        context = {
+            "title": survey.title,
+            "survey": survey,
+            "attachments": survey.attachments.all(),
+            "form": SurveyAttachmentForm()
+        }
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": survey.title, "url": "#"},
+        ]
+
+        # Add links to context
+        context["links"] = {
+            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "Actions": "#",
+            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Attachments": '#'
+        }
+
+        # render view
+        return render(request, "surveys/attachments.html", context=context)
+    
+    def post(self, request, *args, **kwargs):
+        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        form = SurveyAttachmentForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            cur_obj = form.save(commit=False)
+            cur_obj.form = survey
+            #TODO: work on the versioning of the attachment
+            cur_obj.save()
+
+            # success response
+            return HttpResponse(
+                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form attachment uploaded.</div>'
+            )
+        else:
+            # error response
+            errors = []
+            for field_errors in form.errors.values():
+                errors.extend(field_errors)
+
+            return HttpResponse(
+                '<div class="bg-red-100 text-red-900 rounded-sm text-sm px-4 py-3">'
+                + "<br>".join(errors)
+                + "</div>"
+            )
 
 class SurveyDataExportView(generic.View):
     """Export form data into csv"""
@@ -664,6 +781,7 @@ class SurveyDataInstanceView(generic.TemplateView):
             "Upload Form": reverse_lazy(
                 "projects:upload-form", kwargs={"pk": cur_form.project.pk}
             ),
+            "Knowledge Base": "#",
             "Data": reverse_lazy("projects:data", kwargs={"pk": cur_form.project.pk}),
         }
 
