@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<main class="bg-white h-full">
+<main class="bg-white h-full" x-data="initData()">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
 
         <!-- Card -->
@@ -25,7 +25,11 @@
                 <div class="flex items-center space-x-2">
                     <button
                         class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
-                        <i class='bx bxs-file-export px-1' ></i> Export
+                        <i class='bx bxs-file-export px-1'></i> Export
+                    </button>
+
+                    <button type="button" x-html="btnSync" x-on:click="syncData();"
+                        class="inline-flex items-center rounded-sm bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
                     </button>
                 </div>
             </div>
@@ -84,6 +88,49 @@
             // ...
         },);
     });
+
+    //alpine data
+    function initData() {
+        return {
+            formLoading: false,
+            btnSync: "<i class='bx bxs-cloud-download px-1'></i> Sync Data",
+
+            //show message
+            showMessage(type, message) {
+                const styles = {
+                    success: "bg-green-100 border border-green-100 text-green-800 text-sm",
+                    danger: "bg-red-100 border border-red-100 text-red-800 text-sm"
+                };
+
+                $('#message_wrp').html(
+                    `<div class="${styles[type]} px-4 py-3 rounded-sm">${message}</div>`
+                );
+            },
+
+            //sync diseases 
+            async syncData() {
+                this.formLoading = true;
+                this.btnSync = "<i class='bx bx-loader-circle bx-spin'></i> Syncing data....";
+
+                fetch(`/ohkr/clinical-signs/sync`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success === true) {
+                            this.showMessage('success', data.success_msg);
+                            setTimeout(() => window.location.reload(), 3000);
+                        } else if (data.success == false) {
+                            this.showMessage('danger', data.error_msg)
+                        }
+                    }).catch(error => {
+                        console.error("Error caught:", error);
+                        this.showMessage('danger', data.error_msg);
+                    }).finally(() => {
+                        this.formLoading = false;
+                        this.btnSync = "<i class='bx bxs-cloud-download px-1'></i> Sync Data";
+                    });
+            },
+        }
+    }
 
 </script>
 {% endblock extra-js %}

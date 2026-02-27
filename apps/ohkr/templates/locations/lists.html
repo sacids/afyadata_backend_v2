@@ -14,10 +14,10 @@
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-800">
-                        Diseases
+                        Locations
                     </h2>
                     <p class="text-xs text-gray-500">
-                        List of all diseases
+                        List of all locations
                     </p>
                 </div>
 
@@ -39,7 +39,7 @@
                 <div class="relative overflow-x-auto">
                     <div id="message_wrp" class="mb-3" hx-preserve></div>
 
-                    <table id="datatable_diseases" class="w-full text-xs text-left text-gray-700 border-collapse">
+                    <table id="datatable_locations" class="w-full text-xs text-left text-gray-700 border-collapse">
                     </table>
                 </div>
             </div>
@@ -55,8 +55,8 @@
 <script language="javascript">
     $(document).ready(function () {
         AjaxDatatableViewUtils.initialize_table(
-            $('#datatable_diseases'),
-            "{% url 'ohkr:dt-diseases' %}",
+            $('#datatable_locations'),
+            "{% url 'ohkr:dt-locations' %}",
             {
                 // extra_options (example)
                 processing: false,
@@ -112,7 +112,7 @@
                 this.formLoading = true;
                 this.btnSync = "<i class='bx bx-loader-circle bx-spin'></i> Syncing data....";
 
-                fetch(`/ohkr/diseases/sync`)
+                fetch(`/ohkr/locations/sync`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success === true){
