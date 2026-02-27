@@ -22,6 +22,12 @@ class LocationAjaxDatatableView(AjaxDatatableView):
             "searchable": False,
         },
         {
+            "name": "parent",
+            "title": "Parent",
+            "visible": True,
+            "searchable": False,
+        },
+        {
             "name": "level",
             "title": "Admin Level",
             "visible": True,

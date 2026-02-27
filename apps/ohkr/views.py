@@ -17,6 +17,7 @@ from django.contrib import messages
 
 from django.db import transaction
 from .models import *
+from .utils import sync_locations
 
 # Create your views here.
 class LocationListView(generic.ListView):
@@ -72,34 +73,22 @@ class LocationSyncView(generic.CreateView):
             response.raise_for_status()
             remote_data = response.json()
 
-            created, updated = 0, 0
-            with transaction.atomic():
-                for item in remote_data["values"]:
-                    obj, was_created = Disease.objects.update_or_create(
-                        external_id=item["id"],
-                        defaults={
-                            "name": item["name"],
-                            "source": "RDS",
-                            "language_code": item["language_code"],
-                        },
-                    )
-                    # increment created and updated
-                    created += was_created
-                    updated += not was_created
+            result = sync_locations(remote_data, source="RDS", active=True)
+            print(result)
 
             # return response
             return JsonResponse(
                 {
                     "success": True,
-                    "success_msg": "Diseases synced",
-                    "created": created,
-                    "updated": updated,
+                    "success_msg": "Location synced",
+                    # "created": created,
+                    # "updated": updated,
                 }
             )
 
         except requests.RequestException as e:
             return JsonResponse(
-                {"success": False, "error_msg": f"Failed to sync diseases: {str(e)}"}
+                {"success": False, "error_msg": f"Failed to sync location: {str(e)}"}
             )
         except Exception as e:
             return JsonResponse(
