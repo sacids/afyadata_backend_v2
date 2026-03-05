@@ -64,7 +64,7 @@ class LocationSyncView(generic.CreateView):
         return super(LocationSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
-        api_url = f"{config("FAO_BASE_URL")}/api/geographical_data/countries/TZA"
+        api_url = f"{config('FAO_BASE_URL')}/api/geographical_data/countries/TZA"
         headers = {"accept": "application/json"}
 
         try:
@@ -141,7 +141,7 @@ class DiseaseSyncView(generic.CreateView):
         return super(DiseaseSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
-        api_url = f"{config("FAO_BASE_URL")}/api/diseases/"
+        api_url = f"{config('FAO_BASE_URL')}/api/diseases/"
         headers = {"accept": "application/json"}
 
         try:
@@ -230,7 +230,7 @@ class SpecieSyncView(generic.CreateView):
         return super(SpecieSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
-        api_url = f"{config("FAO_BASE_URL")}/api/species/"
+        api_url = f"{config('FAO_BASE_URL')}/api/species/"
         headers = {"accept": "application/json"}
 
         try:
@@ -319,7 +319,7 @@ class ClinicalSignSyncView(generic.CreateView):
         return super(ClinicalSignSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
-        api_url = f"{config("FAO_BASE_URL")}/api/clinical-signs/"
+        api_url = f"{config('FAO_BASE_URL')}/api/clinical-signs/"
         headers = {"accept": "application/json"}
 
         try:
