@@ -110,7 +110,7 @@ def map_value(config: FormPayloadConfig, entity_type: str, raw_value):
     return m.target_value if m else None
 
 
-def apply_transform(value, transform: str | None, fd=None, config=None):
+def apply_transform(value, transform: str, fd=None, config=None):
     if not transform:
         return value
 
@@ -205,6 +205,7 @@ def build_payload(fd, config):
 
 
 def push_payload(cfg, payload):
+    """Push data to endpoint"""
     if not cfg.endpoint:
         return False, {"error": "Missing endpoint in FormPayloadConfig"}
 
@@ -213,9 +214,6 @@ def push_payload(cfg, payload):
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
     if isinstance(cfg.headers, dict):
         headers.update(cfg.headers)
-
-    # optional auth token if you store it in headers or settings
-    # headers["Authorization"] = f"Bearer {token}"
 
     try:
         resp = requests.request(
