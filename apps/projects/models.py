@@ -114,6 +114,7 @@ class FormDefinition(models.Model):
     sort_order = models.IntegerField(default=0)
     active = models.IntegerField(default=1)
     response = models.CharField(max_length=200, null=True, blank=True)
+    callback_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -218,6 +219,7 @@ class FormData(models.Model):
         null=True,
     )
     synced = models.IntegerField(default=0)
+    push_status = models.BooleanField(default=False)
 
     @property
     def int_updated_at(self):

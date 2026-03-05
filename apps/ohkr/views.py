@@ -73,16 +73,16 @@ class LocationSyncView(generic.CreateView):
             response.raise_for_status()
             remote_data = response.json()
 
+            # result
             result = sync_locations(remote_data, source="RDS", active=True)
-            print(result)
 
             # return response
             return JsonResponse(
                 {
                     "success": True,
                     "success_msg": "Location synced",
-                    # "created": created,
-                    # "updated": updated,
+                    "created": result[0],
+                    "updated": result[1]
                 }
             )
 

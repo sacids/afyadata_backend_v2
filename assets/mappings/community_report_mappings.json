@@ -1,0 +1,19 @@
+{
+  "regions": {
+    "Morogoro": "12aba600-4727-4c2b-85ac-fbcf503f2f60",
+    "Dodoma": "32aba600-4727-4c2b-85ac-fbcf503f2f70",
+    "Arusha": "62aba600-4727-4c2b-85ac-fbcf503f2f10"
+  },
+
+  "species": {
+    "Cattle": "93a0b0a6-db10-4fc0-a682-23ce2acbfd35",
+    "Goat": "aa10b0a6-db10-4fc0-a682-23ce2acbfd35",
+    "Sheep": "bb10b0a6-db10-4fc0-a682-23ce2acbfd35"
+  },
+
+  "symptoms": {
+    "B01": "d362972d-11fa-47d1-b4af-11bd28d16f0f",
+    "B02": "a4cc7705-9aa9-4c10-a480-cb3b95e8a51e",
+    "B03": "b1237705-9aa9-4c10-a480-cb3b95e8a55e"
+  }
+}

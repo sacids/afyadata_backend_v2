@@ -79,11 +79,13 @@ class SurveyAddForm(forms.ModelForm):
         model = FormDefinition
         fields = [
             "title",
+            "short_title",
             "code",
             "is_root",
             "children",
             "xlsform",
             "description",
+            "callback_url",
         ]
 
         widgets = {
@@ -92,6 +94,14 @@ class SurveyAddForm(forms.ModelForm):
                     "class": "font-normal text-sm rounded-md",
                     "id": "title",
                     "placeholder": "Write title...",
+                    "required": "",
+                }
+            ),
+            "short_title": forms.TextInput(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "short_title",
+                    "placeholder": "Write short title...",
                     "required": "",
                 }
             ),
@@ -128,6 +138,13 @@ class SurveyAddForm(forms.ModelForm):
                     "rows": 2,
                 }
             ),
+            "callback_url": forms.TextInput(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "callback_url",
+                    "placeholder": "Write callback url for push data...",
+                }
+            ),
         }
 
 
@@ -147,11 +164,12 @@ class SurveyUpdateForm(forms.ModelForm):
         fields = [
             "title",
             "short_title",
-            "xlsform",
             "is_root",
+            "children",
+            "xlsform",
             "response",
-            "short_description",
             "description",
+            "callback_url",
         ]
         tailwind_css = "text-xs rounded-md"
 
@@ -172,6 +190,9 @@ class SurveyUpdateForm(forms.ModelForm):
                     "required": "",
                 }
             ),
+            "is_root": forms.CheckboxInput(
+                attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
+            ),
             "children": forms.TextInput(
                 attrs={
                     "class": "font-normal text-sm rounded-md",
@@ -188,9 +209,6 @@ class SurveyUpdateForm(forms.ModelForm):
                     "accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel",
                     "required": "",
                 }
-            ),
-            "is_root": forms.CheckboxInput(
-                attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
             ),
             "response": forms.TextInput(
                 attrs={
@@ -213,6 +231,13 @@ class SurveyUpdateForm(forms.ModelForm):
                     "id": "description",
                     "placeholder": "Write description...",
                     "rows": 2,
+                }
+            ),
+            "callback_url": forms.TextInput(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "callback_url",
+                    "placeholder": "Write callback url for push data...",
                 }
             ),
         }

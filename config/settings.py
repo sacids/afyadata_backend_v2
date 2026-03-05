@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "apps.setup",
     "apps.ohkr",
     "apps.chat",
+    "apps.esb",
     "apps.reports",
     "apps.api",
     # libs
