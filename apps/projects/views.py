@@ -477,7 +477,7 @@ class SurveyUpdateView(generic.UpdateView):
         context["links"] = {
             "Edit Form": "#",
             "Actions": "#",
-            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
@@ -558,7 +558,7 @@ class SurveyRuleView(generic.TemplateView):
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
-            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
@@ -600,7 +600,7 @@ class SurveyAttachmentView(generic.TemplateView):
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
-            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Rules": "#",
             "Attachments": '#'
         }
 
