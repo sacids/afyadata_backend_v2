@@ -64,24 +64,28 @@
                 scrollX: false,
                 dom: `
                     <"flex justify-between items-center py-2 border-b text-sm"
-                        <"flex gap-2 items-center"B>
+                        <"flex gap-2 items-center"f>
                         <"flex items-center"p>
                     >
                     t
                 `,
-                buttons: [
-                    // {
-                    //     extend: 'csv',
-                    //     text: 'Download Data',
-                    //     filename: 'Project-Data-csv',
-                    //     className: 'bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600'
-                    // }
-                ],
+                buttons: [],
                 "pageLength": 13,
                 responsive: false,
                 language: {
                     search: "",
                     info: "_PAGE_ of _PAGES_",
+                },
+                initComplete: function () {
+
+                    // style search input
+                    let searchInput = $('#datatable_diseases_filter input');
+
+                    searchInput
+                        .attr("placeholder", "Search diseases...")
+                        .attr("autocomplete", "on")
+                        .addClass("border border-gray-300 rounded-sm px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400");
+
                 },
             }, {
             // extra_data

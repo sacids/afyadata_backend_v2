@@ -13,17 +13,24 @@ class LocationAjaxDatatableView(AjaxDatatableView):
     ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
     search_values_separator = "+"
+    show_column_filters = False
 
     column_defs = [
         {
             "name": "name",
             "title": "Location",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
+        # {
+        #     "name": "parent",
+        #     "title": "Parent",
+        #     "visible": True,
+        #     "searchable": False,
+        # },
         {
-            "name": "parent",
-            "title": "Parent",
+            "name": "external_id",
+            "title": "External Id",
             "visible": True,
             "searchable": False,
         },
@@ -62,7 +69,6 @@ class LocationAjaxDatatableView(AjaxDatatableView):
         )
 
 
-
 class DiseaseAjaxDatatableView(AjaxDatatableView):
     model = Disease
     title = "Diseases"
@@ -71,11 +77,18 @@ class DiseaseAjaxDatatableView(AjaxDatatableView):
     ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
     search_values_separator = "+"
+    show_column_filters = False
 
     column_defs = [
         {
             "name": "name",
             "title": "Disease",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "external_id",
+            "title": "External Id",
             "visible": True,
             "searchable": False,
         },
@@ -116,11 +129,18 @@ class SpecieAjaxDatatableView(AjaxDatatableView):
     ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
     search_values_separator = "+"
+    show_column_filters = False
 
     column_defs = [
         {
             "name": "name",
             "title": "Specie",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "external_id",
+            "title": "External Id",
             "visible": True,
             "searchable": False,
         },
@@ -161,11 +181,18 @@ class ClinicalSignAjaxDatatableView(AjaxDatatableView):
     ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
     search_values_separator = "+"
+    show_column_filters = False
 
     column_defs = [
         {
             "name": "name",
             "title": "Clinical Sign",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "external_id",
+            "title": "External Id",
             "visible": True,
             "searchable": False,
         },
