@@ -221,7 +221,7 @@ class FormData(models.Model):
     synced = models.IntegerField(default=0)
     push_status = models.BooleanField(default=False)
     response_id = models.TextField(max_length=200, blank=True, null=True)
-    response_json = models.JSONField(null=False)
+    response_json = models.JSONField(null=True)
 
     @property
     def int_updated_at(self):
