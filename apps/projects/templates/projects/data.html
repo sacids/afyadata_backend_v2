@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<main class="bg-white min-h-screen" x-data="initData();" x-init="loadTable(forms[0]?.id)">
+<main class="bg-white min-h-screen" x-data="initData();" x-init="forms.length ? loadTable(forms[0].id) : (title='No forms available', description='Upload a form to view data.')">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Left: Builder / filters -->
@@ -23,6 +23,11 @@
                             <p class="text-xs" :class="activeFormId === val.id ? 'text-orange-600' : 'text-gray-500'"
                                 x-text="val.code"></p>
                         </div>
+                    </div>
+                </template>
+                <template x-if="forms.length === 0">
+                    <div class="rounded-lg shadow-sm border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500">
+                        No forms found for this project.
                     </div>
                 </template>
             </aside>

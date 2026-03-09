@@ -7,8 +7,9 @@
 
         return {
             title: "",
-            subtitle: "",
             description: "",
+            message: '',
+            messageType: 'success',
             activeFormId: null,
             viewMode: 'table',
             forms: forms,
@@ -31,6 +32,9 @@
                 if ($.fn.dataTable.isDataTable($table)) {
                     $table.DataTable().clear().destroy();
                 }
+
+                console.log("== Form cols ==");
+                console.log(this.form_cols);
 
                 // rebuild thead so headers match dynamic cols
                 const thead = `<tr>${this.form_cols.map(c => `<th>${this.prettyHeader(c)}</th>`).join('')
@@ -72,7 +76,7 @@
                     if (!rowData) return;
 
                     // redirect to instance page
-                    window.location.href = `/projects/forms/${rowData[0]}/data/instance`; // change to your URL
+                    window.location.href = `/projects/forms/${rowData[0]}/data/instance`;
                 });
 
                 // UX: show pointer cursor on rows
@@ -111,22 +115,34 @@
 
             async loadTable(form_id) {
                 const form = this.forms.find(f => String(f.id) === String(form_id));
-                if (!form) return;
+                if (!form) {
+                    this.form_cols = [];
+                    this.form_data = [];
+                    this.rebuildDataTable();
+                    return;
+                }
 
                 this.activeFormId = form.id;
                 this.title = form.title || "";
                 this.description = form.description || "";
                 this.viewMode = 'table';
 
-                fetch(`/projects/forms/${this.activeFormId}/data`)
-                    .then(response => response.json())
-                    .then(data => {
-                        this.form_cols = data.cols;
-                        this.form_data = data.data;
+                try {
+                    const res = await fetch(`/projects/forms/${this.activeFormId}/data`);
+                    if (!res.ok) throw new Error("Failed to load form data");
 
-                        //rebuild the table
-                        this.rebuildDataTable();
-                    });
+                    const data = await res.json();
+                    this.form_cols = Array.isArray(data.cols) ? data.cols : [];
+                    this.form_data = Array.isArray(data.data) ? data.data : [];
+
+                    // rebuild the table
+                    this.rebuildDataTable();
+                } catch (err) {
+                    console.error("Error loading table data:", err);
+                    this.form_cols = [];
+                    this.form_data = [];
+                    this.rebuildDataTable();
+                }
             },
 
             exportData(form_id) {
@@ -144,9 +160,6 @@
             },
 
             // rendering charts
-            loading: false,
-            message: '',
-            messageType: 'success',
 
             chart: null,
             chartType: 'bar',

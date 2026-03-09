@@ -682,6 +682,9 @@ class SurveyDataView(generic.DetailView):
         tbl_header_dict = utils.get_table_header(data)  # {key: label}
         header_keys = list(tbl_header_dict.keys())
 
+        logging.info("==Header Keys ==")
+        logging.info(header_keys)
+
         # Headers: add UUID column first
         cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys]
 
@@ -698,6 +701,9 @@ class SurveyDataView(generic.DetailView):
 
             row = [row_uuid] + [item.form_data.get(k) for k in header_keys]
             arr_data.append(row)
+
+        logging.info("== data ==")
+        logging.info(arr_data)
 
         return JsonResponse(
             {

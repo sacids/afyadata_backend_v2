@@ -322,6 +322,7 @@ def generate_code(length=5):
     chars = string.ascii_uppercase + string.digits
     return "".join(random.choices(chars, k=length))
 
+
 def generate_unique_code(model, field='code', length=5):
     while True:
         code = generate_code(length)
