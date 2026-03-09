@@ -174,7 +174,9 @@ def build_affected_animals(fd, config):
     species_id = map_value(config, "species", species_raw)
 
     # 2) quantity (you used "quantity" in JSON)
-    quantity = data.get("quantity") or data.get("idadi_dalili_wakubwa") or 0
+    numb_of_young_show_sympt = data.get("numb_of_young_show_sympt") or 0
+    numb_of_adult_show_sympt = data.get("numb_of_adult_show_sympt") or 0
+    quantity =  numb_of_adult_show_sympt + numb_of_young_show_sympt
 
     # 3) symptoms codes -> clinical_signs objects
     symptom_codes = data.get("symptoms", []) or []
@@ -228,7 +230,7 @@ def push_payload(cfg, payload):
         info = {
             "ok": ok,
             "status_code": resp.status_code,
-            "sent_at": timezone.now().isoformat(),
+            "sent_at": datetime.now(),
         }
 
         # keep a short response preview (avoid huge logs)
@@ -246,5 +248,5 @@ def push_payload(cfg, payload):
         return False, {
             "ok": False,
             "error": str(e),
-            "sent_at": timezone.now().isoformat(),
+            "sent_at": datetime.now(),
         }
