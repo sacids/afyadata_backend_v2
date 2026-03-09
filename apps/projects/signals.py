@@ -27,8 +27,8 @@ def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
 
         for cfg in configs:
             # prevent re-send if already sent
-            if push_status is True:
-                continue
+            # if push_status is True:
+            #     continue
             
             # build payload
             payload = build_payload(fd, cfg)
@@ -36,7 +36,7 @@ def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
             logging.info(payload)
 
             # push data to the server
-            ok, info = push_payload(cfg, payload)
+            # ok, info = push_payload(cfg, payload)
 
         # update status to avoid deplicate
         FormData.objects.filter(pk=fd.pk).update(push_status=True)
