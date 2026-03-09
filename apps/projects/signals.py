@@ -22,9 +22,6 @@ def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
         logging.info("== Form data JSON ==")
         logging.info(fd.form_data)
 
-        logging.info("== Form data GPS ==")
-        logging.info(fd.gps)
-
         for cfg in configs:
             # prevent re-send if already sent
             # if push_status is True:

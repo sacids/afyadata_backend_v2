@@ -1,4 +1,6 @@
 import re
+import ast
+import json
 import requests
 import logging
 from datetime import datetime, date, timezone as dt_timezone
@@ -48,13 +50,10 @@ def parse_gps(value):
     """
     if value is None:
         return (None, None)
-    
-    logging.info("== GPS value ==")
-    logging.info(value)
 
     if isinstance(value, dict):
-        lat = value.get("latitude")
-        lng = value.get("longitude")
+        lat = value.get("latitude", value.get("lat"))
+        lng = value.get("longitude", value.get("lng"))
 
         logging.info(f"latitude: {lat}")
         logging.info(f"longitude: {lng}")
@@ -65,6 +64,20 @@ def parse_gps(value):
             return (None, None)
 
     s = str(value).strip()
+
+    # DB varchar can store dict-like string payloads
+    if s.startswith("{") and s.endswith("}"):
+        parsed = None
+        try:
+            parsed = json.loads(s)
+        except Exception:
+            try:
+                parsed = ast.literal_eval(s)
+            except Exception:
+                parsed = None
+
+        if isinstance(parsed, dict):
+            return parse_gps(parsed)
 
     # split by comma OR whitespace
     parts = [p for p in re.split(r"[,\s]+", s) if p]
