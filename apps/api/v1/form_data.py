@@ -155,9 +155,7 @@ class FormDataView(viewsets.ViewSet):
                 }
 
             # Return Response
-            logging.info("== Success creating form data ==")
             return Response({"success": True, "data": response_payload}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logging.exception("== Error creating form data ==")
             return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

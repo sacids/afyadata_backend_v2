@@ -14,16 +14,16 @@
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-800">
-                        Clinical Signs
+                        Locations
                     </h2>
                     <p class="text-xs text-gray-500">
-                        List of all clinical signs
+                        List of all locations
                     </p>
                 </div>
 
                 <!-- Optional actions -->
                 <div class="flex items-center space-x-2">
-                    <button
+                    <button type="button"
                         class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                         <i class='bx bxs-file-export px-1'></i> Export
                     </button>
@@ -39,7 +39,7 @@
                 <div class="relative overflow-x-auto">
                     <div id="message_wrp" class="mb-3" hx-preserve></div>
 
-                    <table id="datatable_clinical_signs" class="w-full text-xs text-left text-gray-700 border-collapse">
+                    <table id="datatable_locations" class="w-full text-xs text-left text-gray-700 border-collapse">
                     </table>
                 </div>
             </div>
@@ -55,8 +55,8 @@
 <script language="javascript">
     $(document).ready(function () {
         AjaxDatatableViewUtils.initialize_table(
-            $('#datatable_clinical_signs'),
-            "{% url 'ohkr:dt-clinical-signs' %}",
+            $('#datatable_locations'),
+            "{% url 'ohkr:dt-locations' %}",
             {
                 // extra_options (example)
                 processing: false,
@@ -79,14 +79,14 @@
                 initComplete: function () {
 
                     // style search input
-                    let searchInput = $('#datatable_clinical_signs_filter input');
+                    let searchInput = $('#datatable_locations_filter input');
 
                     searchInput
-                        .attr("placeholder", "Search signs...")
+                        .attr("placeholder", "Search locations...")
                         .attr("autocomplete", "on")
                         .addClass("border border-gray-300 rounded-sm px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400");
 
-                },
+                }
             }, {
             // extra_data
             // ...
@@ -116,7 +116,7 @@
                 this.formLoading = true;
                 this.btnSync = "<i class='bx bx-loader-circle bx-spin'></i> Syncing data....";
 
-                fetch(`/ohkr/clinical-signs/sync`)
+                fetch(`/ohkr/locations/sync`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success === true) {

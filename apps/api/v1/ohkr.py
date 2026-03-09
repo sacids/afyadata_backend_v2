@@ -46,54 +46,7 @@ class SpecieView(viewsets.ViewSet):
         pass    
 
     def create(self, request):
-        """
-        Pull species from FAO species API and insert/update locally
-        """
-        api_url = "https://reference-data-service-175434516411.europe-west1.run.app/api/species/"
-        headers = {"accept": "application/json"}
-
-        try:
-            # Fetch data from remote service
-            response = requests.get(api_url, headers=headers, timeout=30)
-            response.raise_for_status()
-            remote_data = response.json()
-
-            created, updated = 0, 0
-            with transaction.atomic():
-                for item in remote_data['values']:
-                    obj, was_created = Specie.objects.update_or_create(
-                        external_id=item["id"],
-                        defaults={
-                            "name": item["name"],
-                            "language_code": item["language_code"],
-                        }
-                    )
-
-                    if was_created:
-                            created += 1
-                    else:
-                        updated += 1
-
-            return Response(
-                {
-                    "message": "Species synced successfully",
-                    "created": created,
-                    "updated": updated,
-                    "total": len(remote_data),
-                },
-                status=status.HTTP_201_CREATED,
-            )
-
-        except requests.RequestException as e:
-            return Response(
-                {"error": f"Failed to fetch species: {str(e)}"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        pass
     
 
 class DiseaseView(viewsets.ViewSet):
@@ -123,70 +76,23 @@ class DiseaseView(viewsets.ViewSet):
         pass    
 
     def create(self, request):
-        """
-        Pull species from FAO species API and insert/update locally
-        """
-        api_url = "https://reference-data-service-175434516411.europe-west1.run.app/api/species/"
-        headers = {"accept": "application/json"}
-
-        try:
-            # Fetch data from remote service
-            response = requests.get(api_url, headers=headers, timeout=30)
-            response.raise_for_status()
-            remote_data = response.json()
-
-            created, updated = 0, 0
-            with transaction.atomic():
-                for item in remote_data['values']:
-                    obj, was_created = Specie.objects.update_or_create(
-                        external_id=item["id"],
-                        defaults={
-                            "name": item["name"],
-                            "language_code": item["language_code"],
-                        }
-                    )
-
-                    if was_created:
-                            created += 1
-                    else:
-                        updated += 1
-
-            return Response(
-                {
-                    "message": "Species synced successfully",
-                    "created": created,
-                    "updated": updated,
-                    "total": len(remote_data),
-                },
-                status=status.HTTP_201_CREATED,
-            )
-
-        except requests.RequestException as e:
-            return Response(
-                {"error": f"Failed to fetch species: {str(e)}"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        pass
     
 
-class ClinicalResponseView(viewsets.ViewSet):
+class ResponseView(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     """API List for Responses"""
     def get_serializer_class(self):
         if self.action in ["list", "featured"]:
-            return ClinicalResponseSerializer
+            return ResponseSerializer
         return super().get_serializer_class()
     
     def lists(self, request):
         """Get all responses"""
-        responses = ClinicalResponse.objects.order_by('name').all()
-        serializer = ClinicalResponseSerializer(responses, many=True)
+        responses = Response.objects.order_by('name').all()
+        serializer = ResponseSerializer(responses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def details(self, request, pk=None):
@@ -228,54 +134,7 @@ class ClinicalSignView(viewsets.ViewSet):
         pass    
 
     def create(self, request):
-        """
-        Fetch clinical signs from FAO API and insert/update locally
-        """
-        api_url = "https://reference-data-service-175434516411.europe-west1.run.app/api/clinical-signs/"
-        headers = {"accept": "application/json"}
-
-        try:
-            # Fetch data from remote service
-            response = requests.get(api_url, headers=headers, timeout=30)
-            response.raise_for_status()
-            remote_data = response.json()
-
-            created, updated = 0, 0
-            with transaction.atomic():
-                for item in remote_data['values']:
-                    obj, was_created = ClinicalSign.objects.update_or_create(
-                        external_id=item["id"],
-                        defaults={
-                            "name": item["name"],
-                            "language_code": item["language_code"],
-                        }
-                    )
-
-                    if was_created:
-                            created += 1
-                    else:
-                        updated += 1
-
-            return Response(
-                {
-                    "message": "Species synced successfully",
-                    "created": created,
-                    "updated": updated,
-                    "total": len(remote_data),
-                },
-                status=status.HTTP_201_CREATED,
-            )
-
-        except requests.RequestException as e:
-            return Response(
-                {"error": f"Failed to fetch species: {str(e)}"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        pass
     
 
 class SpecieResponseView(viewsets.ViewSet):

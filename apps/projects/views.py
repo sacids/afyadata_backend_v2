@@ -470,14 +470,14 @@ class SurveyUpdateView(generic.UpdateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": survey.title, "url": "#"},
+            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
         ]
 
         # Add links to context
         context["links"] = {
             "Edit Form": "#",
             "Actions": "#",
-            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
@@ -551,14 +551,14 @@ class SurveyRuleView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": survey.title, "url": "#"},
+            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
         ]
 
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
-            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
@@ -593,14 +593,14 @@ class SurveyAttachmentView(generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": survey.title, "url": "#"},
+            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
         ]
 
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
-            "Rules (OHKR)": reverse_lazy("projects:form-rules", kwargs={"pk": kwargs["pk"]}),
+            "Rules": "#",
             "Attachments": '#'
         }
 
@@ -632,6 +632,7 @@ class SurveyAttachmentView(generic.TemplateView):
                 + "<br>".join(errors)
                 + "</div>"
             )
+
 
 class SurveyDataExportView(generic.View):
     """Export form data into csv"""
@@ -668,7 +669,6 @@ class SurveyDataExportView(generic.View):
         return response
 
 
-# Form data
 class SurveyDataView(generic.DetailView):
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -707,7 +707,6 @@ class SurveyDataView(generic.DetailView):
         )
 
 
-# Survey data instance
 class SurveyDataInstanceView(generic.TemplateView):
     """View to list all project form data"""
 
@@ -918,7 +917,6 @@ class ChartsDataView(generic.TemplateView):
         )
 
 
-# Form data
 class MapDataView(generic.TemplateView):
     template_name = "surveys/data/map.html"
 

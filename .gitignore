@@ -136,6 +136,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+media/*
 media/jform/defn/*
 assets/css/output.css
 apps/api/rest.http

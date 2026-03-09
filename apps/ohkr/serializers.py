@@ -16,10 +16,10 @@ class DiseaseSerializer(serializers.ModelSerializer):
         model = Disease
         fields = '__all__'
 
-class ClinicalResponseSerializer(serializers.ModelSerializer):
+class ResponseSerializer(serializers.ModelSerializer):
     """Serializer for clinical response"""
     class Meta:
-        model = ClinicalResponse
+        model = Response
         fields = '__all__'
 
 class ClinicalSignSerializer(serializers.ModelSerializer):
@@ -33,7 +33,7 @@ class SpecieResponseSerializer(serializers.ModelSerializer):
     """Serializer for specie response"""
     specie = SpecieSerializer(read_only=True)
     clinical_sign = ClinicalSignSerializer(read_only=True)
-    responses = ClinicalResponseSerializer(many=True, read_only=True)
+    responses = ResponseSerializer(many=True, read_only=True)
     class Meta:
         model = SpecieResponse
         fields = '__all__'
