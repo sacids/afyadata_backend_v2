@@ -1,8 +1,8 @@
 import re
 import requests
 import logging
-from django.utils import timezone
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone as dt_timezone
+from django.utils.dateparse import parse_datetime, parse_date
 from .models import *
 
 
@@ -87,19 +87,45 @@ def to_iso_z(dt):
     if dt is None:
         return None
 
-    # If it's already a string, keep it (or parse if you want)
-    if isinstance(dt, str):
-        return dt
-
-    # If it's a datetime object
     if isinstance(dt, datetime):
-        # ensure timezone
+        # Ensure timezone-aware and serialize in UTC with trailing Z
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=dt_timezone.utc)
 
-        # format like 2025-07-27T20:42:46.682Z
-        s = dt.astimezone(timezone.utc).isoformat(timespec="milliseconds")
+        s = dt.astimezone(dt_timezone.utc).isoformat(timespec="milliseconds")
         return s.replace("+00:00", "Z")
+
+    # Support date objects by normalizing to midnight UTC
+    if isinstance(dt, date):
+        d = datetime(dt.year, dt.month, dt.day, tzinfo=dt_timezone.utc)
+        s = d.isoformat(timespec="milliseconds")
+        return s.replace("+00:00", "Z")
+
+    # Normalize parseable date/datetime strings to ISO UTC + Z
+    if isinstance(dt, str):
+        s = dt.strip()
+        if not s:
+            return None
+
+        parsed_dt = parse_datetime(s)
+        if parsed_dt is not None:
+            if parsed_dt.tzinfo is None:
+                parsed_dt = parsed_dt.replace(tzinfo=dt_timezone.utc)
+            out = parsed_dt.astimezone(dt_timezone.utc).isoformat(timespec="milliseconds")
+            return out.replace("+00:00", "Z")
+
+        parsed_date = parse_date(s)
+        if parsed_date is not None:
+            d = datetime(
+                parsed_date.year,
+                parsed_date.month,
+                parsed_date.day,
+                tzinfo=dt_timezone.utc,
+            )
+            out = d.isoformat(timespec="milliseconds")
+            return out.replace("+00:00", "Z")
+
+        return dt
 
     return str(dt)
 
