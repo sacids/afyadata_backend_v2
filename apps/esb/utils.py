@@ -268,8 +268,9 @@ def push_payload(cfg, payload):
             timeout=25,
         )
         logging.info("== API Response ==")
+        logging.info(resp.status_code)
         logging.info(resp.json())
-
+        
         ok = 200 <= resp.status_code < 300
         info = {
             "ok": ok,
