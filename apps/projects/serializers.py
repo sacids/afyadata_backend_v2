@@ -30,10 +30,14 @@ class FormAttachmentSerializer(serializers.ModelSerializer):
 class FormDefinitionSerializer(serializers.ModelSerializer):
     """Serializer for form definition"""
     attachments = FormAttachmentSerializer(many=True, read_only=True)
+    icon = serializers.SerializerMethodField()
 
     class Meta:
         model = FormDefinition
         fields = "__all__"
+
+    def get_icon(self, obj):
+        return obj.icon_type
 
 
 class FormDefnMetaSerializer(serializers.ModelSerializer):

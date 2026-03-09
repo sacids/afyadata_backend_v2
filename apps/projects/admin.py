@@ -30,6 +30,7 @@ class FormAttachmentInline(admin.TabularInline):
     ordering = ("title",)
     extra = 0
 
+
 @admin.register(FormDefinition)
 class FormDefinitionAdmin(admin.ModelAdmin):
     list_display = (
@@ -37,7 +38,7 @@ class FormDefinitionAdmin(admin.ModelAdmin):
         "short_title",
         "version",
         "code",
-        "sort_order",
+        "icon_type" "sort_order",
         "created_at",
         "created_by",
         "updated_at",
@@ -58,6 +59,7 @@ class FormDefinitionAdmin(admin.ModelAdmin):
                     "short_title",
                     "version",
                     "code",
+                    "icon_type",
                     "is_root",
                     "sort_order",
                 )
