@@ -26,7 +26,7 @@ def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
             
             # build payload
             payload = build_payload(fd, cfg)
-            logging.info("== payload ==")
+            logging.info("== API Payload ==")
             logging.info(payload)
 
             # push data to the server

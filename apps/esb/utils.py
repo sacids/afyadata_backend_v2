@@ -1,5 +1,6 @@
 import re
 import requests
+import logging
 from django.utils import timezone
 from datetime import datetime, timezone
 from .models import *
@@ -225,6 +226,8 @@ def push_payload(cfg, payload):
             headers=headers,
             timeout=25,
         )
+        logging.info("== API Response ==")
+        logging.info(resp.json())
 
         ok = 200 <= resp.status_code < 300
         info = {
