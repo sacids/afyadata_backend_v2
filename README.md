@@ -66,6 +66,29 @@ Load assets files to static folder:
 python manage.py collectstatic
 ```
 
+## Docker Deployment
+1. Copy Docker env template:
+```bash
+cp .env.docker.example .env
+```
+
+2. Update `.env` values (`SECRET_KEY`, DB credentials, allowed hosts).
+
+3. Build and start:
+```bash
+docker compose up --build -d
+```
+
+4. View logs:
+```bash
+docker compose logs -f web
+```
+
+5. Stop:
+```bash
+docker compose down
+```
+
 
 ## License
 Licensed under the 

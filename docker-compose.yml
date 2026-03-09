@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-afyadata_db}
+      POSTGRES_USER: ${DB_USER:-afyadata}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-afyadata}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      ENGINE: ${ENGINE:-django.db.backends.postgresql}
+      DB_NAME: ${DB_NAME:-afyadata_db}
+      DB_USER: ${DB_USER:-afyadata}
+      DB_PASSWORD: ${DB_PASSWORD:-afyadata}
+      DB_HOST: db
+      DB_PORT: 5432
+      DEBUG: ${DEBUG:-False}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      ALLOWED_HOST: ${ALLOWED_HOST:-*}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+    ports:
+      - "8000:8000"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/static
+
+volumes:
+  postgres_data:
+  media_data:
+  static_data:

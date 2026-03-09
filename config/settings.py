@@ -23,12 +23,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-lo!-k%&g059#i+4-twgapfnng$bu#1x^^y)av#ur$sk-rwpzh%"
+SECRET_KEY = config(
+    "SECRET_KEY",
+    default="django-insecure-lo!-k%&g059#i+4-twgapfnng$bu#1x^^y)av#ur$sk-rwpzh%",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config(
+    "DEBUG",
+    default=True,
+    cast=lambda v: str(v).strip().lower() in ("1", "true", "yes", "on"),
+)
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = config("ALLOWED_HOST", default="*", cast=lambda v: [s.strip() for s in v.split(",") if s.strip()])
 
 # Login URL
 LOGIN_URL = "/auth/login"
@@ -66,6 +73,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -149,12 +157,13 @@ USE_TZ = True
 STATICFILES_DIRS = ["assets"]
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # default content length for submission requests
 DEFAULT_CONTENT_LENGTH = 10000000
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
