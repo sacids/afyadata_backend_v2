@@ -1,5 +1,4 @@
 import re
-import json
 import requests
 import logging
 from django.utils import timezone
@@ -52,12 +51,6 @@ def parse_gps(value):
     if value is None:
         return (None, None)
 
-    # Multipart/form-data can send gps as a single-item list
-    if isinstance(value, (list, tuple)):
-        if not value:
-            return (None, None)
-        return parse_gps(value[0])
-
     if isinstance(value, dict):
         lat = value.get("latitude")
         lng = value.get("longitude")
@@ -67,17 +60,6 @@ def parse_gps(value):
             return (None, None)
 
     s = str(value).strip()
-    if not s:
-        return (None, None)
-
-    # JSON payload in string form:
-    # {"latitude":-6.8515634,"longitude":37.6585611,...}
-    if s.startswith("{") and s.endswith("}"):
-        try:
-            obj = json.loads(s)
-            return parse_gps(obj)
-        except Exception:
-            return (None, None)
 
     # split by comma OR whitespace
     parts = [p for p in re.split(r"[,\s]+", s) if p]
