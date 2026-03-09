@@ -125,3 +125,53 @@ class ClinicalSignScore(models.Model):
         managed = True
         verbose_name = "Score"
         verbose_name_plural = "6. Scores"
+        
+        
+        
+        
+        
+
+
+class FirstAidAction(models.Model):
+    """Reusable snippets of advice or specific physical tasks."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=50, unique=True, help_text="e.g., USE_GLOVES")
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    priority = models.IntegerField(default=1, help_text="Higher numbers (e.g., 10) show at the top")
+    
+    # Category helps group actions in the UI (e.g., Safety, Treatment, Referral)
+    CATEGORY_CHOICES = [
+        ('safety', 'Personal Safety'),
+        ('care', 'Immediate Care'),
+        ('referral', 'Referral/Urgent'),
+    ]
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='care')
+    
+    def __str__(self):
+        return f"[{self.category.upper()}] {self.title}"
+
+    class Meta:
+        ordering = ['-priority']
+
+class FirstAidRule(models.Model):
+    """The logic engine: matches conditions to a set of actions."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200, help_text="e.g., Fever in Cattle Rule")
+    
+    # Criteria
+    species = models.ManyToManyField('Specie', blank=True)
+    clinical_signs = models.ManyToManyField('ClinicalSign', blank=True)
+    
+    # Age constraints (optional)
+    min_age_months = models.IntegerField(null=True, blank=True)
+    max_age_months = models.IntegerField(null=True, blank=True)
+    
+    # Outcomes
+    actions = models.ManyToManyField(FirstAidAction, related_name="rules")
+    
+    active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
