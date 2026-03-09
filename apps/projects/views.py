@@ -679,11 +679,8 @@ class SurveyDataView(generic.DetailView):
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
 
-        tbl_header_dict = utils.get_table_header(data)  # {key: label}
+        tbl_header_dict = utils.get_table_header(data)
         header_keys = list(tbl_header_dict.keys())
-
-        logging.info("==Header Keys ==")
-        logging.info(header_keys)
 
         # Headers: add UUID column first
         cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys]
@@ -694,16 +691,17 @@ class SurveyDataView(generic.DetailView):
         if "parent_id" in request.GET and request.GET["parent_id"]:
             adata = adata.filter(parent_id=request.GET["parent_id"])
 
+        # table names
+        tbl_name_dict = utils.get_table_header_name(data)
+        name_keys = list(tbl_name_dict.keys())
+
         arr_data = []
         for item in adata:
             # use item.uuid (change if your field name is different)
             row_uuid = str(item.uuid)
 
-            row = [row_uuid] + [item.form_data.get(k) for k in header_keys]
+            row = [row_uuid] + [item.form_data.get(k) for k in name_keys]
             arr_data.append(row)
-
-        logging.info("== data ==")
-        logging.info(arr_data)
 
         return JsonResponse(
             {

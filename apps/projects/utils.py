@@ -226,6 +226,16 @@ def get_table_header(jform):
     return header
 
 
+def get_table_header_name(jform):
+    names = {}
+    for item in jform["pages"]:
+        if item["type"] == "group":
+            for k, v in item["fields"][0].items():
+                tb_name = v.get("name")
+                names[k] = tb_name
+    return names
+
+
 def get_table_config1(jForm):
     config = {}
     # print(jForm["pages"])
