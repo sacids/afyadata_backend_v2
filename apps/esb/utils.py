@@ -46,15 +46,19 @@ def parse_gps(value):
       "-6.428527 37.262383 0 0" (ODK)
       {"latitude":..,"longitude":..} as dict (if you ever pass dict)
     """
-    logging.info("== GPS value ==")
-    logging.info(value)
-
     if value is None:
         return (None, None)
+    
+    logging.info("== GPS value ==")
+    logging.info(value)
 
     if isinstance(value, dict):
         lat = value.get("latitude")
         lng = value.get("longitude")
+
+        logging.info(f"latitude: {lat}")
+        logging.info(f"longitude: {lng}")
+
         try:
             return (float(lat), float(lng))
         except Exception:
@@ -149,12 +153,10 @@ def apply_transform(value, transform: str, fd=None, config=None):
         return to_float(value)
 
     if transform == "gps_lat":
-        logging.info("gps_lat")
         lat, _ = parse_gps(value)
         return lat
 
     if transform == "gps_lng":
-        logging.info("gps_lng")
         _, lng = parse_gps(value)
         return lng
 
