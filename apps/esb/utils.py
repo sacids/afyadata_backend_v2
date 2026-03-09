@@ -55,9 +55,6 @@ def parse_gps(value):
         lat = value.get("latitude", value.get("lat"))
         lng = value.get("longitude", value.get("lng"))
 
-        logging.info(f"latitude: {lat}")
-        logging.info(f"longitude: {lng}")
-
         try:
             return (float(lat), float(lng))
         except Exception:
@@ -287,7 +284,7 @@ def push_payload(cfg, payload):
             info["response_text"] = (resp.text or "")[:500]
 
         if not ok:
-            info["error"] = "Non-2xx response"
+            info["error"] = "Failed to post data"
 
         return ok, info
 
