@@ -19,13 +19,15 @@ def get_from_dict_path(d: dict, path: str):
 def get_value(fd, path: str):
     """
     Supported:
-      - model.gps
-      - model.created_at
-      - form_data.latitude
-      - form_data.location.lat
+      - model
+      - form_data
     """
     if not path:
         return None
+    
+    logging.info("path and fd")
+    logging.info(path)
+    logging.info(fd)
 
     root, _, rest = path.partition(".")
     if root == "model":
