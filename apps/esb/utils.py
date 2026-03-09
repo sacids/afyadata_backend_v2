@@ -248,7 +248,7 @@ def build_payload(fd, config):
     return payload
 
 
-def push_payload(cfg, payload):
+def push_payload(cfg, payload, formdata=None):
     """Push data to endpoint"""
     if not cfg.endpoint:
         return False, {"error": "Missing endpoint in FormPayloadConfig"}
@@ -267,25 +267,47 @@ def push_payload(cfg, payload):
             headers=headers,
             timeout=25,
         )
+        try:
+            response_body = resp.json()
+        except Exception:
+            response_body = {"raw": (resp.text or "")[:2000]}
+
         logging.info("== API Response ==")
         logging.info(resp.status_code)
-        logging.info(resp.json())
+        logging.info(response_body)
         
         ok = 200 <= resp.status_code < 300
         info = {
             "ok": ok,
             "status_code": resp.status_code,
             "sent_at": datetime.now(),
+            "response": response_body,
         }
-
-        # keep a short response preview (avoid huge logs)
-        try:
-            info["response"] = resp.json()
-        except Exception:
-            info["response_text"] = (resp.text or "")[:500]
 
         if not ok:
             info["error"] = "Failed to post data"
+        elif formdata is not None:
+            response_id = None
+            if isinstance(response_body, dict):
+                response_id = (
+                    response_body.get("response_id")
+                    or response_body.get("id")
+                    or response_body.get("uuid")
+                )
+                if response_id is None and isinstance(response_body.get("data"), dict):
+                    response_id = (
+                        response_body["data"].get("response_id")
+                        or response_body["data"].get("id")
+                        or response_body["data"].get("uuid")
+                    )
+
+            update_fields = {
+                "response_json": response_body if isinstance(response_body, dict) else {"response": response_body},
+                "push_status": True,
+            }
+            if response_id not in (None, ""):
+                update_fields["response_id"] = str(response_id)
+            formdata.__class__.objects.filter(pk=formdata.pk).update(**update_fields)
 
         return ok, info
 
