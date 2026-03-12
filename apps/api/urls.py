@@ -28,6 +28,7 @@ urlpatterns = [
     path("v1/specie-responses/<str:specie_id>", SpecieResponseView.as_view({"get": "retrieve"})),
 
     # Projects
+    path('v1/projects/active', ProjectView.as_view({'get': 'active'})),
     path('v1/projects', ProjectView.as_view({'get': 'lists'})),
     path('v1/projects/<str:tags>', ProjectView.as_view({'get': 'retrieve'})),
     path('v1/project/detail/<str:pk>', ProjectView.as_view({'get': 'details'})),

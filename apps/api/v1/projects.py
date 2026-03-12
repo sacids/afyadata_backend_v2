@@ -33,6 +33,20 @@ class ProjectView(viewsets.ViewSet):
         serializer = ProjectSerializer(projects, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def active(self, request):
+        """Get all active projects the current user is a member of."""
+        projects = (
+            Project.objects.filter(
+                members__member=request.user,
+                members__active=True,
+                deleted=False,
+            )
+            .distinct()
+            .order_by("created_at")
+        )
+        serializer = ProjectSerializer(projects, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def details(self, request, pk=None):
         """Get project information"""
         project = Project.objects.get(pk=pk)
@@ -87,10 +101,14 @@ class ProjectView(viewsets.ViewSet):
             project = Project.objects.get(code=request.data["code"])
 
             # check if user is already a member
-            if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
+            if ProjectMember.objects.filter(
+                project=project, member=request.user, active=True
+            ).exists():
 
                 # Return project details
-                project_data = ProjectSerializer(project).data  # or build a dict manually
+                project_data = ProjectSerializer(
+                    project
+                ).data  # or build a dict manually
 
                 # response
                 return Response(
