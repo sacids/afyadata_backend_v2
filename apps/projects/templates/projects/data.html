@@ -4,7 +4,8 @@
 
 {% block content %}
 
-<main class="bg-white min-h-screen" x-data="initData();" x-init="forms.length ? loadTable(forms[0].id) : (title='No forms available', description='Upload a form to view data.')">
+<main class="bg-white min-h-screen" x-data="initData();"
+    x-init="forms.length ? loadTable(forms[0].id) : (title='No forms available', description='Upload a form to view data.')">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Left: Builder / filters -->
@@ -35,14 +36,25 @@
             <!-- Right: chart -->
             <section class="lg:col-span-10">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
                         <div>
                             <h2 class="text-sm font-semibold text-gray-800" x-text="title"></h2>
                             <p class="text-xs text-gray-500" x-text="description"></p>
                         </div>
 
                         <template x-if="title">
-                            <div class="flex items-center space-x-2">
+                            <div class="flex items-center gap-3">
+                                <template x-if="availableLanguages.length > 0">
+                                    <div class="flex items-center gap-2">
+                                        <select id="language-select" x-model="selectedLanguage"
+                                            @change="changeLanguage()"
+                                            class="rounded-sm border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-0">
+                                            <template x-for="lang in availableLanguages" :key="lang">
+                                                <option :value="lang" x-text="lang"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </template>
                                 <button type="button" @click="loadTable(activeFormId)"
                                     :class="{'bg-orange-50 border-orange-400': viewMode === 'table', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'table'}"
                                     class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">

@@ -641,8 +641,11 @@ class SurveyDataExportView(generic.View):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
+        lang = request.GET.get("lang") or None
+        if lang and lang not in data.get("languages", []):
+            lang = None
 
-        tbl_header_dict = utils.get_table_header(data)  # {key: label}
+        tbl_header_dict = utils.get_table_header(data, lang=lang)  # {key: label}
         header_keys = list(tbl_header_dict.keys())
 
         # get data
@@ -678,15 +681,19 @@ class SurveyDataView(generic.DetailView):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
+        lang = request.GET.get("lang") or None
+        if lang and lang not in data.get("languages", []):
+            lang = None
+        form_title = utils.get_localized_form_title(data, lang=lang) or cur_form.title
 
-        tbl_header_dict = utils.get_table_header(data)
+        tbl_header_dict = utils.get_table_header(data, lang=lang)
         header_keys = list(tbl_header_dict.keys())
 
         # Headers: add UUID column first
-        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys]
+        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "Created"]
 
         # get data
-        adata = FormData.objects.filter(form_id=cur_form.id)
+        adata = FormData.objects.filter(form_id=cur_form.id).order_by('created_at')
 
         if "parent_id" in request.GET and request.GET["parent_id"]:
             adata = adata.filter(parent_id=request.GET["parent_id"])
@@ -699,12 +706,20 @@ class SurveyDataView(generic.DetailView):
         for item in adata:
             # use item.uuid (change if your field name is different)
             row_uuid = str(item.uuid)
+            row_gps = item.gps
+            row_created_at = (
+                item.created_at.strftime("%d-%m-%Y %H:%M")
+                if item.created_at
+                else ""
+            )
 
-            row = [row_uuid] + [item.form_data.get(k) for k in name_keys]
+            row = [row_uuid] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_created_at]
             arr_data.append(row)
 
         return JsonResponse(
             {
+                "form_title": form_title,
+                "language": lang or utils.get_form_language(data),
                 "cols": cols,
                 "data": arr_data,
             }
@@ -718,13 +733,17 @@ class SurveyDataInstanceView(generic.TemplateView):
         # get form data
         data_id = kwargs["data_id"]
         form_data = FormData.objects.get(uuid=data_id)
+        form_definition = utils.load_json(form_data.form.form_defn)
+        localized_form_title = (
+            utils.get_localized_form_title(form_definition) or form_data.form.title
+        )
 
         # convert form data to JSON
         cur_data_json = {
             "id": form_data.form.id,
             "data_id": form_data.uuid,
             "title": form_data.title.replace("'", ""),
-            "form_title": form_data.form.title,
+            "form_title": localized_form_title,
             "form_code": form_data.form.code,
             "form_data": form_data.form_data,
         }
@@ -965,10 +984,25 @@ def form_definition(request, *args, **kwargs):
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
 
         data = utils.load_json(cur_form.form_defn)
+        lang = request.GET.get("lang") or None
+        if lang and lang not in data.get("languages", []):
+            lang = None
 
-        tbl_header_dict = utils.get_table_header(data)
+        tbl_header_dict = utils.get_table_header(data, lang=lang)
+        form_title = utils.get_localized_form_title(data, lang=lang) or cur_form.title
+        page_headers = utils.get_page_headers(data, lang=lang)
+        resolved_language = lang or utils.get_form_language(data)
 
-        return JsonResponse({"data": data, "cols": tbl_header_dict})
+        return JsonResponse(
+            {
+                "data": data,
+                "cols": tbl_header_dict,
+                "form_title": form_title,
+                "page_headers": page_headers,
+                "language": resolved_language,
+                "languages": data.get("languages", []),
+            }
+        )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
@@ -989,9 +1023,22 @@ def form_points(request, *args, **kwargs):
 
         # separate location
         if location and location.strip():
-            location = json.loads(location)
-            lat = location.get("latitude")
-            lng = location.get("longitude")
+            lat = None
+            lng = None
+
+            try:
+                parsed_location = json.loads(location)
+            except (TypeError, json.JSONDecodeError):
+                parsed_location = None
+
+            if isinstance(parsed_location, dict):
+                lat = parsed_location.get("latitude")
+                lng = parsed_location.get("longitude")
+            elif isinstance(location, str) and "," in location:
+                coords = [coord.strip() for coord in location.split(",")]
+                if len(coords) >= 2:
+                    lat = coords[0]
+                    lng = coords[1]
         else:
             lat = None
             lng = None

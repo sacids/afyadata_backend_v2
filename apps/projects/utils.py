@@ -212,16 +212,12 @@ def get_key_at_index(dictionary, n):
     raise IndexError(f"Dictionary index {n} out of range (size: {len(dictionary)})")
 
 
-def get_table_header(jform):
+def get_table_header(jform, lang=None):
     header = {}
     for item in jform["pages"]:
         if item["type"] == "group":
             for k, v in item["fields"][0].items():
-                label = v.get("label")
-                if not label:
-                    label_key = next((key for key in v if key.startswith("label")), None)
-                    if label_key is not None:
-                        label = v[label_key]
+                label = get_localized_label(v, lang=lang, jform=jform)
                 header[k] = label
     return header
 
@@ -294,6 +290,103 @@ def load_json(json_data):
     except json.JSONDecodeError as e:
         print(f"Error loading JSON: {e}")
         return None
+
+
+def get_form_language(jform, fallback="English (en)"):
+    """Resolve the active language from form metadata."""
+    if not isinstance(jform, dict):
+        return fallback
+
+    meta = jform.get("meta", {})
+    language = meta.get("default_language")
+    languages = jform.get("languages", [])
+
+    if language:
+        return language
+
+    if fallback in languages:
+        return fallback
+
+    if languages:
+        return languages[0]
+
+    return fallback
+
+
+def get_localized_label(obj, lang=None, jform=None, fallback="English (en)"):
+    """Return the best label for a field/group using language-aware fallbacks."""
+    if not isinstance(obj, dict):
+        return None
+
+    resolved_lang = lang or get_form_language(jform, fallback=fallback)
+    candidates = []
+
+    if resolved_lang:
+        candidates.append(f"label::{resolved_lang}")
+
+    default_lang = None
+    if isinstance(jform, dict):
+        default_lang = jform.get("meta", {}).get("default_language")
+        if default_lang and default_lang != resolved_lang:
+            candidates.append(f"label::{default_lang}")
+
+    if fallback and fallback not in {resolved_lang, default_lang}:
+        candidates.append(f"label::{fallback}")
+
+    candidates.extend(["label", "label::Default"])
+
+    for key in candidates:
+        value = obj.get(key)
+        if value:
+            return value
+
+    return obj.get("name")
+
+
+def get_localized_form_title(jform, lang=None, fallback="English (en)"):
+    """Return a localized form title from form metadata."""
+    if not isinstance(jform, dict):
+        return None
+
+    meta = jform.get("meta", {})
+    resolved_lang = lang or get_form_language(jform, fallback=fallback)
+
+    title_candidates = []
+    if resolved_lang:
+        title_candidates.append(f"title::{resolved_lang}")
+        title_candidates.append(f"form_title::{resolved_lang}")
+
+    default_lang = meta.get("default_language")
+    if default_lang and default_lang != resolved_lang:
+        title_candidates.append(f"title::{default_lang}")
+        title_candidates.append(f"form_title::{default_lang}")
+
+    if fallback and fallback not in {resolved_lang, default_lang}:
+        title_candidates.append(f"title::{fallback}")
+        title_candidates.append(f"form_title::{fallback}")
+
+    title_candidates.extend(["title", "form_title"])
+
+    for key in title_candidates:
+        value = meta.get(key)
+        if value:
+            return value
+
+    return None
+
+
+def get_page_headers(jform, lang=None):
+    """Return localized page/group headers keyed by page name."""
+    headers = {}
+    if not isinstance(jform, dict):
+        return headers
+
+    for item in jform.get("pages", []):
+        if item.get("type") != "group":
+            continue
+        headers[item.get("name")] = get_localized_label(item, lang=lang, jform=jform)
+
+    return headers
 
 
 def save_uploaded_images(files, upload_subdir):

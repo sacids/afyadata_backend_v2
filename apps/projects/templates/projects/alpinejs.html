@@ -16,10 +16,14 @@
             loading: false,
             postUrl: "",
             csrfToken: "{{ csrf_token|escapejs }}",
+            availableLanguages: [],
+            selectedLanguage: "",
+            activeLanguage: "",
 
             form_cols: [],
             form_data: [],
             dt: null,
+            form_defn: {},
 
             initDataTable() {
                 const $table = $('#datatable_form');
@@ -33,11 +37,8 @@
                     $table.DataTable().clear().destroy();
                 }
 
-                console.log("== Form cols ==");
-                console.log(this.form_cols);
-
                 // rebuild thead so headers match dynamic cols
-                const thead = `<tr>${this.form_cols.map(c => `<th>${this.prettyHeader(c)}</th>`).join('')
+                const thead = `<tr>${this.form_cols.map(c => `<th>${c}</th>`).join('')
                     }</tr>`;
                 $table.find('thead').html(thead);
                 $table.find('tbody').empty();
@@ -95,6 +96,50 @@
                     .replace(/\b\w/g, c => c.toUpperCase());
             },
 
+            buildLangQuery() {
+                const params = new URLSearchParams();
+                if (this.selectedLanguage) {
+                    params.set('lang', this.selectedLanguage);
+                }
+                const query = params.toString();
+                return query ? `?${query}` : '';
+            },
+
+            fieldLabel(fieldKey) {
+                return this.form_defn[fieldKey] || this.prettyHeader(fieldKey || '');
+            },
+
+            popupFields(formData) {
+                return Object.entries(formData || {})
+                    .map(([key, value]) => `${this.fieldLabel(key)}: ${value || ''}`)
+                    .join('<br/>');
+            },
+
+            async changeLanguage() {
+                if (!this.activeFormId) return;
+
+                if (this.viewMode === 'chart') {
+                    await this.loadFormDefinition(this.activeFormId, {
+                        preserveTitle: false,
+                        preserveDescription: false,
+                    });
+                    if (this.lastResponse.labels.length) {
+                        this.subtitle = `${this.lastResponse.agg.toUpperCase()} by ${this.fieldLabel(this.lastResponse.x_axis)}${this.lastResponse.y_axis ? (' → ' + this.fieldLabel(this.lastResponse.y_axis)) : ''}`;
+                    }
+                    return;
+                }
+
+                if (this.viewMode === 'map') {
+                    await this.loadFormDefinition(this.activeFormId, {
+                        preserveTitle: false,
+                        preserveDescription: false,
+                    });
+                    return;
+                }
+
+                await this.loadTable(this.activeFormId);
+            },
+
             //show chart
             showChart(form_id) {
                 const form = this.forms.find(f => String(f.id) === String(form_id));
@@ -104,13 +149,20 @@
                 this.viewMode = 'chart';
                 this.$nextTick(() => {
                     this.loadChart(this.activeFormId);
-                    this.loadFormDefinition(this.activeFormId);
                 });
             },
 
             showMap() {
                 this.viewMode = 'map';
-                this.$nextTick(() => this.renderMap());
+                this.$nextTick(async () => {
+                    if (this.activeFormId) {
+                        await this.loadFormDefinition(this.activeFormId, {
+                            preserveTitle: false,
+                            preserveDescription: false,
+                        });
+                    }
+                    this.renderMap();
+                });
             },
 
             async loadTable(form_id) {
@@ -123,15 +175,20 @@
                 }
 
                 this.activeFormId = form.id;
-                this.title = form.title || "";
-                this.description = form.description || "";
                 this.viewMode = 'table';
 
                 try {
-                    const res = await fetch(`/projects/forms/${this.activeFormId}/data`);
+                    await this.loadFormDefinition(this.activeFormId, {
+                        fallbackTitle: form.title,
+                        fallbackDescription: form.description,
+                    });
+
+                    const res = await fetch(`/projects/forms/${this.activeFormId}/data${this.buildLangQuery()}`);
                     if (!res.ok) throw new Error("Failed to load form data");
 
                     const data = await res.json();
+                    this.title = data.form_title || this.title;
+                    this.description = data.form_title || this.description;
                     this.form_cols = Array.isArray(data.cols) ? data.cols : [];
                     this.form_data = Array.isArray(data.data) ? data.data : [];
 
@@ -146,17 +203,24 @@
             },
 
             exportData(form_id) {
-                window.location.href = `/projects/forms/${form_id}/data/export`;
+                window.location.href = `/projects/forms/${form_id}/data/export${this.buildLangQuery()}`;
             },
 
             //load form_defn
-            form_defn: {},
-            async loadFormDefinition(form_id) {
-                fetch(`/projects/forms/${form_id}/definition`)
-                    .then(response => response.json())
-                    .then(data => {
-                        this.form_defn = data.cols;
-                    });
+            async loadFormDefinition(form_id, options = {}) {
+                const response = await fetch(`/projects/forms/${form_id}/definition${this.buildLangQuery()}`);
+                const data = await response.json();
+
+                this.form_defn = data.cols || {};
+                this.availableLanguages = data.languages || [];
+                this.activeLanguage = data.language || "";
+
+                if (!this.selectedLanguage || !this.availableLanguages.includes(this.selectedLanguage)) {
+                    this.selectedLanguage = this.activeLanguage;
+                }
+
+                this.title = options.preserveTitle ? this.title : (data.form_title || options.fallbackTitle || this.title);
+                this.description = options.preserveDescription ? this.description : (data.form_title || options.fallbackDescription || this.description);
             },
 
             // rendering charts
@@ -203,6 +267,11 @@
             },
 
             async loadChart(form_id) {
+                await this.loadFormDefinition(form_id, {
+                    preserveTitle: false,
+                    preserveDescription: false,
+                });
+
                 // basic validation
                 if (this.form.agg !== 'count' && !this.form.y_axis) {
                     this.messageType = 'error';
@@ -232,8 +301,8 @@
                         throw new Error(data.error || 'Request failed');
                     }
 
-                    this.lastResponse = data;
-                    this.subtitle = `${data.agg.toUpperCase()} by ${data.x_axis}${data.y_axis ? (' → ' + data.y_axis) : ''}`;
+                    this.lastResponse = { ...data, agg: data.agg, x_axis: data.x_axis, y_axis: data.y_axis };
+                    this.subtitle = `${data.agg.toUpperCase()} by ${this.fieldLabel(data.x_axis)}${data.y_axis ? (' → ' + this.fieldLabel(data.y_axis)) : ''}`;
 
                     this.computeStats(data.data || []);
                     this.draw(data.labels || [], data.data || []);
@@ -368,8 +437,7 @@
                                 <strong>${p.title || 'No title'}</strong><br/>
                                 UUID: ${p.uuid || ''}<br/>
                                 Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}<br/>
-                                Created: ${p.created_at || ''}<br/>
-                                ${Object.keys(p.form_data || {}).map(key => `${key}: ${p.form_data[key] || ''}`).join('<br/>')}
+                                ${this.popupFields(p.form_data)}
                             `;
 
                             marker.bindPopup(popupHtml);
