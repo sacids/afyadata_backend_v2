@@ -85,7 +85,6 @@ class SurveyAddForm(forms.ModelForm):
             "children",
             "xlsform",
             "description",
-            "callback_url",
         ]
 
         widgets = {
@@ -136,13 +135,6 @@ class SurveyAddForm(forms.ModelForm):
                     "id": "description",
                     "placeholder": "Write description...",
                     "rows": 2,
-                }
-            ),
-            "callback_url": forms.TextInput(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "callback_url",
-                    "placeholder": "Write callback url for push data...",
                 }
             ),
         }

@@ -476,6 +476,7 @@ class SurveyUpdateView(generic.UpdateView):
         # Add links to context
         context["links"] = {
             "Edit Form": "#",
+            "API Config": "#",
             "Actions": "#",
             "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
@@ -557,6 +558,7 @@ class SurveyRuleView(generic.TemplateView):
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "API Config": "#",
             "Actions": "#",
             "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
@@ -599,6 +601,7 @@ class SurveyAttachmentView(generic.TemplateView):
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "API Config": "#",
             "Actions": "#",
             "Rules": "#",
             "Attachments": '#'
