@@ -21,6 +21,7 @@ urlpatterns = [
     path('forms/<str:pk>', views.SurveyListView.as_view(), name='forms'),
     path('forms/<str:pk>/upload', views.SurveyCreateView.as_view(), name='upload-form'),
     path('forms/<str:pk>/edit', views.SurveyUpdateView.as_view(), name='edit-form'),
+    path('forms/<str:pk>/api-config', views.SurveyAPIConfig.as_view(), name='form-api-config'),
     path('forms/<str:pk>/delete', views.SurveyDeleteView.as_view(), name='delete-form'),
     path("forms/<str:pk>/definition", views.form_definition, name="form-definition"),
 

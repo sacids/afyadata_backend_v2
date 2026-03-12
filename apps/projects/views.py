@@ -17,6 +17,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.contrib import messages
 from django.utils.safestring import mark_safe
+from django.db import transaction
 
 from django.db.models import Count, Sum, Avg, Max, Min
 from django.db.models.functions import Cast, TruncMonth, TruncYear
@@ -29,8 +30,17 @@ from . import x2jform
 from . import utils
 
 from .models import Project, FormDefinition, FormData
-from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm, SurveyAttachmentForm
+from .forms import (
+    ProjectForm,
+    SurveyAddForm,
+    SurveyUpdateForm,
+    SurveyAttachmentForm,
+    FormPayloadConfigForm,
+    FormPayloadFieldMapFormSet,
+    FormValueMappingFormSet,
+)
 from apps.ohkr.models import ClinicalSign
+from apps.esb.models import FormPayloadConfig
 
 
 class ProjectListView(generic.ListView):
@@ -476,7 +486,7 @@ class SurveyUpdateView(generic.UpdateView):
         # Add links to context
         context["links"] = {
             "Edit Form": "#",
-            "API Config": "#",
+            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
@@ -532,7 +542,113 @@ class SurveyDeleteView(generic.DeleteView):
         # success response
         return HttpResponse(
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form deleted Succesfully</div>'
+            )
+
+
+class SurveyAPIConfig(generic.TemplateView):
+    template_name = "surveys/api_config.html"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyAPIConfig, self).dispatch(*args, **kwargs)
+
+    def get_payload_config(self, survey):
+        return (
+            survey.payload_configs.order_by("id").first()
+            or FormPayloadConfig(form=survey, method="POST", headers={})
         )
+
+    def get_context(
+        self,
+        survey,
+        config_form=None,
+        field_map_formset=None,
+        value_mapping_formset=None,
+    ):
+        payload_config = self.get_payload_config(survey)
+
+        if config_form is None:
+            config_form = FormPayloadConfigForm(instance=payload_config)
+
+        if field_map_formset is None:
+            field_map_formset = FormPayloadFieldMapFormSet(instance=payload_config)
+
+        if value_mapping_formset is None:
+            value_mapping_formset = FormValueMappingFormSet(instance=payload_config)
+
+        context = {
+            "title": f"{survey.title} API Config",
+            "survey": survey,
+            "payload_config": payload_config,
+            "config_form": config_form,
+            "field_map_formset": field_map_formset,
+            "value_mapping_formset": value_mapping_formset,
+            "open_value_mapping_modal": value_mapping_formset.total_error_count() > 0,
+        }
+
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {
+                "name": survey.title,
+                "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),
+            },
+            {"name": "API Config", "url": "#"},
+        ]
+
+        context["links"] = {
+            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk}),
+            "API Config": "#",
+            "Rules": reverse_lazy("projects:form-rules", kwargs={"pk": survey.pk}),
+            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": survey.pk}),
+        }
+        return context
+
+    def get(self, request, *args, **kwargs):
+        survey = get_object_or_404(FormDefinition, pk=kwargs["pk"])
+        context = self.get_context(survey)
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        survey = get_object_or_404(FormDefinition, pk=kwargs["pk"])
+        payload_config = self.get_payload_config(survey)
+        action = request.POST.get("action") or "save-api-config"
+
+        config_form = FormPayloadConfigForm(request.POST, instance=payload_config)
+        field_map_formset = FormPayloadFieldMapFormSet(request.POST, instance=payload_config)
+        value_mapping_formset = FormValueMappingFormSet(request.POST, instance=payload_config)
+
+        if (
+            config_form.is_valid()
+            and field_map_formset.is_valid()
+            and value_mapping_formset.is_valid()
+        ):
+            try:
+                with transaction.atomic():
+                    payload_config = config_form.save(commit=False)
+                    payload_config.form = survey
+                    payload_config.save()
+                    field_map_formset.instance = payload_config
+                    field_map_formset.save()
+                    value_mapping_formset.instance = payload_config
+                    value_mapping_formset.save()
+
+                if action == "save-value-mappings":
+                    messages.success(request, "Value mappings saved.")
+                else:
+                    messages.success(request, "API configuration saved.")
+            except Exception as error:
+                messages.error(request, f"Failed to save API configuration: {error}")
+        else:
+            messages.error(request, "Please correct the errors below.")
+
+        context = self.get_context(
+            survey,
+            config_form=config_form,
+            field_map_formset=field_map_formset,
+            value_mapping_formset=value_mapping_formset,
+        )
+        return render(request, self.template_name, context)
 
 
 class SurveyRuleView(generic.TemplateView):
@@ -558,7 +674,7 @@ class SurveyRuleView(generic.TemplateView):
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
-            "API Config": "#",
+            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
@@ -601,7 +717,7 @@ class SurveyAttachmentView(generic.TemplateView):
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
-            "API Config": "#",
+            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules": "#",
             "Attachments": '#'

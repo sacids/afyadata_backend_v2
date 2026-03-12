@@ -1,7 +1,9 @@
 from django import forms
+from django.forms import inlineformset_factory
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field
 from .models import *
+from apps.esb.models import FormPayloadConfig, FormPayloadFieldMap, FormValueMapping
 
 
 class ProjectForm(forms.ModelForm):
@@ -39,17 +41,17 @@ class ProjectForm(forms.ModelForm):
             "access": forms.Select(
                 attrs={
                     "class": (
-                    'w-full text-sm leading-tight '
-                    'h-10 '
-                    'bg-white '
-                    'border border-gray-300 '
-                    'rounded-md '
-                    'px-3 pr-10 '
-                    'text-gray-700 '
-                    'appearance-none '   
-                    'bg-none ' 
+                        "w-full text-sm leading-tight "
+                        "h-10 "
+                        "bg-white "
+                        "border border-gray-300 "
+                        "rounded-md "
+                        "px-3 pr-10 "
+                        "text-gray-700 "
+                        "appearance-none "
+                        "bg-none "
                     ),
-                    "id": "access"
+                    "id": "access",
                 }
             ),
             "auto_join": forms.CheckboxInput(
@@ -81,6 +83,7 @@ class SurveyAddForm(forms.ModelForm):
             "title",
             "short_title",
             "code",
+            "icon_type",
             "is_root",
             "children",
             "xlsform",
@@ -110,6 +113,13 @@ class SurveyAddForm(forms.ModelForm):
                     "id": "code",
                     "placeholder": "Write code...",
                     "required": "",
+                }
+            ),
+            "icon_type": forms.TextInput(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "icon_type",
+                    "placeholder": "Write icon for app display...",
                 }
             ),
             "is_root": forms.CheckboxInput(
@@ -156,12 +166,12 @@ class SurveyUpdateForm(forms.ModelForm):
         fields = [
             "title",
             "short_title",
+            "icon_type",
             "is_root",
             "children",
             "xlsform",
             "response",
             "description",
-            "callback_url",
         ]
         tailwind_css = "text-xs rounded-md"
 
@@ -182,6 +192,13 @@ class SurveyUpdateForm(forms.ModelForm):
                     "required": "",
                 }
             ),
+            "icon_type": forms.TextInput(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "icon_type",
+                    "placeholder": "Write icon for app display...",
+                }
+            ),
             "is_root": forms.CheckboxInput(
                 attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
             ),
@@ -193,7 +210,11 @@ class SurveyUpdateForm(forms.ModelForm):
                 }
             ),
             "sort_order": forms.NumberInput(
-                attrs={"class": "font-normal text-sm rounded-md", "id": "sort_order", "required": ""}
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "sort_order",
+                    "required": "",
+                }
             ),
             "xlsform": forms.FileInput(
                 attrs={
@@ -225,13 +246,6 @@ class SurveyUpdateForm(forms.ModelForm):
                     "rows": 2,
                 }
             ),
-            "callback_url": forms.TextInput(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "callback_url",
-                    "placeholder": "Write callback url for push data...",
-                }
-            ),
         }
 
 
@@ -248,11 +262,7 @@ class SurveyAttachmentForm(forms.ModelForm):
 
     class Meta:
         model = FormAttachment
-        fields = [
-            "title",
-            "type",
-            "attachment"
-        ]
+        fields = ["title", "type", "attachment"]
 
         widgets = {
             "title": forms.TextInput(
@@ -264,15 +274,111 @@ class SurveyAttachmentForm(forms.ModelForm):
                 }
             ),
             "type": forms.Select(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "children"
-                }
+                attrs={"class": "font-normal text-sm rounded-md", "id": "children"}
             ),
             "attachment": forms.FileInput(
                 attrs={
                     "class": "block w-full border border-gray-200 focus:ring-gray-200 focus:ring-2 focus:outline-none focus:ring-offset-2 dark:focus:ring-offset-gray-800 dark:focus:ring-white dark:focus:ring-2 rounded-md text-sm px-3 py-1",
                     "required": "",
                 }
-            )
+            ),
         }
+
+
+class FormPayloadConfigForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(FormPayloadConfigForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_show_labels = True
+        self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
+
+    class Meta:
+        model = FormPayloadConfig
+        fields = ["endpoint", "method", "headers", "is_active"]
+        widgets = {
+            "endpoint": forms.URLInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "placeholder": "https://api.example.com/endpoint",
+                }
+            ),
+            "method": forms.Select(
+                choices=[("POST", "POST"), ("PUT", "PUT"), ("PATCH", "PATCH")],
+                attrs={"class": "w-full font-normal text-sm rounded-md"},
+            ),
+            "headers": forms.Textarea(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "rows": 4,
+                    "placeholder": '{"Authorization": "Bearer ..."}',
+                }
+            ),
+            "is_active": forms.CheckboxInput(attrs={"class": "rounded-md"}),
+        }
+
+    def clean_headers(self):
+        headers = self.cleaned_data.get("headers") or {}
+        if headers and not isinstance(headers, dict):
+            raise forms.ValidationError("Headers must be a valid JSON object.")
+        return headers
+
+
+class FormPayloadFieldMapForm(forms.ModelForm):
+    class Meta:
+        model = FormPayloadFieldMap
+        fields = [
+            "payload_field",
+            "form_data_path",
+            "default_value",
+            # "required",
+            "transform",
+        ]
+        widgets = {
+            "payload_field": forms.TextInput(
+                attrs={"class": "w-full font-normal text-sm rounded-md", "placeholder": "payload_field"}
+            ),
+            "form_data_path": forms.TextInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "placeholder": "form_path...",
+                }
+            ),
+            "default_value": forms.TextInput(
+                attrs={"class": "w-full font-normal text-sm rounded-md", "placeholder": "default_value"}
+            ),
+            # "required": forms.CheckboxInput(attrs={"class": "rounded-md"}),
+            "transform": forms.Select(attrs={"class": "w-full font-normal text-sm rounded-md"}),
+        }
+
+
+FormPayloadFieldMapFormSet = inlineformset_factory(
+    FormPayloadConfig,
+    FormPayloadFieldMap,
+    form=FormPayloadFieldMapForm,
+    extra=1,
+    can_delete=True,
+)
+
+
+class FormValueMappingForm(forms.ModelForm):
+    class Meta:
+        model = FormValueMapping
+        fields = ["entity_type", "source_value", "target_value"]
+        widgets = {
+            "entity_type": forms.Select(attrs={"class": "w-full font-normal text-sm rounded-md"}),
+            "source_value": forms.TextInput(
+                attrs={"class": "w-full font-normal text-sm rounded-md", "placeholder": "source value"}
+            ),
+            "target_value": forms.TextInput(
+                attrs={"class": "w-full font-normal text-sm rounded-md", "placeholder": "target value"}
+            ),
+        }
+
+
+FormValueMappingFormSet = inlineformset_factory(
+    FormPayloadConfig,
+    FormValueMapping,
+    form=FormValueMappingForm,
+    extra=1,
+    can_delete=True,
+)
