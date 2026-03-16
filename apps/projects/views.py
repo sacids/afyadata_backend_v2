@@ -809,7 +809,7 @@ class SurveyDataView(generic.DetailView):
         header_keys = list(tbl_header_dict.keys())
 
         # Headers: add UUID column first
-        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "Created"]
+        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID" ,"Created"]
 
         # get data
         adata = FormData.objects.filter(form_id=cur_form.id).order_by('created_at')
@@ -825,6 +825,7 @@ class SurveyDataView(generic.DetailView):
         for item in adata:
             # use item.uuid (change if your field name is different)
             row_uuid = str(item.uuid)
+            row_response_id = str(item.response_id)
             row_gps = item.gps
             row_created_at = (
                 item.created_at.strftime("%d-%m-%Y %H:%M")
@@ -832,7 +833,7 @@ class SurveyDataView(generic.DetailView):
                 else ""
             )
 
-            row = [row_uuid] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_created_at]
+            row = [row_uuid] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id, row_created_at]
             arr_data.append(row)
 
         return JsonResponse(
