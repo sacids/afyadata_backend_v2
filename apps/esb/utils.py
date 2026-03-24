@@ -5,6 +5,8 @@ import requests
 import logging
 from datetime import datetime, date, timezone as dt_timezone
 from django.utils.dateparse import parse_datetime, parse_date
+from apps.esb.services import get_auth_headers
+
 from .models import *
 
 
@@ -254,11 +256,19 @@ def push_payload(cfg, payload, formdata=None):
     if not cfg.endpoint:
         return False, {"error": "Missing endpoint in FormPayloadConfig"}
 
+    # method
     method = (cfg.method or "POST").upper()
 
+    # header
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
+
+    # check if header passed from db
     if isinstance(cfg.headers, dict):
         headers.update(cfg.headers)
+
+    # pass authorization header
+    if not headers.get("Authorization"):
+        headers.update(get_auth_headers())
 
     try:
         resp = requests.request(

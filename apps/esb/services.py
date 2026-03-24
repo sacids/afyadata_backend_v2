@@ -17,24 +17,24 @@ class ESBTokenError(Exception):
 
 
 def _get_token_settings() -> Tuple[str, str, str, int]:
-    auth_url = config("ESB_AUTH_URL", default="").strip()
-    username = config("ESB_AUTH_USERNAME", default="").strip()
-    password = config("ESB_AUTH_PASSWORD", default="").strip()
+    auth_url = config("FAO_AUTH_URL", default="").strip()
+    client_id = config("FAO_CLIENT_ID", default="").strip()
+    client_secret = config("FAO_CLIENT_SECRET", default="").strip()
     timeout = config("ESB_AUTH_TIMEOUT", default=DEFAULT_TOKEN_TIMEOUT, cast=int)
 
     missing = [
         name
         for name, value in (
-            ("ESB_AUTH_URL", auth_url),
-            ("ESB_AUTH_USERNAME", username),
-            ("ESB_AUTH_PASSWORD", password),
+            ("FAO_AUTH_URL", auth_url),
+            ("FAO_CLIENT_ID", client_id),
+            ("FAO_CLIENT_SECRET", client_secret),
         )
         if not value
     ]
     if missing:
         raise ESBTokenError(f"Missing ESB auth configuration: {', '.join(missing)}")
 
-    return auth_url, username, password, timeout
+    return auth_url, client_id, client_secret, timeout
 
 
 def _build_cache_key(auth_url: str, username: str) -> str:
@@ -78,12 +78,13 @@ def get_bearer_token(force_refresh: bool = False) -> str:
             return cached_token
 
     payload = {
-        "username": username,
-        "password": password,
+        "grant_type": "client_credentials",
+        "client_id": "",
+        "client_secret": "",
     }
+
     headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
     }
 
     try:
@@ -95,7 +96,7 @@ def get_bearer_token(force_refresh: bool = False) -> str:
         )
         response.raise_for_status()
     except requests.RequestException as exc:
-        raise ESBTokenError(f"Failed to fetch ESB bearer token: {exc}") from exc
+        raise ESBTokenError(f"Failed to fetch KEYCLOCK token: {exc}") from exc
 
     data = _parse_token_response(response)
 
@@ -105,3 +106,10 @@ def get_bearer_token(force_refresh: bool = False) -> str:
 
     cache.set(cache_key, token, timeout=_resolve_cache_timeout(data.get("expires_in")))
     return token
+
+
+def get_auth_headers(force_refresh: bool = False) -> Dict[str, str]:
+    token = get_bearer_token(force_refresh=force_refresh)
+    return {
+        "Authorization": f"Bearer {token}",
+    }
