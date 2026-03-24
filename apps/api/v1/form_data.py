@@ -13,6 +13,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from apps.projects.serializers import *
 from apps.projects.models import FormData, FormDefinition
 from apps.projects.utils import snapshot_uploaded_files, save_uploaded_file_snapshots
+from apps.projects.tasks import save_formdata_files_task
 
 
 upload_executor = ThreadPoolExecutor(max_workers=2)
@@ -96,7 +97,9 @@ class FormDataView(viewsets.ViewSet):
             raise ValueError("Invalid created_on datetime")
 
         if timezone.is_naive(created_on):
-            created_on = timezone.make_aware(created_on, timezone.get_current_timezone())
+            created_on = timezone.make_aware(
+                created_on, timezone.get_current_timezone()
+            )
 
         return created_on
 
@@ -107,18 +110,16 @@ class FormDataView(viewsets.ViewSet):
                 upload_subdir="assets/uploads/photos/",
             )
             first_saved_path = next(
-                (
-                    path
-                    for paths in saved_paths.values()
-                    for path in paths
-                    if path
-                ),
+                (path for paths in saved_paths.values() for path in paths if path),
                 None,
             )
             if first_saved_path:
                 FormData.objects.filter(pk=instance_id).update(photo=first_saved_path)
         except Exception:
-            logging.exception("Failed to save uploaded files in background", extra={"formdata_id": instance_id})
+            logging.exception(
+                "Failed to save uploaded files in background",
+                extra={"formdata_id": instance_id},
+            )
 
     def create(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
@@ -127,7 +128,7 @@ class FormDataView(viewsets.ViewSet):
                 {"success": False, "message": "Request body is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         # Logging incoming data
         logging.info("Incoming data")
         logging.info(request.data)
@@ -135,6 +136,7 @@ class FormDataView(viewsets.ViewSet):
         data = self._normalize_request_data(request)
 
         try:
+
             def to_bool(val, default=False):
                 if val is None:
                     return default
@@ -155,7 +157,9 @@ class FormDataView(viewsets.ViewSet):
             created_on = self._parse_created_at(data)
             deleted = to_bool(data.get("deleted"), default=False)
 
-            file_snapshots = snapshot_uploaded_files(request.FILES) if request.FILES else []
+            file_snapshots = (
+                snapshot_uploaded_files(request.FILES) if request.FILES else []
+            )
 
             now = timezone.now()
             defaults = {
@@ -182,15 +186,15 @@ class FormDataView(viewsets.ViewSet):
                 )
                 if file_snapshots:
                     transaction.on_commit(
-                        lambda: upload_executor.submit(
-                            self._save_files_in_background,
-                            instance.pk,
-                            file_snapshots,
+                        lambda: save_formdata_files_task.delay(
+                            instance.pk, file_snapshots
                         )
                     )
 
             logging.info("== inserted/updated form data ==")
-            logging.info({"id": instance.id, "uuid": instance.uuid, "created": created_flag})
+            logging.info(
+                {"id": instance.id, "uuid": instance.uuid, "created": created_flag}
+            )
 
             # Build response back to mobile app
             instance.refresh_from_db()
@@ -205,11 +209,21 @@ class FormDataView(viewsets.ViewSet):
                 response_payload = {
                     "uuid": instance.uuid,
                     "synced": 1,
-                    "message": "Form data created successfully" if created_flag else "Form data updated successfully",
+                    "message": (
+                        "Form data created successfully"
+                        if created_flag
+                        else "Form data updated successfully"
+                    ),
                 }
 
             # Return Response
-            return Response({"success": True, "data": response_payload}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"success": True, "data": response_payload},
+                status=status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
-            return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

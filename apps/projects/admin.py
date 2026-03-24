@@ -31,6 +31,12 @@ class FormAttachmentInline(admin.TabularInline):
     extra = 0
 
 
+class FormDataFileInline(admin.TabularInline):
+    model = FormDataFile
+    ordering = ("created_at",)
+    extra = 0
+
+
 @admin.register(FormDefinition)
 class FormDefinitionAdmin(admin.ModelAdmin):
     list_display = (
@@ -119,6 +125,7 @@ class FormDataAdmin(admin.ModelAdmin):
     )
     ordering = ("-submitted_at", "-created_at")
     readonly_fields = ("submitted_at", "created_at", "updated_at")
+    inlines = [FormDataFileInline]
     raw_id_fields = (
         "form",
         "created_by",

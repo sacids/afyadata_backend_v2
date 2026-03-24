@@ -238,3 +238,48 @@ class FormData(models.Model):
     def __str__(self):
         """Unicode representation of form data."""
         return self.uuid
+
+
+class FormDataFile(models.Model):
+    """File attachments linked to a form data record."""
+
+    FILE_TYPE_CHOICES = (
+        ("image", "Image"),
+        ("video", "Video"),
+        ("other", "Other"),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    form_data = models.ForeignKey(
+        FormData,
+        related_name="files",
+        on_delete=models.CASCADE,
+    )
+    file = models.FileField(
+        upload_to="assets/uploads/",
+        max_length=200,
+    )
+    file_type = models.CharField(
+        max_length=20,
+        choices=FILE_TYPE_CHOICES,
+        default="image",
+    )
+    original_name = models.CharField(max_length=255, blank=True, null=True)
+    field_name = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name="fd_files_uploaded_by",
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        indexes = [models.Index(fields=["form_data", "created_at"])]
+        verbose_name = "Form data file"
+        verbose_name_plural = "5. Form Data Files"
+        db_table = "ad_form_data_files"
+
+    def __str__(self):
+        return self.original_name or str(self.id)
