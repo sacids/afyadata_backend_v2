@@ -244,6 +244,7 @@ def build_affected_animals(fd, config):
 def build_payload(fd, config):
     """Build final payload by combining both"""
     payload = build_fields_payload(fd, config)
+    payload["original_payload"] = fd.form_data
     payload["affected_animals"] = build_affected_animals(fd, config)
     return payload
 
