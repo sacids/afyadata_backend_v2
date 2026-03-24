@@ -1,4 +1,5 @@
 from celery import shared_task
+import logging
 
 from apps.projects.models import FormData, FormDataFile
 from apps.projects.utils import save_uploaded_file_snapshots
@@ -46,5 +47,9 @@ def push_formdata_payload_task(self, formdata_id):
             break
 
         payload = build_payload(formdata, config)
+        logging.info("== API PAYLOAD ==")
+        logging.info(payload)
+
+        # Push data
         push_payload(config, payload, formdata=formdata)
         formdata.refresh_from_db(fields=["push_status"])

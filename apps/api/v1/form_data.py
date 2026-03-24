@@ -107,10 +107,7 @@ class FormDataView(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Logging incoming data
-        logging.info("Incoming data")
-        logging.info(request.data)
-
+        # incoming data
         data = self._normalize_request_data(request)
 
         try:
