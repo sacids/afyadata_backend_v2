@@ -1,21 +1,21 @@
 import logging
 import json
-from datetime import datetime, date
+from concurrent.futures import ThreadPoolExecutor
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
+from django.db import transaction
 from rest_framework import viewsets
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework import permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.projects.serializers import *
-from django.db.models import Q
-from django.contrib.auth.models import User
-from apps.projects.models import FormData
-from apps.projects.utils import save_uploaded_images
+from apps.projects.models import FormData, FormDefinition
+from apps.projects.utils import snapshot_uploaded_files, save_uploaded_file_snapshots
+
+
+upload_executor = ThreadPoolExecutor(max_workers=2)
 
 
 class FormDataView(viewsets.ViewSet):
@@ -56,84 +56,138 @@ class FormDataView(viewsets.ViewSet):
         except:
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def _normalize_request_data(self, request):
+        raw_data = request.data
+        if hasattr(raw_data, "dict"):
+            return raw_data.dict()
+        return dict(raw_data)
+
+    def _parse_form_data(self, value):
+        if value is None:
+            return {}
+
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return {}
+
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError as exc:
+                raise ValueError("Invalid JSON in form_data") from exc
+
+            if not isinstance(parsed, dict):
+                raise ValueError("form_data must be a JSON object")
+
+            return parsed
+
+        if not isinstance(value, dict):
+            raise ValueError("form_data must be a JSON object")
+
+        return value
+
+    def _parse_created_at(self, data):
+        created_on_str = data.get("created_on") or data.get("created_at")
+        if not created_on_str:
+            return timezone.now()
+
+        created_on = parse_datetime(created_on_str)
+        if created_on is None:
+            raise ValueError("Invalid created_on datetime")
+
+        if timezone.is_naive(created_on):
+            created_on = timezone.make_aware(created_on, timezone.get_current_timezone())
+
+        return created_on
+
+    def _save_files_in_background(self, instance_id, file_snapshots):
+        try:
+            saved_paths = save_uploaded_file_snapshots(
+                file_snapshots,
+                upload_subdir="assets/uploads/photos/",
+            )
+            first_saved_path = next(
+                (
+                    path
+                    for paths in saved_paths.values()
+                    for path in paths
+                    if path
+                ),
+                None,
+            )
+            if first_saved_path:
+                FormData.objects.filter(pk=instance_id).update(photo=first_saved_path)
+        except Exception:
+            logging.exception("Failed to save uploaded files in background", extra={"formdata_id": instance_id})
+
     def create(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {"success": False, "message": "Request body is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         
         # Logging incoming data
         logging.info("Incoming data")
         logging.info(request.data)
 
-        # Normalize incoming data (QueryDict or dict)
-        raw_data = request.data
-
-        # DRF can give you a QueryDict or a regular dict depending on content-type
-        if hasattr(raw_data, "dict"):  # QueryDict-like (form-data)
-            data = raw_data.dict()
-        else:  # already a normal dict (e.g. JSON body)
-            data = dict(raw_data)
+        data = self._normalize_request_data(request)
 
         try:
-            # Parse form_data JSON safely
-            form_data_value = data.get("form_data")
-
-            if isinstance(form_data_value, str):
-                try:
-                    data["form_data"] = json.loads(form_data_value)
-                except json.JSONDecodeError:
-                    # If JSON is broken, log and keep it as raw string
-                    logging.warning("Invalid JSON in form_data, keeping as string")
-                    data["form_data"] = form_data_value
-            elif form_data_value is None:
-                data["form_data"] = {}
-            else:
-                # Already parsed (e.g. app sent JSON & DRF parsed it)
-                data["form_data"] = form_data_value
-
-
-            # Parse dates (created_on)
-            created_on_str = data.get("created_on")
-            created_on = parse_datetime(created_on_str) if created_on_str else None
-            if created_on is None:
-                created_on = timezone.now()
-
-            # Normalize flags (deleted, archived, synced)
             def to_bool(val, default=False):
                 if val is None:
                     return default
                 return str(val).lower() in ("1", "true", "yes")
 
-            # default to false
+            uuid = (data.get("uuid") or "").strip()
+            if not uuid:
+                raise ValueError("uuid is required")
+
+            form_id = data.get("form")
+            if not form_id:
+                raise ValueError("form is required")
+
+            if not FormDefinition.objects.filter(pk=form_id).exists():
+                raise ValueError("Invalid form")
+
+            data["form_data"] = self._parse_form_data(data.get("form_data"))
+            created_on = self._parse_created_at(data)
             deleted = to_bool(data.get("deleted"), default=False)
 
-            # Handle photo upload (if any)
-            photo = None
-            if request.FILES:
-                photo = save_uploaded_images(request.FILES, upload_subdir="assets/uploads/photos/")
+            file_snapshots = snapshot_uploaded_files(request.FILES) if request.FILES else []
 
-            #  Insert or update database record
-            instance, created_flag = FormData.objects.update_or_create(
-                uuid=data["uuid"],
-                defaults={
-                    "form_data": data["form_data"],
-                    "original_uuid": data.get("original_uuid", data["uuid"]),
-                    "parent_id": data.get("parent_uuid", None),
-                    "title": data.get("title", ""),
-                    "created_by_name": data.get("created_by_name", ""),
-                    "form_id": data.get("form"),
-                    "gps": data.get("gps", None),
-                    "created_at": created_on,
-                    "created_by": request.user if request.user.is_authenticated else None,
-                    "updated_at": timezone.now(),
-                    "last_updated_at": timezone.now(),
-                    "submitted_at": timezone.now(),
-                    "deleted": deleted,
-                    "synced": 1,
-                    # only set photo if we received one
-                    # **({"photo": photo} if photo is not None else {}),
-                },
-            )
+            now = timezone.now()
+            defaults = {
+                "form_data": data["form_data"],
+                "original_uuid": data.get("original_uuid", uuid),
+                "parent_id": data.get("parent_uuid"),
+                "title": data.get("title", ""),
+                "created_by_name": data.get("created_by_name", ""),
+                "form_id": form_id,
+                "gps": data.get("gps"),
+                "created_at": created_on,
+                "created_by": request.user if request.user.is_authenticated else None,
+                "updated_at": now,
+                "last_updated_at": now,
+                "submitted_at": now,
+                "deleted": deleted,
+                "synced": 1,
+            }
+
+            with transaction.atomic():
+                instance, created_flag = FormData.objects.update_or_create(
+                    uuid=uuid,
+                    defaults=defaults,
+                )
+                if file_snapshots:
+                    transaction.on_commit(
+                        lambda: upload_executor.submit(
+                            self._save_files_in_background,
+                            instance.pk,
+                            file_snapshots,
+                        )
+                    )
 
             logging.info("== inserted/updated form data ==")
             logging.info({"id": instance.id, "uuid": instance.uuid, "created": created_flag})

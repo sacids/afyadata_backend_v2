@@ -3,6 +3,7 @@ import calendar
 import random
 import string
 import logging
+import uuid
 from datetime import date, datetime
 from django.http import JsonResponse
 import os
@@ -407,6 +408,44 @@ def save_uploaded_images(files, upload_subdir):
             # Save file
             path = default_storage.save(full_path, ContentFile(file.read()))
             saved_paths[key].append(path)
+
+    return saved_paths
+
+
+def snapshot_uploaded_files(files):
+    """
+    Capture uploaded files in memory so they can be saved after the request ends.
+    """
+    snapshots = []
+
+    for key in sorted(files.keys()):
+        for file in files.getlist(key):
+            snapshots.append(
+                {
+                    "field_name": key,
+                    "filename": file.name,
+                    "content_type": getattr(file, "content_type", None),
+                    "content": file.read(),
+                }
+            )
+
+    return snapshots
+
+
+def save_uploaded_file_snapshots(file_snapshots, upload_subdir):
+    """
+    Persist previously captured uploaded file snapshots.
+    """
+    saved_paths = {}
+
+    for item in file_snapshots:
+        field_name = item["field_name"]
+        original_name = item["filename"]
+        base_name = os.path.basename(original_name or "upload.bin")
+        unique_name = f"{uuid.uuid4().hex}_{base_name}"
+        full_path = os.path.join(upload_subdir, unique_name)
+        path = default_storage.save(full_path, ContentFile(item["content"]))
+        saved_paths.setdefault(field_name, []).append(path)
 
     return saved_paths
 
