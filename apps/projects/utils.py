@@ -1,5 +1,7 @@
 import json
+import base64
 import calendar
+import mimetypes
 import random
 import string
 import logging
@@ -425,38 +427,68 @@ def snapshot_uploaded_files(files):
                     "field_name": key,
                     "filename": file.name,
                     "content_type": getattr(file, "content_type", None),
-                    "content": file.read(),
+                    "content_b64": base64.b64encode(file.read()).decode("ascii"),
                 }
             )
 
     return snapshots
 
 
+def infer_uploaded_file_type(content_type=None, filename=None):
+    if content_type:
+        lowered = str(content_type).lower()
+        if lowered.startswith("image/"):
+            return "image"
+        if lowered.startswith("video/"):
+            return "video"
+
+    guessed_type, _ = mimetypes.guess_type(filename or "")
+    if guessed_type:
+        if guessed_type.startswith("image/"):
+            return "image"
+        if guessed_type.startswith("video/"):
+            return "video"
+
+    return "other"
+
+
 def save_uploaded_file_snapshots(file_snapshots, upload_subdir):
     """
     Persist previously captured uploaded file snapshots.
     """
-    saved_paths = {}
+    saved_files = []
 
     for item in file_snapshots:
         field_name = item["field_name"]
         original_name = item["filename"]
+        content = base64.b64decode(item["content_b64"])
         base_name = os.path.basename(original_name or "upload.bin")
         unique_name = f"{uuid.uuid4().hex}_{base_name}"
         full_path = os.path.join(upload_subdir, unique_name)
-        path = default_storage.save(full_path, ContentFile(item["content"]))
-        saved_paths.setdefault(field_name, []).append(path)
+        path = default_storage.save(full_path, ContentFile(content))
+        saved_files.append(
+            {
+                "field_name": field_name,
+                "original_name": original_name,
+                "content_type": item.get("content_type"),
+                "file_type": infer_uploaded_file_type(
+                    content_type=item.get("content_type"),
+                    filename=original_name,
+                ),
+                "path": path,
+            }
+        )
 
-    return saved_paths
+    return saved_files
 
 
 def handle_uploaded_file(f):
     """handle upload of a file"""
-    with open("assets/uploads/photos/" + f.name, "wb+") as destination:
+    with open("assets/uploads/" + f.name, "wb+") as destination:
         for chunk in f.chunks():
             destination.write(chunk)
 
-    return "photos/" + f.name
+    return f.name
 
 
 def generate_code(length=5):

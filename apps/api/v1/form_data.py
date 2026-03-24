@@ -1,6 +1,5 @@
 import logging
 import json
-from concurrent.futures import ThreadPoolExecutor
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from django.db import transaction
@@ -12,11 +11,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.projects.serializers import *
 from apps.projects.models import FormData, FormDefinition
-from apps.projects.utils import snapshot_uploaded_files, save_uploaded_file_snapshots
+from apps.projects.utils import snapshot_uploaded_files
 from apps.projects.tasks import save_formdata_files_task
-
-
-upload_executor = ThreadPoolExecutor(max_workers=2)
 
 
 class FormDataView(viewsets.ViewSet):
@@ -103,24 +99,6 @@ class FormDataView(viewsets.ViewSet):
 
         return created_on
 
-    def _save_files_in_background(self, instance_id, file_snapshots):
-        try:
-            saved_paths = save_uploaded_file_snapshots(
-                file_snapshots,
-                upload_subdir="assets/uploads/photos/",
-            )
-            first_saved_path = next(
-                (path for paths in saved_paths.values() for path in paths if path),
-                None,
-            )
-            if first_saved_path:
-                FormData.objects.filter(pk=instance_id).update(photo=first_saved_path)
-        except Exception:
-            logging.exception(
-                "Failed to save uploaded files in background",
-                extra={"formdata_id": instance_id},
-            )
-
     def create(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
@@ -187,7 +165,9 @@ class FormDataView(viewsets.ViewSet):
                 if file_snapshots:
                     transaction.on_commit(
                         lambda: save_formdata_files_task.delay(
-                            instance.pk, file_snapshots
+                            instance.pk,
+                            file_snapshots,
+                            request.user.pk if request.user.is_authenticated else None,
                         )
                     )
 

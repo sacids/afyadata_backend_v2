@@ -1,34 +1,13 @@
-import logging
 from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import FormData
-from apps.esb.utils import build_payload, push_payload
+from .tasks import push_formdata_payload_task
 
 @receiver(post_save, sender=FormData)
 def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
     if instance.deleted == 1:
         return
 
-    # load payload configs
-    configs = instance.form.payload_configs.filter(is_active=True)
-
-    def do_push():
-        # reload fresh instance (avoid stale state)
-        fd = FormData.objects.get(pk=instance.pk)
-        push_status = fd.push_status
-
-        for cfg in configs:
-            # prevent re-send if already sent
-            if push_status is True:
-                continue
-            
-            # build payload
-            payload = build_payload(fd, cfg)
-            logging.info("== API Payload ==")
-            logging.info(payload)
-
-            # push data to the server
-            ok, info = push_payload(cfg, payload, formdata=fd)
-    transaction.on_commit(do_push)
+    transaction.on_commit(lambda: push_formdata_payload_task.delay(instance.pk))
