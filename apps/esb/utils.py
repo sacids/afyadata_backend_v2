@@ -267,8 +267,8 @@ def push_payload(cfg, payload, formdata=None):
         headers.update(cfg.headers)
 
     # pass authorization header
-    if not headers.get("Authorization"):
-        headers.update(get_auth_headers())
+    # if not headers.get("Authorization"):
+    #     headers.update(get_auth_headers())
 
     try:
         resp = requests.request(
