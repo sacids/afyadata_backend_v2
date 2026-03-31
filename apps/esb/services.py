@@ -37,8 +37,8 @@ def _get_token_settings() -> Tuple[str, str, str, int]:
     return auth_url, client_id, client_secret, timeout
 
 
-def _build_cache_key(auth_url: str, username: str) -> str:
-    digest = hashlib.sha256(f"{auth_url}:{username}".encode("utf-8")).hexdigest()[:16]
+def _build_cache_key(auth_url: str, client_id: str) -> str:
+    digest = hashlib.sha256(f"{auth_url}:{client_id}".encode("utf-8")).hexdigest()[:16]
     return f"external_api_token:{digest}"
 
 
@@ -69,28 +69,24 @@ def _resolve_cache_timeout(expires_in: Any) -> int:
 
 
 def get_bearer_token(force_refresh: bool = False) -> str:
-    auth_url, username, password, timeout = _get_token_settings()
-    cache_key = _build_cache_key(auth_url, username)
+    auth_url, client_id, client_secret, timeout = _get_token_settings()
+    cache_key = _build_cache_key(auth_url, client_id)
 
     if not force_refresh:
         cached_token = cache.get(cache_key)
         if cached_token:
             return cached_token
 
-    payload = {
-        "grant_type": "client_credentials",
-        "client_id": "",
-        "client_secret": "",
-    }
+    # config headers
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
+    # config payload
+    payload = f'grant_type=client_credentials&client_id={client_id}&client_secret={client_secret}'
 
     try:
         response = requests.post(
             auth_url,
-            json=payload,
+            data=payload,
             headers=headers,
             timeout=timeout,
         )

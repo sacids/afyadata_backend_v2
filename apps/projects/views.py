@@ -42,7 +42,6 @@ from .forms import (
 from apps.ohkr.models import ClinicalSign
 from apps.esb.models import FormPayloadConfig
 
-
 class ProjectListView(generic.ListView):
     # permission_required = ''
 

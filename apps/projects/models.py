@@ -164,7 +164,7 @@ class FormAttachment(models.Model):
     title = models.CharField(max_length=150, blank=True, null=True)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='json')
     attachment = models.FileField(
-        upload_to="assets/uploads/form_attachments/", max_length=200, null=True, blank=True
+        upload_to="uploads/form_attachments/", max_length=200, null=True, blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -193,7 +193,7 @@ class FormData(models.Model):
     path = models.TextField(blank=True, null=True)
     form_data = models.JSONField(null=False)
     photo = models.FileField(
-        upload_to="assets/uploads/photo/", max_length=200, null=True, blank=True
+        upload_to="uploads/", max_length=200, null=True, blank=True
     )
     deleted = models.IntegerField(default=0)
     created_at = models.DateTimeField(null=False)  # app created date
@@ -256,7 +256,7 @@ class FormDataFile(models.Model):
         on_delete=models.CASCADE,
     )
     file = models.FileField(
-        upload_to="assets/uploads/",
+        upload_to="uploads/",
         max_length=200,
     )
     file_type = models.CharField(
@@ -274,6 +274,7 @@ class FormDataFile(models.Model):
         blank=True,
         null=True,
     )
+    response_json = models.JSONField(null=True, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=["form_data", "created_at"])]

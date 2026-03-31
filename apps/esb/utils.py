@@ -1,12 +1,14 @@
 import re
 import ast
 import json
+import mimetypes
 import requests
 import logging
 from datetime import datetime, date, timezone as dt_timezone
+from urllib.parse import urlsplit
 from django.utils.dateparse import parse_datetime, parse_date
+from decouple import config as env_config
 from apps.esb.services import get_auth_headers
-
 from .models import *
 
 
@@ -251,6 +253,138 @@ def build_payload(fd, config):
     return payload
 
 
+def get_formdata_image(formdata):
+    image_file = formdata.files.filter(file_type="image").order_by("created_at").first()
+    if image_file and getattr(image_file.file, "name", None):
+        return image_file, image_file.file, image_file.original_name or image_file.file.name
+
+    if getattr(formdata, "photo", None) and getattr(formdata.photo, "name", None):
+        return None, formdata.photo, formdata.photo.name
+
+    return None, None, None
+
+
+def build_image_upload_request_url(cfg, report_id):
+    base_url = cfg.endpoint
+
+    # return upload request url
+    return f"{base_url}/{report_id}/image_upload_request"
+
+
+def extract_signed_url(payload):
+    if not isinstance(payload, dict):
+        return None
+
+    for key in ("signed_url", "signedUrl", "upload_url", "uploadUrl", "url"):
+        value = payload.get(key)
+        if value:
+            return value
+
+    data = payload.get("data")
+    if isinstance(data, dict):
+        for key in ("signed_url", "signedUrl", "upload_url", "uploadUrl", "url"):
+            value = data.get(key)
+            if value:
+                return value
+
+    return None
+
+
+def extract_upload_headers(payload):
+    if not isinstance(payload, dict):
+        return {}
+
+    for key in ("requiredHeaders", "headers", "upload_headers", "uploadHeaders"):
+        value = payload.get(key)
+        if isinstance(value, dict):
+            return value
+
+    data = payload.get("data")
+    if isinstance(data, dict):
+        for key in ("requiredHeaders", "headers", "upload_headers", "uploadHeaders"):
+            value = data.get(key)
+            if isinstance(value, dict):
+                return value
+
+    return {}
+
+
+def upload_community_report_image(cfg, formdata, report_id):
+    if not report_id:
+        return {"ok": False, "error": "Missing report_id"}
+
+    image_record, image_field, original_name = get_formdata_image(formdata)
+    if image_field is None:
+        return {"ok": False, "error": "No image found for form data"}
+
+    request_url = build_image_upload_request_url(cfg, report_id)
+    if not request_url:
+        return {"ok": False, "error": "Unable to build image upload request URL"}
+
+    headers = {"Accept": "application/json"}
+
+    # check if header passed from db
+    if isinstance(cfg.headers, dict):
+        headers.update(cfg.headers)
+
+    # pass authorization header
+    if not headers.get("Authorization"):
+        headers.update(get_auth_headers())
+
+    try:
+        signed_response = requests.post(
+            request_url,
+            headers=headers,
+            timeout=25,
+        )
+        signed_response.raise_for_status()
+        signed_payload = signed_response.json()
+    except Exception as exc:
+        return {"ok": False, "error": f"Failed to fetch signed URL: {exc}"}
+
+    signed_url = extract_signed_url(signed_payload)
+    if not signed_url:
+        return {"ok": False, "error": "Signed URL missing in response"}
+
+    content_type = mimetypes.guess_type(original_name or "")[0] or "application/octet-stream"
+    upload_headers = extract_upload_headers(signed_payload)
+    if not isinstance(upload_headers, dict):
+        upload_headers = {}
+
+    upload_headers = {str(k): str(v) for k, v in upload_headers.items()}
+    upload_headers.setdefault("Content-Type", content_type)
+
+    try:
+        with image_field.open("rb") as file_obj:
+            upload_response = requests.put(
+                signed_url,
+                headers=upload_headers,
+                data=file_obj,
+                timeout=60,
+            )
+            upload_response.raise_for_status()
+            logging.info("== Image API Response ==")
+            logging.info(upload_response.status_code)
+            logging.info(upload_response)
+    except Exception as exc:
+        return {"ok": False, "error": f"Failed to upload image: {exc}"}
+
+    image_upload_info = {
+        "ok": True,
+        "request_url": request_url,
+        "signed_url": signed_url,
+        "upload_headers": upload_headers,
+        "content_type": content_type,
+    }
+
+    if image_record is not None:
+        image_record.__class__.objects.filter(pk=image_record.pk).update(
+            response_json=image_upload_info
+        )
+
+    return image_upload_info
+
+
 def push_payload(cfg, payload, formdata=None):
     """Push data to endpoint"""
     if not cfg.endpoint:
@@ -267,8 +401,8 @@ def push_payload(cfg, payload, formdata=None):
         headers.update(cfg.headers)
 
     # pass authorization header
-    # if not headers.get("Authorization"):
-    #     headers.update(get_auth_headers())
+    if not headers.get("Authorization"):
+        headers.update(get_auth_headers())
 
     try:
         resp = requests.request(
@@ -319,6 +453,13 @@ def push_payload(cfg, payload, formdata=None):
             if response_id not in (None, ""):
                 update_fields["response_id"] = str(response_id)
             formdata.__class__.objects.filter(pk=formdata.pk).update(**update_fields)
+
+            if response_id not in (None, ""):
+                image_upload_info = upload_community_report_image(cfg, formdata, str(response_id))
+                info["image_upload"] = image_upload_info
+                if isinstance(response_body, dict):
+                    response_with_upload = dict(response_body)
+                    response_with_upload["image_upload"] = image_upload_info
 
         return ok, info
 

@@ -6,13 +6,13 @@ import random
 import string
 import logging
 import uuid
+import tempfile
 from datetime import date, datetime
 from django.http import JsonResponse
 import os
 from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
+from django.core.files.base import ContentFile, File
 from django.conf import settings
-
 
 from .models import FormDefinition, FormData
 from django.utils.dateformat import DateFormat
@@ -173,7 +173,7 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
                     if value.lower().endswith(
                         (".png", ".jpg", ".jpeg", ".gif", ".webp")
                     ):
-                        image_url = f"{settings.MEDIA_URL}assets/uploads/photos/{value}"
+                        image_url = f"{settings.MEDIA_URL}uploads/{value}"
                         img_tag = f'<img src="{image_url}" alt="{field_name}" style="max-height: 50px; max-width: 50px;" />'
                         row.append(img_tag)
                     else:
@@ -416,18 +416,24 @@ def save_uploaded_images(files, upload_subdir):
 
 def snapshot_uploaded_files(files):
     """
-    Capture uploaded files in memory so they can be saved after the request ends.
+    Spool uploaded files to temporary storage so the request can finish quickly
+    and Celery can persist them later.
     """
     snapshots = []
 
     for key in sorted(files.keys()):
         for file in files.getlist(key):
+            suffix = os.path.splitext(file.name or "")[1]
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+                for chunk in file.chunks():
+                    tmp_file.write(chunk)
+
             snapshots.append(
                 {
                     "field_name": key,
                     "filename": file.name,
                     "content_type": getattr(file, "content_type", None),
-                    "content_b64": base64.b64encode(file.read()).decode("ascii"),
+                    "temp_path": tmp_file.name,
                 }
             )
 
@@ -461,11 +467,23 @@ def save_uploaded_file_snapshots(file_snapshots, upload_subdir):
     for item in file_snapshots:
         field_name = item["field_name"]
         original_name = item["filename"]
-        content = base64.b64decode(item["content_b64"])
         base_name = os.path.basename(original_name or "upload.bin")
         unique_name = f"{uuid.uuid4().hex}_{base_name}"
         full_path = os.path.join(upload_subdir, unique_name)
-        path = default_storage.save(full_path, ContentFile(content))
+
+        if item.get("temp_path"):
+            temp_path = item["temp_path"]
+            try:
+                with open(temp_path, "rb") as tmp_file:
+                    path = default_storage.save(full_path, File(tmp_file, name=unique_name))
+            finally:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+        else:
+            # Backward compatibility for older queued payloads.
+            content = base64.b64decode(item["content_b64"])
+            path = default_storage.save(full_path, ContentFile(content))
+
         saved_files.append(
             {
                 "field_name": field_name,
@@ -484,7 +502,7 @@ def save_uploaded_file_snapshots(file_snapshots, upload_subdir):
 
 def handle_uploaded_file(f):
     """handle upload of a file"""
-    with open("assets/uploads/" + f.name, "wb+") as destination:
+    with open("uploads/" + f.name, "wb+") as destination:
         for chunk in f.chunks():
             destination.write(chunk)
 

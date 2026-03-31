@@ -10,7 +10,7 @@ from apps.esb.utils import build_payload, push_payload
 def save_formdata_files_task(self, formdata_id, file_snapshots, uploaded_by_id=None):
     saved_files = save_uploaded_file_snapshots(
         file_snapshots,
-        upload_subdir="assets/uploads/",
+        upload_subdir="uploads/",
     )
 
     formdata = FormData.objects.get(pk=formdata_id)
@@ -47,9 +47,5 @@ def push_formdata_payload_task(self, formdata_id):
             break
 
         payload = build_payload(formdata, config)
-        logging.info("== API PAYLOAD ==")
-        logging.info(payload)
-
-        # Push data
         push_payload(config, payload, formdata=formdata)
         formdata.refresh_from_db(fields=["push_status"])
