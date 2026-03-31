@@ -119,6 +119,8 @@
                 fetch(`/ohkr/locations/sync`)
                     .then(response => response.json())
                     .then(data => {
+                        console.log("== response ==")
+                        console.log(data)
                         if (data.success === true) {
                             this.showMessage('success', data.success_msg);
                             setTimeout(() => window.location.reload(), 3000);

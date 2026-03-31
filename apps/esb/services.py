@@ -86,8 +86,8 @@ def get_bearer_token(force_refresh: bool = False) -> str:
     try:
         response = requests.post(
             auth_url,
-            data=payload,
             headers=headers,
+            data=payload,
             timeout=timeout,
         )
         response.raise_for_status()
