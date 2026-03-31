@@ -363,9 +363,8 @@ def upload_community_report_image(cfg, formdata, report_id):
                 timeout=60,
             )
             upload_response.raise_for_status()
-            logging.info("== Image API Response ==")
+            logging.info("== API File Response ==")
             logging.info(upload_response.status_code)
-            logging.info(upload_response)
     except Exception as exc:
         return {"ok": False, "error": f"Failed to upload image: {exc}"}
 
@@ -396,10 +395,6 @@ def push_payload(cfg, payload, formdata=None):
     # header
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
-    # check if header passed from db
-    if isinstance(cfg.headers, dict):
-        headers.update(cfg.headers)
-
     # pass authorization header
     if not headers.get("Authorization"):
         headers.update(get_auth_headers())
@@ -417,9 +412,8 @@ def push_payload(cfg, payload, formdata=None):
         except Exception:
             response_body = {"raw": (resp.text or "")[:2000]}
 
-        logging.info("== API Response ==")
+        logging.info("== API Data Response ==")
         logging.info(resp.status_code)
-        logging.info(response_body)
         
         ok = 200 <= resp.status_code < 300
         info = {
