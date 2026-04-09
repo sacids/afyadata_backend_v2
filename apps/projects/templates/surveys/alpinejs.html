@@ -21,10 +21,55 @@
             loading: false,
             postUrl: "",
             csrfToken: "{{ csrf_token|escapejs }}",
+            availableLanguages: [],
+            selectedLanguage: "",
+            activeLanguage: "",
+            pageHeaders: {},
 
             form_cols: [],
             form_data: [],
             dt: null,
+            form_defn: {},
+
+            init() {
+                this.loadFormDefinition(this.activeFormId, {
+                    preserveTitle: true,
+                    preserveDescription: true,
+                });
+            },
+
+            buildLangQuery() {
+                const params = new URLSearchParams();
+                if (this.selectedLanguage) {
+                    params.set('lang', this.selectedLanguage);
+                }
+                const query = params.toString();
+                return query ? `?${query}` : '';
+            },
+
+            detailEntries() {
+                return Object.entries(this.data_instance || {}).map(([key, value]) => ({
+                    key,
+                    label: this.form_defn[key] || this.prettyHeader(key),
+                    value: value ?? '-',
+                }));
+            },
+
+            async changeLanguage() {
+                await this.loadFormDefinition(this.activeFormId, {
+                    preserveTitle: this.activeFormId === current_data.id,
+                    preserveDescription: false,
+                });
+
+                if (this.viewMode === 'table') {
+                    await this.loadTable(this.activeFormId);
+                    return;
+                }
+
+                if (this.viewMode === 'chart') {
+                    this.subtitle = this.description;
+                }
+            },
 
             loadData(form_id) {
                 this.activeFormId = current_data.id;
@@ -32,6 +77,11 @@
                 this.data_instance = current_data.form_data;
                 this.tabId = 'information';
                 this.viewMode = '';
+                this.title = current_data.title;
+                this.loadFormDefinition(this.activeFormId, {
+                    preserveTitle: true,
+                    preserveDescription: false,
+                });
             },
 
             initDataTable() {
@@ -47,7 +97,7 @@
                 }
 
                 // rebuild thead so headers match dynamic cols
-                const thead = `<tr>${this.form_cols.map(c => `<th>${this.prettyHeader(c)}</th>`).join('')
+                const thead = `<tr>${this.form_cols.map(c => `<th>${c}</th>`).join('')
                     }</tr>`;
                 $table.find('thead').html(thead);
                 $table.find('tbody').empty();
@@ -115,7 +165,6 @@
                 this.tabId = '';
                 this.$nextTick(() => {
                     this.loadChart(this.activeFormId);
-                    this.loadFormDefinition(this.activeFormId);
                 });
             },
 
@@ -126,18 +175,27 @@
             },
 
             async loadTable(form_id) {
-                const form = this.forms.find(f => String(f.id) === String(form_id));
-                if (!form) return;
+                const form = this.forms.find(f => String(f.id) === String(form_id))
+                    || { id: current_data.id, title: current_data.form_title, description: current_data.form_title };
 
                 this.activeFormId = form.id;
-                this.title = form.title || "";
-                this.description = form.description || "";
                 this.viewMode = 'table';
                 this.tabId = '';
 
-                fetch(`/projects/forms/${this.activeFormId}/data?parent_id=${this.parentId}`)
+                await this.loadFormDefinition(this.activeFormId, {
+                    fallbackTitle: form.title,
+                    fallbackDescription: form.description,
+                });
+
+                const query = new URLSearchParams({ parent_id: this.parentId });
+                if (this.selectedLanguage) {
+                    query.set('lang', this.selectedLanguage);
+                }
+
+                fetch(`/projects/forms/${this.activeFormId}/data?${query.toString()}`)
                     .then(response => response.json())
                     .then(data => {
+                        this.description = data.form_title || this.description;
                         this.form_cols = data.cols;
                         this.form_data = data.data;
 
@@ -147,21 +205,106 @@
             },
 
             exportData(form_id) {
-                window.location.href = `/projects/forms/${form_id}/data/export?parent_id=${this.parentId}`;
+                const query = new URLSearchParams({ parent_id: this.parentId });
+                if (this.selectedLanguage) {
+                    query.set('lang', this.selectedLanguage);
+                }
+                window.location.href = `/projects/forms/${form_id}/data/export?${query.toString()}`;
             },
 
-                        //load form_defn
-            form_defn: {},
-            async loadFormDefinition(form_id) {
+            //load form_defn
+            async loadFormDefinition(form_id, options = {}) {
                 this.activeFormId = form_id;
 
-                fetch(`/projects/forms/${form_id}/definition`)
-                    .then(response => response.json())
-                    .then(data => {
-                        this.form_defn = data.cols;
-                    });
+                const response = await fetch(`/projects/forms/${form_id}/definition${this.buildLangQuery()}`);
+                const data = await response.json();
+
+                this.form_defn = data.cols || {};
+                this.pageHeaders = data.page_headers || {};
+                this.availableLanguages = data.languages || [];
+                this.activeLanguage = data.language || "";
+
+                if (!this.selectedLanguage || !this.availableLanguages.includes(this.selectedLanguage)) {
+                    this.selectedLanguage = this.activeLanguage;
+                }
+
+                if (!options.preserveTitle) {
+                    this.title = data.form_title || options.fallbackTitle || this.title;
+                }
+
+                if (!options.preserveDescription) {
+                    this.description = data.form_title || options.fallbackDescription || this.description;
+                }
+
+                if (this.viewMode !== 'chart') {
+                    this.subtitle = data.form_title || this.subtitle;
+                }
             },
 
+            fieldLabel(fieldKey) {
+                return this.form_defn[fieldKey] || this.prettyHeader(fieldKey);
+            },
+
+            popupFields(formData) {
+                return Object.entries(formData || {})
+                    .map(([key, value]) => `${this.fieldLabel(key)}: ${value || ''}`)
+                    .join('<br/>');
+            },
+
+            getChartLabel(fieldKey) {
+                return this.fieldLabel(fieldKey || '');
+            },
+
+            async loadChart(form_id) {
+                await this.loadFormDefinition(form_id, {
+                    fallbackDescription: this.description,
+                });
+
+                // basic validation
+                if (this.form.agg !== 'count' && !this.form.y_axis) {
+                    this.messageType = 'error';
+                    this.message = 'Please select a numeric Y-axis field for this aggregation.';
+                    return;
+                }
+
+                this.loading = true;
+                this.message = '';
+                this.subtitle = 'Loading chart data…';
+                this.postUrl = `/projects/forms/${form_id}/data/charts`;
+
+                try {
+                    const payload = this.buildPayload();
+
+                    const res = await fetch(this.postUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.csrfToken,
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) {
+                        throw new Error(data.error || 'Request failed');
+                    }
+
+                    this.lastResponse = data;
+                    this.subtitle = `${data.agg.toUpperCase()} by ${this.getChartLabel(data.x_axis)}${data.y_axis ? (' → ' + this.getChartLabel(data.y_axis)) : ''}`;
+
+                    this.computeStats(data.data || []);
+                    this.draw(data.labels || [], data.data || []);
+
+                    this.messageType = 'success';
+                    this.message = 'Chart updated successfully.';
+                } catch (err) {
+                    this.messageType = 'error';
+                    this.message = err.message || 'Choose options and generate.';
+                    this.subtitle = 'Choose options and generate.';
+                } finally {
+                    this.loading = false;
+                }
+            },
             // rendering charts
             loading: false,
             message: '',
@@ -206,53 +349,6 @@
 
                 this.lastPayload = payload;
                 return payload;
-            },
-
-            async loadChart(form_id) {
-                // basic validation
-                if (this.form.agg !== 'count' && !this.form.y_axis) {
-                    this.messageType = 'error';
-                    this.message = 'Please select a numeric Y-axis field for this aggregation.';
-                    return;
-                }
-
-                this.loading = true;
-                this.message = '';
-                this.subtitle = 'Loading chart data…';
-                this.postUrl = `/projects/forms/${form_id}/data/charts}`;
-
-                try {
-                    const payload = this.buildPayload();
-
-                    const res = await fetch(this.postUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': this.csrfToken,
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const data = await res.json();
-                    if (!res.ok) {
-                        throw new Error(data.error || 'Request failed');
-                    }
-
-                    this.lastResponse = data;
-                    this.subtitle = `${data.agg.toUpperCase()} by ${data.x_axis}${data.y_axis ? (' → ' + data.y_axis) : ''}`;
-
-                    this.computeStats(data.data || []);
-                    this.draw(data.labels || [], data.data || []);
-
-                    this.messageType = 'success';
-                    this.message = 'Chart updated successfully.';
-                } catch (err) {
-                    this.messageType = 'error';
-                    this.message = err.message || 'Choose options and generate.';
-                    this.subtitle = 'Choose options and generate.';
-                } finally {
-                    this.loading = false;
-                }
             },
 
             computeStats(arr) {
@@ -375,7 +471,7 @@
                                 UUID: ${p.uuid || ''}<br/>
                                 Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}<br/>
                                 Created: ${p.created_at || ''}<br/>
-                                ${Object.keys(p.form_data || {}).map(key => `${key}: ${p.form_data[key] || ''}`).join('<br/>')}
+                                ${this.popupFields(p.form_data)}
                             `;
 
                             marker.bindPopup(popupHtml);

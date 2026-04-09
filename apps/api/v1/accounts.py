@@ -1,18 +1,15 @@
-import re
 import logging
 import json
 from django.http import JsonResponse
 from django.contrib.auth.models import User, Group
-from apps.accounts.models import Profile
 from rest_framework import viewsets
 from rest_framework import permissions, status, generics
-from apps.accounts.serializers import UserSerializer, GroupSerializer, ChangePasswordSerializer, CustomTokenObtainPairSerializer
+from apps.accounts.serializers import UserSerializer, GroupSerializer, ChangePasswordSerializer, CustomTokenObtainPairSerializer, RegisterSerializer, LoginSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
-from django.contrib.auth import authenticate
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -93,68 +90,41 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        fullName    = request.data.get('fullName')
-        phoneNumber = request.data.get('phoneNumber')
-        username    = request.data.get('username')
-        passwd1     = request.data.get('password')
-        passwd2     = request.data.get('passwordConfirm')
+        payload = {
+            "fullName": request.data.get("fullName") or request.data.get("fullname"),
+            "phoneNumber": request.data.get("phoneNumber") or request.data.get("phone"),
+            "username": request.data.get("username"),
+            "password": request.data.get("password"),
+            "passwordConfirm": request.data.get("passwordConfirm"),
+        }
 
-        response           = {}
-        status_code        = 200
+        serializer = RegisterSerializer(data=payload)
 
-        if not fullName or not phoneNumber or not username or not passwd1:
-            response['error']        = True
-            response['error_msg']    = 'Required parameters missing'
-            status_code              = 203
+        if serializer.is_valid():
+            new_user = serializer.save()
+            refresh = RefreshToken.for_user(new_user)
+
+            response = {
+                "error": False,
+                "uid": new_user.pk,
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": {
+                    "id": new_user.pk,
+                    "username": new_user.username,
+                    "fullName": serializer.validated_data["fullName"],
+                    "phone": serializer.validated_data["phoneNumber"],
+                },
+                "success_msg": "User successfully registered.",
+            }
+            status_code = status.HTTP_201_CREATED
         else:
-            # check for password matching
-            if passwd1 != passwd2:
-                response['error']        = True
-                response['error_msg']    = 'Password mismatch'
-                status_code              = 203
-            else:
-                try:
-                    user = User.objects.get(username = username)
-
-                    # create token
-                    refresh = RefreshToken.for_user(user)
-
-                    print(refresh)
-
-                    response['error']    = False
-                    response['uid']      = user.pk
-                    response['refresh']  = str(refresh)
-                    response['access']   = str(refresh.access_token)
-                    response['user']     = {'id': user.pk, 'username':user.username,'fullName':user.first_name,'phone':phoneNumber}
-                    response['success_msg']  = 'User information retrieved successfully.'
-                    status_code     = 200
-                
-                except User.DoesNotExist:
-                    # create new user
-                    new_user = User.objects.create_user(
-                        username   = username,
-                        password   = passwd1,
-                        first_name = fullName,
-                        last_name  = fullName,
-                        email      = f"{username}@sacids.org"
-                    )
-
-                    # create token
-                    refresh = RefreshToken.for_user(new_user)
-
-                    #update profile
-                    profile         = Profile.objects.get(user=new_user)
-                    profile.phone   = phoneNumber
-                    #profile.digest  = calculate_digest(new_user.username, passwd1)
-                    profile.save()
-                    
-                    response['error']    = False
-                    response['uid']      = new_user.pk
-                    response['refresh']  = str(refresh)
-                    response['access']   = str(refresh.access_token)
-                    response['user']     = {'id': new_user.pk, 'username':new_user.username,'fullName':new_user.first_name,'phone':phoneNumber}
-                    response['success_msg']  = 'User successfully registered.'
-                    status_code     = 200
+            response = {
+                "error": True,
+                "error_msg": "Validation failed",
+                "errors": serializer.errors,
+            }
+            status_code = status.HTTP_400_BAD_REQUEST
 
         logging.info("== User registration response ==")
         logging.info(json.dumps(response, indent=2, default=str))            
@@ -164,36 +134,28 @@ class RegisterView(APIView):
         
  
 class LoginView(APIView):
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+    permission_classes = [AllowAny]
 
-        if not username or not password:
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data, context={"request": request})
+
+        if serializer.is_valid():
+            user = serializer.validated_data["user"]
+            refresh = RefreshToken.for_user(user)
+            profile = user.profile
+
             return JsonResponse({
-                'error': True,
-                'error_msg': 'Required parameters missing'
+                'error': False,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token), 
+                'user': {'fullName': user.first_name, 'username': user.username, 'phone': profile.phone}
             })
         else:
-            # authenticate user
-            user = authenticate(username=username, password=password)
-
-            if user is not None:
-                refresh = RefreshToken.for_user(user)
-
-                # profile 
-                profile = user.profile
-
-                return JsonResponse({
-                    'error': False,
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token), 
-                    'user': {'fullName': user.first_name, 'username': user.username, 'phone': profile.phone}
-                })
-            else:
-                return JsonResponse({
-                    'error': True,
-                    'error_msg': 'Invalid username or password'
-                })
+            return JsonResponse({
+                'error': True,
+                'error_msg': 'Validation failed',
+                'errors': serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST)
     
 
 class CustomTokenObtainPairView(TokenObtainPairView):

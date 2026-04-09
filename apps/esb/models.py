@@ -37,6 +37,7 @@ class FormPayloadFieldMap(models.Model):
         ("gps_lat", "latitude"),
         ("gps_lng", "longitude"),
         ("map:administrative_region", "map:administrative_region"),
+        ("map:administrative_district", "map:administrative_district"),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -75,6 +76,7 @@ class FormValueMapping(models.Model):
     """Form value mapping"""
     ENTITY_CHOICES = (
         ("administrative_region", "Administrative Region"),
+        ("administrative_district", "Administrative District"),
         ("species", "Species"),
         ("symptom", "Symptom"),
     )

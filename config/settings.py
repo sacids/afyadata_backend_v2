@@ -11,24 +11,33 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import importlib.util
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+HAS_WHITENOISE = importlib.util.find_spec("whitenoise") is not None
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-lo!-k%&g059#i+4-twgapfnng$bu#1x^^y)av#ur$sk-rwpzh%"
+SECRET_KEY = config(
+    "SECRET_KEY",
+    default="django-insecure-lo!-k%&g059#i+4-twgapfnng$bu#1x^^y)av#ur$sk-rwpzh%",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config(
+    "DEBUG",
+    default=True,
+    cast=lambda v: str(v).strip().lower() in ("1", "true", "yes", "on"),
+)
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = config("ALLOWED_HOST", default="*", cast=lambda v: [s.strip() for s in v.split(",") if s.strip()])
 
 # Login URL
 LOGIN_URL = "/auth/login"
@@ -73,6 +82,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+if HAS_WHITENOISE:
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 ROOT_URLCONF = "config.urls"
 
@@ -149,12 +160,14 @@ USE_TZ = True
 STATICFILES_DIRS = ["assets"]
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
+if HAS_WHITENOISE:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # default content length for submission requests
 DEFAULT_CONTENT_LENGTH = 10000000
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -196,3 +209,32 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_LIFETIME": timedelta(days=10),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=20),
 }
+HAS_WHITENOISE = importlib.util.find_spec("whitenoise") is not None
+
+# CELERY Configuration
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Africa/Dar_es_Salaam"
+
+##### Logging errors in django #####
+import logging
+
+logging.basicConfig(
+    level = logging.INFO,
+    format = '%(asctime)s %(levelname)s %(message)s',
+    filename = 'info.log',
+)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(message)s",
+    filename="debug.log",
+)
+logging.basicConfig(
+    level=logging.ERROR,
+    format="%(asctime)s %(levelname)s %(message)s",
+    filename="error.log",
+)

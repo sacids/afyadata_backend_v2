@@ -2,7 +2,9 @@ from django.db import transaction
 from .models import Location
 
 
-def upsert_location(payload: dict, *, level: int, parent=None, source="RDS", iso3=None, active=True):
+def upsert_location(
+    payload: dict, *, level: int, parent=None, source="RDS", iso3=None, active=True
+):
     obj, created = Location.objects.update_or_create(
         source=source,
         level=level,
@@ -28,7 +30,7 @@ def sync_locations(country_json: dict, *, source="RDS", active=True):
         level=0,
         parent=None,
         source=source,
-        iso3=country_json.get("iso3_code"),
+        iso3="TZA",
         active=active,
     )
     created += was_created

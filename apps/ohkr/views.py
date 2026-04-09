@@ -18,6 +18,7 @@ from django.contrib import messages
 from django.db import transaction
 from .models import *
 from .utils import sync_locations
+from apps.esb.services import get_auth_headers
 
 # Create your views here.
 class LocationListView(generic.ListView):
@@ -64,8 +65,15 @@ class LocationSyncView(generic.CreateView):
         return super(LocationSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}/api/geographical_data/countries/TZA"
+        tza_country_id = 'fdd6e49b-b1ed-4c38-923c-be3b7bbb3b1c' #TZA country_id
+        api_url = f"{config('FAO_BASE_URL')}/api/geographical_data/countries/{tza_country_id}"
+
+        # config headers
         headers = {"accept": "application/json"}
+
+        # pass authorization header
+        if not headers.get("Authorization"):
+            headers.update(get_auth_headers())
 
         try:
             # Fetch data from remote service
@@ -81,8 +89,8 @@ class LocationSyncView(generic.CreateView):
                 {
                     "success": True,
                     "success_msg": "Location synced",
-                    "created": result[0],
-                    "updated": result[1]
+                    "created": result['created'],
+                    "updated": result['updated']
                 }
             )
 
@@ -222,8 +230,7 @@ class SpecieListView(generic.ListView):
 
 class SpecieSyncView(generic.CreateView):
     """Pull species from FAO RDS  API and insert/update locally"""
-
-    model = Disease
+    model = Specie
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -232,6 +239,10 @@ class SpecieSyncView(generic.CreateView):
     def get(self, *args, **kwargs):
         api_url = f"{config('FAO_BASE_URL')}/api/species/"
         headers = {"accept": "application/json"}
+
+        # pass authorization header
+        if not headers.get("Authorization"):
+            headers.update(get_auth_headers())
 
         try:
             # Fetch data from remote service
@@ -311,8 +322,7 @@ class ClinicalSignListView(generic.ListView):
 
 class ClinicalSignSyncView(generic.CreateView):
     """Pull clinical signs from FAO RDS API and insert/update locally"""
-
-    model = Disease
+    model = ClinicalSign
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -321,6 +331,10 @@ class ClinicalSignSyncView(generic.CreateView):
     def get(self, *args, **kwargs):
         api_url = f"{config('FAO_BASE_URL')}/api/clinical-signs/"
         headers = {"accept": "application/json"}
+
+        # pass authorization header
+        if not headers.get("Authorization"):
+            headers.update(get_auth_headers())
 
         try:
             # Fetch data from remote service

@@ -17,6 +17,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.contrib import messages
 from django.utils.safestring import mark_safe
+from django.db import transaction
 
 from django.db.models import Count, Sum, Avg, Max, Min
 from django.db.models.functions import Cast, TruncMonth, TruncYear
@@ -29,9 +30,17 @@ from . import x2jform
 from . import utils
 
 from .models import Project, FormDefinition, FormData
-from .forms import ProjectForm, SurveyAddForm, SurveyUpdateForm, SurveyAttachmentForm
+from .forms import (
+    ProjectForm,
+    SurveyAddForm,
+    SurveyUpdateForm,
+    SurveyAttachmentForm,
+    FormPayloadConfigForm,
+    FormPayloadFieldMapFormSet,
+    FormValueMappingFormSet,
+)
 from apps.ohkr.models import ClinicalSign
-
+from apps.esb.models import FormPayloadConfig
 
 class ProjectListView(generic.ListView):
     # permission_required = ''
@@ -476,6 +485,7 @@ class SurveyUpdateView(generic.UpdateView):
         # Add links to context
         context["links"] = {
             "Edit Form": "#",
+            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
@@ -531,7 +541,113 @@ class SurveyDeleteView(generic.DeleteView):
         # success response
         return HttpResponse(
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Form deleted Succesfully</div>'
+            )
+
+
+class SurveyAPIConfig(generic.TemplateView):
+    template_name = "surveys/api_config.html"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyAPIConfig, self).dispatch(*args, **kwargs)
+
+    def get_payload_config(self, survey):
+        return (
+            survey.payload_configs.order_by("id").first()
+            or FormPayloadConfig(form=survey, method="POST", headers={})
         )
+
+    def get_context(
+        self,
+        survey,
+        config_form=None,
+        field_map_formset=None,
+        value_mapping_formset=None,
+    ):
+        payload_config = self.get_payload_config(survey)
+
+        if config_form is None:
+            config_form = FormPayloadConfigForm(instance=payload_config)
+
+        if field_map_formset is None:
+            field_map_formset = FormPayloadFieldMapFormSet(instance=payload_config)
+
+        if value_mapping_formset is None:
+            value_mapping_formset = FormValueMappingFormSet(instance=payload_config)
+
+        context = {
+            "title": f"{survey.title} API Config",
+            "survey": survey,
+            "payload_config": payload_config,
+            "config_form": config_form,
+            "field_map_formset": field_map_formset,
+            "value_mapping_formset": value_mapping_formset,
+            "open_value_mapping_modal": value_mapping_formset.total_error_count() > 0,
+        }
+
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {
+                "name": survey.title,
+                "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),
+            },
+            {"name": "API Config", "url": "#"},
+        ]
+
+        context["links"] = {
+            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk}),
+            "API Config": "#",
+            "Rules": reverse_lazy("projects:form-rules", kwargs={"pk": survey.pk}),
+            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": survey.pk}),
+        }
+        return context
+
+    def get(self, request, *args, **kwargs):
+        survey = get_object_or_404(FormDefinition, pk=kwargs["pk"])
+        context = self.get_context(survey)
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        survey = get_object_or_404(FormDefinition, pk=kwargs["pk"])
+        payload_config = self.get_payload_config(survey)
+        action = request.POST.get("action") or "save-api-config"
+
+        config_form = FormPayloadConfigForm(request.POST, instance=payload_config)
+        field_map_formset = FormPayloadFieldMapFormSet(request.POST, instance=payload_config)
+        value_mapping_formset = FormValueMappingFormSet(request.POST, instance=payload_config)
+
+        if (
+            config_form.is_valid()
+            and field_map_formset.is_valid()
+            and value_mapping_formset.is_valid()
+        ):
+            try:
+                with transaction.atomic():
+                    payload_config = config_form.save(commit=False)
+                    payload_config.form = survey
+                    payload_config.save()
+                    field_map_formset.instance = payload_config
+                    field_map_formset.save()
+                    value_mapping_formset.instance = payload_config
+                    value_mapping_formset.save()
+
+                if action == "save-value-mappings":
+                    messages.success(request, "Value mappings saved.")
+                else:
+                    messages.success(request, "API configuration saved.")
+            except Exception as error:
+                messages.error(request, f"Failed to save API configuration: {error}")
+        else:
+            messages.error(request, "Please correct the errors below.")
+
+        context = self.get_context(
+            survey,
+            config_form=config_form,
+            field_map_formset=field_map_formset,
+            value_mapping_formset=value_mapping_formset,
+        )
+        return render(request, self.template_name, context)
 
 
 class SurveyRuleView(generic.TemplateView):
@@ -557,6 +673,7 @@ class SurveyRuleView(generic.TemplateView):
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
@@ -599,6 +716,7 @@ class SurveyAttachmentView(generic.TemplateView):
         # Add links to context
         context["links"] = {
             "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
             "Actions": "#",
             "Rules": "#",
             "Attachments": '#'
@@ -641,8 +759,11 @@ class SurveyDataExportView(generic.View):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
+        lang = request.GET.get("lang") or None
+        if lang and lang not in data.get("languages", []):
+            lang = None
 
-        tbl_header_dict = utils.get_table_header(data)  # {key: label}
+        tbl_header_dict = utils.get_table_header(data, lang=lang)  # {key: label}
         header_keys = list(tbl_header_dict.keys())
 
         # get data
@@ -678,29 +799,46 @@ class SurveyDataView(generic.DetailView):
         # get form
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
+        lang = request.GET.get("lang") or None
+        if lang and lang not in data.get("languages", []):
+            lang = None
+        form_title = utils.get_localized_form_title(data, lang=lang) or cur_form.title
 
-        tbl_header_dict = utils.get_table_header(data)  # {key: label}
+        tbl_header_dict = utils.get_table_header(data, lang=lang)
         header_keys = list(tbl_header_dict.keys())
 
         # Headers: add UUID column first
-        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys]
+        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID" ,"Created"]
 
         # get data
-        adata = FormData.objects.filter(form_id=cur_form.id)
+        adata = FormData.objects.filter(form_id=cur_form.id).order_by('created_at')
 
         if "parent_id" in request.GET and request.GET["parent_id"]:
             adata = adata.filter(parent_id=request.GET["parent_id"])
+
+        # table names
+        tbl_name_dict = utils.get_table_header_name(data)
+        name_keys = list(tbl_name_dict.keys())
 
         arr_data = []
         for item in adata:
             # use item.uuid (change if your field name is different)
             row_uuid = str(item.uuid)
+            row_response_id = str(item.response_id)
+            row_gps = item.gps
+            row_created_at = (
+                item.created_at.strftime("%d-%m-%Y %H:%M")
+                if item.created_at
+                else ""
+            )
 
-            row = [row_uuid] + [item.form_data.get(k) for k in header_keys]
+            row = [row_uuid] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id, row_created_at]
             arr_data.append(row)
 
         return JsonResponse(
             {
+                "form_title": form_title,
+                "language": lang or utils.get_form_language(data),
                 "cols": cols,
                 "data": arr_data,
             }
@@ -714,13 +852,17 @@ class SurveyDataInstanceView(generic.TemplateView):
         # get form data
         data_id = kwargs["data_id"]
         form_data = FormData.objects.get(uuid=data_id)
+        form_definition = utils.load_json(form_data.form.form_defn)
+        localized_form_title = (
+            utils.get_localized_form_title(form_definition) or form_data.form.title
+        )
 
         # convert form data to JSON
         cur_data_json = {
             "id": form_data.form.id,
             "data_id": form_data.uuid,
             "title": form_data.title.replace("'", ""),
-            "form_title": form_data.form.title,
+            "form_title": localized_form_title,
             "form_code": form_data.form.code,
             "form_data": form_data.form_data,
         }
@@ -961,10 +1103,25 @@ def form_definition(request, *args, **kwargs):
         cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
 
         data = utils.load_json(cur_form.form_defn)
+        lang = request.GET.get("lang") or None
+        if lang and lang not in data.get("languages", []):
+            lang = None
 
-        tbl_header_dict = utils.get_table_header(data)
+        tbl_header_dict = utils.get_table_header(data, lang=lang)
+        form_title = utils.get_localized_form_title(data, lang=lang) or cur_form.title
+        page_headers = utils.get_page_headers(data, lang=lang)
+        resolved_language = lang or utils.get_form_language(data)
 
-        return JsonResponse({"data": data, "cols": tbl_header_dict})
+        return JsonResponse(
+            {
+                "data": data,
+                "cols": tbl_header_dict,
+                "form_title": form_title,
+                "page_headers": page_headers,
+                "language": resolved_language,
+                "languages": data.get("languages", []),
+            }
+        )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
@@ -985,9 +1142,22 @@ def form_points(request, *args, **kwargs):
 
         # separate location
         if location and location.strip():
-            location = json.loads(location)
-            lat = location.get("latitude")
-            lng = location.get("longitude")
+            lat = None
+            lng = None
+
+            try:
+                parsed_location = json.loads(location)
+            except (TypeError, json.JSONDecodeError):
+                parsed_location = None
+
+            if isinstance(parsed_location, dict):
+                lat = parsed_location.get("latitude")
+                lng = parsed_location.get("longitude")
+            elif isinstance(location, str) and "," in location:
+                coords = [coord.strip() for coord in location.split(",")]
+                if len(coords) >= 2:
+                    lat = coords[0]
+                    lng = coords[1]
         else:
             lat = None
             lng = None

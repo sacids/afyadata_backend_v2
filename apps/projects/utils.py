@@ -1,15 +1,18 @@
 import json
+import base64
 import calendar
+import mimetypes
 import random
 import string
 import logging
+import uuid
+import tempfile
 from datetime import date, datetime
 from django.http import JsonResponse
 import os
 from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
+from django.core.files.base import ContentFile, File
 from django.conf import settings
-
 
 from .models import FormDefinition, FormData
 from django.utils.dateformat import DateFormat
@@ -170,7 +173,7 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
                     if value.lower().endswith(
                         (".png", ".jpg", ".jpeg", ".gif", ".webp")
                     ):
-                        image_url = f"{settings.MEDIA_URL}assets/uploads/photos/{value}"
+                        image_url = f"{settings.MEDIA_URL}uploads/{value}"
                         img_tag = f'<img src="{image_url}" alt="{field_name}" style="max-height: 50px; max-width: 50px;" />'
                         row.append(img_tag)
                     else:
@@ -212,18 +215,24 @@ def get_key_at_index(dictionary, n):
     raise IndexError(f"Dictionary index {n} out of range (size: {len(dictionary)})")
 
 
-def get_table_header(jform):
+def get_table_header(jform, lang=None):
     header = {}
     for item in jform["pages"]:
         if item["type"] == "group":
             for k, v in item["fields"][0].items():
-                label = v.get("label")
-                if not label:
-                    label_key = next((key for key in v if key.startswith("label")), None)
-                    if label_key is not None:
-                        label = v[label_key]
+                label = get_localized_label(v, lang=lang, jform=jform)
                 header[k] = label
     return header
+
+
+def get_table_header_name(jform):
+    names = {}
+    for item in jform["pages"]:
+        if item["type"] == "group":
+            for k, v in item["fields"][0].items():
+                tb_name = v.get("name")
+                names[k] = tb_name
+    return names
 
 
 def get_table_config1(jForm):
@@ -286,6 +295,103 @@ def load_json(json_data):
         return None
 
 
+def get_form_language(jform, fallback="English (en)"):
+    """Resolve the active language from form metadata."""
+    if not isinstance(jform, dict):
+        return fallback
+
+    meta = jform.get("meta", {})
+    language = meta.get("default_language")
+    languages = jform.get("languages", [])
+
+    if language:
+        return language
+
+    if fallback in languages:
+        return fallback
+
+    if languages:
+        return languages[0]
+
+    return fallback
+
+
+def get_localized_label(obj, lang=None, jform=None, fallback="English (en)"):
+    """Return the best label for a field/group using language-aware fallbacks."""
+    if not isinstance(obj, dict):
+        return None
+
+    resolved_lang = lang or get_form_language(jform, fallback=fallback)
+    candidates = []
+
+    if resolved_lang:
+        candidates.append(f"label::{resolved_lang}")
+
+    default_lang = None
+    if isinstance(jform, dict):
+        default_lang = jform.get("meta", {}).get("default_language")
+        if default_lang and default_lang != resolved_lang:
+            candidates.append(f"label::{default_lang}")
+
+    if fallback and fallback not in {resolved_lang, default_lang}:
+        candidates.append(f"label::{fallback}")
+
+    candidates.extend(["label", "label::Default"])
+
+    for key in candidates:
+        value = obj.get(key)
+        if value:
+            return value
+
+    return obj.get("name")
+
+
+def get_localized_form_title(jform, lang=None, fallback="English (en)"):
+    """Return a localized form title from form metadata."""
+    if not isinstance(jform, dict):
+        return None
+
+    meta = jform.get("meta", {})
+    resolved_lang = lang or get_form_language(jform, fallback=fallback)
+
+    title_candidates = []
+    if resolved_lang:
+        title_candidates.append(f"title::{resolved_lang}")
+        title_candidates.append(f"form_title::{resolved_lang}")
+
+    default_lang = meta.get("default_language")
+    if default_lang and default_lang != resolved_lang:
+        title_candidates.append(f"title::{default_lang}")
+        title_candidates.append(f"form_title::{default_lang}")
+
+    if fallback and fallback not in {resolved_lang, default_lang}:
+        title_candidates.append(f"title::{fallback}")
+        title_candidates.append(f"form_title::{fallback}")
+
+    title_candidates.extend(["title", "form_title"])
+
+    for key in title_candidates:
+        value = meta.get(key)
+        if value:
+            return value
+
+    return None
+
+
+def get_page_headers(jform, lang=None):
+    """Return localized page/group headers keyed by page name."""
+    headers = {}
+    if not isinstance(jform, dict):
+        return headers
+
+    for item in jform.get("pages", []):
+        if item.get("type") != "group":
+            continue
+        headers[item.get("name")] = get_localized_label(item, lang=lang, jform=jform)
+
+    return headers
+
+
 def save_uploaded_images(files, upload_subdir):
     """
     Saves uploaded image files from a MultiValueDict (like request.FILES)
@@ -308,19 +414,106 @@ def save_uploaded_images(files, upload_subdir):
     return saved_paths
 
 
+def snapshot_uploaded_files(files):
+    """
+    Spool uploaded files to temporary storage so the request can finish quickly
+    and Celery can persist them later.
+    """
+    snapshots = []
+
+    for key in sorted(files.keys()):
+        for file in files.getlist(key):
+            suffix = os.path.splitext(file.name or "")[1]
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+                for chunk in file.chunks():
+                    tmp_file.write(chunk)
+
+            snapshots.append(
+                {
+                    "field_name": key,
+                    "filename": file.name,
+                    "content_type": getattr(file, "content_type", None),
+                    "temp_path": tmp_file.name,
+                }
+            )
+
+    return snapshots
+
+
+def infer_uploaded_file_type(content_type=None, filename=None):
+    if content_type:
+        lowered = str(content_type).lower()
+        if lowered.startswith("image/"):
+            return "image"
+        if lowered.startswith("video/"):
+            return "video"
+
+    guessed_type, _ = mimetypes.guess_type(filename or "")
+    if guessed_type:
+        if guessed_type.startswith("image/"):
+            return "image"
+        if guessed_type.startswith("video/"):
+            return "video"
+
+    return "other"
+
+
+def save_uploaded_file_snapshots(file_snapshots, upload_subdir):
+    """
+    Persist previously captured uploaded file snapshots.
+    """
+    saved_files = []
+
+    for item in file_snapshots:
+        field_name = item["field_name"]
+        original_name = item["filename"]
+        base_name = os.path.basename(original_name or "upload.bin")
+        unique_name = f"{uuid.uuid4().hex}_{base_name}"
+        full_path = os.path.join(upload_subdir, unique_name)
+
+        if item.get("temp_path"):
+            temp_path = item["temp_path"]
+            try:
+                with open(temp_path, "rb") as tmp_file:
+                    path = default_storage.save(full_path, File(tmp_file, name=unique_name))
+            finally:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+        else:
+            # Backward compatibility for older queued payloads.
+            content = base64.b64decode(item["content_b64"])
+            path = default_storage.save(full_path, ContentFile(content))
+
+        saved_files.append(
+            {
+                "field_name": field_name,
+                "original_name": original_name,
+                "content_type": item.get("content_type"),
+                "file_type": infer_uploaded_file_type(
+                    content_type=item.get("content_type"),
+                    filename=original_name,
+                ),
+                "path": path,
+            }
+        )
+
+    return saved_files
+
+
 def handle_uploaded_file(f):
     """handle upload of a file"""
-    with open("assets/uploads/photos/" + f.name, "wb+") as destination:
+    with open("uploads/" + f.name, "wb+") as destination:
         for chunk in f.chunks():
             destination.write(chunk)
 
-    return "photos/" + f.name
+    return f.name
 
 
 def generate_code(length=5):
     """Generate a random code"""
     chars = string.ascii_uppercase + string.digits
     return "".join(random.choices(chars, k=length))
+
 
 def generate_unique_code(model, field='code', length=5):
     while True:
@@ -361,6 +554,7 @@ def normalize_select_multiple(val):
         # ODK style: "A02 A08"
         return s.split()
     return []
+
 
 def map_codes_to_labels(val, option_map: dict):
     codes = normalize_select_multiple(val)
