@@ -3,10 +3,15 @@ import json
 import uuid
 import warnings
 import copy
+import traceback
 
 from django.conf import settings
 from urllib.parse import parse_qs
 import os
+import pandas as pd  # Add this line
+
+
+
 
 
 def init_settings(settings):
@@ -45,19 +50,32 @@ def init_choices(choices):
     return choice_map
 
 
-def get_item(item, choice_map):
+def get_item(item, choice_map, row_index=None):
     """
     Process a single item from a survey into a JSON Form item.
     """
     if item is None:
-        raise ValueError("Item is None")
+        raise ValueError(f"Item at row {row_index} is None")
+    
+    # Check if item is a dictionary
+    if not isinstance(item, dict):
+        raise TypeError(f"Item at row {row_index} is not a dictionary. Got {type(item).__name__}: {item}")
 
     if "type" not in item:
-        raise ValueError(f"Item {item} has no type")
+        # Try to find a name field to identify the problematic row
+        name_info = f"name: {item.get('name', 'UNKNOWN')}" if isinstance(item, dict) else "no name available"
+        raise ValueError(f"Item at row {row_index} ({name_info}) has no 'type' field. Item content: {item}")
+
+    # Check if type is a string
+    if not isinstance(item["type"], str):
+        name_info = item.get('name', 'UNKNOWN') if isinstance(item, dict) else 'UNKNOWN'
+        raise TypeError(f"Item '{name_info}' at row {row_index} has non-string type field. Got {type(item['type']).__name__}: {item['type']}")
 
     tmp = item["type"].split()
     if len(tmp) == 0:
-        raise ValueError(f"Item {item} has no type")
+        name_info = item.get('name', 'UNKNOWN') if isinstance(item, dict) else 'UNKNOWN'
+        raise ValueError(f"Item '{name_info}' at row {row_index} has empty type field")
+
     type = tmp[0].strip().lower()
     item["type"] = type
     item["is_relevant"] = True
@@ -74,26 +92,28 @@ def get_item(item, choice_map):
         item["constraint_message::Default"] = item["constraint_message"]
 
     if type in ["select_one", "select", "select_multiple", "rank"]:
-        if len(tmp) == 0:
-            raise ValueError(f"Item {item} has no options")
+        if len(tmp) == 1:
+            name_info = item.get('name', 'UNKNOWN')
+            raise TypeError(f"Invalid field '{name_info}' at row {row_index}: select type requires a list name (e.g., 'select_one list_name'). Got: '{item['type']}'")
+        
         if len(tmp) > 1:
             # print('key in select', tmp[1])
             if tmp[1].lower().endswith(".sql"):
                 key = tmp[1]
                 item["type"] = "select_db"
+                if key not in choice_map:
+                    raise KeyError(f"Invalid field '{item.get('name', 'UNKNOWN')}' at row {row_index}: SQL file '{key}' not found in choice_map")
                 item["options"] = choice_map[key]
             elif tmp[1].strip() in choice_map:
                 key = tmp[1]
                 item["options"] = choice_map[key]
             else:
-                raise ValueError(
-                    "Invalid Field " + item["name"] + " has no corresponding option"
+                raise KeyError(
+                    f"Invalid field '{item.get('name', 'UNKNOWN')}' at row {row_index}: has no corresponding option list '{tmp[1]}' in choices sheet"
                 )
 
             if len(tmp) == 3 and tmp[2].strip() == "or_other":
                 item["or_other"] = "1"
-        else:
-            raise TypeError("Invalid field : Incorect syntax " + item["name"])
 
     if type in ["select_one_from_file", "select_multiple_from_file"]:
         if len(tmp) > 1:
@@ -101,25 +121,28 @@ def get_item(item, choice_map):
             if len(tmp) == 3 and tmp[2].strip() == "or_other":
                 item["or_other"] = "1"
         else:
-            raise TypeError("Invalid field : Incorect syntax " + item["name"])
+            name_info = item.get('name', 'UNKNOWN')
+            raise TypeError(f"Invalid field '{name_info}' at row {row_index}: select_from_file requires a file name (e.g., 'select_one_from_file file.csv')")
+    
     return item
 
 
 def make_jform_recursive(
-    survey, choice_map, settings_map, in_group=False, group_context=None
+    survey, choice_map, settings_map, in_group=False, group_context=None, parent_name=None, depth=0
 ):
-    def process_item(item, choice_map):
+    def process_item(item, choice_map, row_index):
         try:
             if (
                 item["type"] == "calculate"
                 and item.get("body::calculation") is not None
             ):
                 item["calculation"] = item["body::calculation"]
-            return get_item(item, choice_map)
+            return get_item(item, choice_map, row_index)
         except Exception as e:
-            raise ValueError(f"Error processing item {json.dumps(item, indent=4)}: {e}")
+            # Re-raise with more context
+            raise type(e)(f"[Row {row_index}] {str(e)}")
 
-    def handle_begin(item, type, parent_group):
+    def handle_begin(item, type, parent_group, row_index):
         try:
             tmp = item
             tmp["type"] = "group"
@@ -140,9 +163,9 @@ def make_jform_recursive(
                 survey_map["pages"].append(tmp)
             return tmp
         except Exception as e:
-            raise ValueError(f"Error handling 'begin' for item {item}: {e}")
+            raise ValueError(f"[Row {row_index}] Error handling 'begin_{type}' for group '{item.get('name', 'UNKNOWN')}': {e}")
 
-    def handle_other(item, type, uItem, parent_group):
+    def handle_other(item, type, uItem, parent_group, row_index):
         try:
             name = item["name"].strip()
             tmp = {
@@ -167,7 +190,7 @@ def make_jform_recursive(
             else:
                 survey_map["pages"].append(tmp)
         except Exception as e:
-            raise ValueError(f"Error handling other item {item}: {e}")
+            raise ValueError(f"[Row {row_index}] Error handling field '{item.get('name', 'UNKNOWN')}' of type '{type}': {e}")
 
     if not in_group:
         survey_map = {
@@ -180,28 +203,47 @@ def make_jform_recursive(
     else:
         survey_map = group_context
 
+    row_index = 0
     try:
         while survey:
             item = survey.pop(0)
+            row_index += 1
+            
+            # Skip if item is not a dictionary
+            if not isinstance(item, dict):
+                raise TypeError(f"Item at row {row_index} is not a dictionary. Got {type(item).__name__}: {item}")
+            
             type = item.get("type")
             if type is None:
+                # This might be an empty row, skip it
                 continue
 
+            # Ensure type is string
+            if not isinstance(type, str):
+                raise TypeError(f"Field '{item.get('name', 'UNKNOWN')}' at row {row_index} has non-string type. Got {type(type).__name__}: {type}")
+
             type = type.strip()
+            
+            # Skip empty type strings
+            if not type:
+                continue
+                
             if type[:6] == "begin_":
                 parent_group = survey_map if not in_group else group_context
-                new_group = handle_begin(item, type, parent_group)
+                new_group = handle_begin(item, type, parent_group, row_index)
                 make_jform_recursive(
                     survey,
                     choice_map,
                     settings_map,
                     in_group=True,
                     group_context=new_group,
+                    parent_name=item.get('name', 'unnamed_group'),
+                    depth=depth+1
                 )
             elif type[:4] == "end_":
                 return survey_map
             else:
-                uItem = process_item(item, choice_map)
+                uItem = process_item(item, choice_map, row_index)
                 type = uItem["type"]
 
                 if type in [
@@ -217,9 +259,11 @@ def make_jform_recursive(
                     survey_map["meta"][type] = ""
                 else:
                     parent_group = survey_map if not in_group else group_context
-                    handle_other(item, type, uItem, parent_group)
+                    handle_other(item, type, uItem, parent_group, row_index)
     except Exception as e:
-        raise RuntimeError(f"Error processing survey: {e}")
+        # Add more context about where we are in the form
+        location = f"in group '{parent_name}'" if parent_name else "at top level"
+        raise RuntimeError(f"Error processing survey {location} at row {row_index}: {str(e)}\n{traceback.format_exc()}")
 
     return survey_map
 
@@ -228,68 +272,105 @@ def x2jform(filename, title):
 
     xlsform = os.path.join(settings.MEDIA_ROOT, filename)
     warnings.simplefilter(action="ignore", category=UserWarning)
-    # xlsform = filename
 
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
 
-            choice_df = pandas.read_excel(xlsform, sheet_name="choices")
-            choice_obj = json.loads(choice_df.to_json(orient="records"))
-            choice_map = init_choices(choice_obj)
-            # print(json.dumps(choice_map, indent=4))
+            # Read choices sheet
+            try:
+                choice_df = pandas.read_excel(xlsform, sheet_name="choices")
+                choice_obj = json.loads(choice_df.to_json(orient="records"))
+                choice_map = init_choices(choice_obj)
+            except Exception as e:
+                raise ValueError(f"Failed to read 'choices' sheet: {e}")
 
-            settings_df = pandas.read_excel(xlsform, sheet_name="settings")
-            settings_obj = json.loads(settings_df.to_json(orient="records"))
-            settings_map = init_settings(settings_obj)
+            # Read settings sheet
+            try:
+                settings_df = pandas.read_excel(xlsform, sheet_name="settings")
+                settings_obj = json.loads(settings_df.to_json(orient="records"))
+                settings_map = init_settings(settings_obj)
+            except Exception as e:
+                raise ValueError(f"Failed to read 'settings' sheet: {e}")
 
-            survey_df = pandas.read_excel(xlsform, sheet_name="survey")
-            # print(survey_df)
+            # Read survey sheet
+            try:
+                survey_df = pandas.read_excel(xlsform, sheet_name="survey")
+                # Print column info for debugging
+                print(f"Survey sheet columns: {list(survey_df.columns)}")
+                print(f"Number of rows in survey sheet: {len(survey_df)}")
+                
+                # Check for NaN values in critical columns
+                for idx, row in survey_df.iterrows():
+                    if pd.isna(row.get('type')) and pd.isna(row.get('name')):
+                        # Skip completely empty rows
+                        continue
+                    if pd.isna(row.get('type')):
+                        print(f"Warning: Row {idx + 2} (Excel row number) has missing 'type' but has name: {row.get('name', 'UNKNOWN')}")
+                    if pd.isna(row.get('name')) and not pd.isna(row.get('type')):
+                        if str(row.get('type')).strip() not in ['begin_group', 'end_group', 'begin_repeat', 'end_repeat']:
+                            print(f"Warning: Row {idx + 2} has type '{row.get('type')}' but missing 'name'")
+                
+                survey_obj = json.loads(survey_df.to_json(orient="records"))
+                orig_survey_obj = copy.deepcopy(survey_obj)
+                
+                # Validate each survey item before processing
+                for idx, item in enumerate(survey_obj):
+                    if not isinstance(item, dict):
+                        raise TypeError(f"Survey item at index {idx} (Excel row {idx + 2}) is not a dictionary. Got {type(item).__name__}: {item}")
+                    
+                    # Check for NaN values and convert to None/empty string as appropriate
+                    for key, value in item.items():
+                        if pd.isna(value):
+                            item[key] = None
+                            
+            except Exception as e:
+                raise ValueError(f"Failed to read 'survey' sheet: {e}")
 
-            survey_obj = json.loads(survey_df.to_json(orient="records"))
-            orig_survey_obj = copy.deepcopy(survey_obj)
-            # print(json.dumps(survey_obj, indent=2))
-
-            # survey_map = make_jform(survey_obj, choice_map, settings_map)
-            survey_map = make_jform_recursive(survey_obj, choice_map, settings_map)
+            # Process the survey
+            try:
+                survey_map = make_jform_recursive(survey_obj, choice_map, settings_map)
+            except Exception as e:
+                raise ValueError(f"Failed to process survey structure: {e}")
 
             survey_map["meta"]["title"] = title
             survey_map["meta"]["description"] = ""
             survey_map["meta"]["status"] = "blank"
-
             survey_map["meta"]["start"] = ""
             survey_map["meta"]["end"] = ""
 
+            # Process attachments
             for obj in orig_survey_obj:
-                tmp = obj["type"].split(" ")
-                # print(tmp[0])
-                if tmp[0] in [
-                    "select_one_from_file",
-                    "select_multiple_from_file",
-                ]:
-                    survey_map["attachments"].append(obj["type"].split(" ")[1])
+                if not isinstance(obj, dict):
+                    continue
+                type_val = obj.get("type", "")
+                if isinstance(type_val, str):
+                    tmp = type_val.split(" ")
+                    if tmp and tmp[0] in [
+                        "select_one_from_file",
+                        "select_multiple_from_file",
+                    ]:
+                        if len(tmp) > 1:
+                            survey_map["attachments"].append(tmp[1])
 
-            if "form_id" not in settings_map or settings_map["form_id"] == None:
+            if "form_id" not in settings_map or settings_map["form_id"] is None:
                 settings_map["form_id"] = str(uuid.uuid4())
                 survey_map["form_id"] = settings_map["form_id"]
 
-            # print(json.dumps(survey_map['pages'], indent=4))
-            # return
+            # Ensure output directory exists
+            dest_dir = os.path.join(settings.MEDIA_ROOT, "jform/defn/")
+            os.makedirs(dest_dir, exist_ok=True)
+            
+            dest = os.path.join(dest_dir, settings_map["form_id"] + ".json")
 
-        dest = os.path.join(
-            settings.MEDIA_ROOT, "jform/defn/", settings_map["form_id"] + ".json"
-        )
+            with open(dest, "w") as f:
+                json.dump(survey_map, f, indent=2)
 
-        f = open(dest, "w")
-        json.dump(survey_map, f)
-        f.close()
-
-        return survey_map
+            return survey_map
 
     except Exception as error:
-        print("An exception occurred:", error)
-        return 0
-
-
-# result = x2jform("sample3.xlsx", "my title")
-# print(result["attachments"])
+        # Provide a more detailed error message
+        error_msg = f"Form processing failed: {str(error)}"
+        print(error_msg)
+        print(traceback.format_exc())
+        raise ValueError(error_msg)  # Re-raise with better message
