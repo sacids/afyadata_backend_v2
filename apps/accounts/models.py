@@ -24,10 +24,18 @@ class Profile(models.Model):
 
     @receiver(post_save, sender=User)
     def create_user_profile(sender, instance, created, **kwargs):
+        """Create profile for user if it doesn't exist"""
         if created:
-            Profile.objects.create(user=instance)
-
+            Profile.objects.get_or_create(user=instance)
+        else:
+            # Ensure profile exists even if user wasn't just created
+            Profile.objects.get_or_create(user=instance)
 
     @receiver(post_save, sender=User)
     def save_user_profile(sender, instance, **kwargs):
-        instance.profile.save()
+        """Save the user's profile"""
+        try:
+            instance.profile.save()
+        except Profile.DoesNotExist:
+            # Create if it doesn't exist
+            Profile.objects.create(user=instance)

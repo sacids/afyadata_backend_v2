@@ -1,9 +1,11 @@
 @hostname = https://afyadata-v2.sacids.org/api/v1/
+//@hostname = http://127.0.0.1:8000/api/v1/
 @login_url = {{hostname}}token/
 @form_definition_url = {{hostname}}/api/v2/form-defn/
 
 
-@accesstoken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5NzYwNTcxLCJpYXQiOjE3Njg4OTY1NzEsImp0aSI6IjUwYTI3OWJkZDg2MzRmMGJiOTFkZDg4ZmIyM2M0YWU3IiwidXNlcl9pZCI6MzcsInVzZXIiOnsiaWQiOjM3LCJ1c2VybmFtZSI6IkJQMkEuMjUwNjA1LjAzMS5BMy5TOTExQlhYUzhFWUs1IiwiZW1haWwiOiJCUDJBLjI1MDYwNS4wMzEuQTMuUzkxMUJYWFM4RVlLNUBzYWNpZHMub3JnIiwiZmlyc3RfbmFtZSI6IkVyaWMgYmVkYSIsImxhc3RfbmFtZSI6IkVyaWMgYmVkYSIsImdyb3VwcyI6W119fQ.TD8Hhb3HfBSRYNM2oFhG_KpW-9aqkv0SOGGQuikchNM
+@accesstoken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcwODk0OTY5LCJpYXQiOjE3NzAwMzA5NjksImp0aSI6IjNiZGE5MjJmYmY1MjQzNzQ5M2NhZjBkMTUwOWFiZmJkIiwidXNlcl9pZCI6Mzl9.qpgfuheI5JgSe77TBm-c6_Qxs2ayy4J9It9uaEAbqtg
+@accesstoken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcwODk0OTY5LCJpYXQiOjE3NzAwMzA5NjksImp0aSI6IjNiZGE5MjJmYmY1MjQzNzQ5M2NhZjBkMTUwOWFiZmJkIiwidXNlcl9pZCI6Mzl9.qpgfuheI5JgSe77TBm-c6_Qxs2ayy4J9It9uaEAbqtg
 ###
 # Login to get access token
 # @name login
@@ -11,19 +13,64 @@ POST {{login_url}}
 Content-Type: application/json
 
 {
-  "username": "samwel.ngeleja",
-  "password": "Cromis@2024"
+  "username": "0711111111",
+  "password": "kitimoto"
 }
+
+###
+GET {{hostname}}projects/active
+Authorization: Bearer {{login.response.body.access}}
+
+
+
+###
+# @name register
+POST {{hostname}}register
+Content-Type: application/json
+
+{
+  "fullName": "Job",
+  "username": "0811111111",
+  "password": "kitimoto",
+  "passwordConfirm": "kitimoto",
+  "phoneNumber": "0711111111"
+}
+
+
+
+###
+# Verify token
+# @name languages
+GET {{hostname}}languages/
+#Authorization: Bearer {{accesstoken}}
+Content-Type: application/json
+
 
 
 ###
 # Verify token
 # @name verify_token
-GET {{hostname}}projects/unsubscribe?code=S02
+POST {{hostname}}chat/conversations
 Authorization: Bearer {{accesstoken}}
 Content-Type: application/json
 
-{
-    "code": "S02"
-}
+{"title":"'Dalili za Mifugo :Jesga0787878786Jomba'","form":"077e3316-67f9-483b-bdc7-550046c3a445","instance":"daff4474-376f-4ed9-b880-4c09cf0c7bdd","participants":[]}
 
+
+###
+# Verify token
+# @name verify_token
+GET {{hostname}}chat/conversations
+Authorization: Bearer {{accesstoken}}
+Content-Type: application/json
+
+{"form": "077e3316-67f9-483b-bdc7-550046c3a445", "instance": undefined, "participants": [], "title": "'Dalili za Mifugo :Jesga0787878786Jomba'"}
+
+###
+# Verify token
+# @name verify_token
+POST {{hostname}}chat/conversations/5d99ce90-5fba-4deb-b867-2b07713492fd/messages
+Authorization: Bearer {{accesstoken}}
+Content-Type: application/json
+
+{"external_id": "daff4474-376f-4ed9-b880-4c09cf0c7bd5", "text": "Moja moja"}
