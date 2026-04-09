@@ -1,4 +1,5 @@
 import pandas
+import logging
 import json
 import uuid
 import warnings
@@ -273,9 +274,8 @@ def x2jform(filename, title):
                 settings_map["form_id"] = str(uuid.uuid4())
                 survey_map["form_id"] = settings_map["form_id"]
 
-            # print(json.dumps(survey_map['pages'], indent=4))
-            # return
-
+            logging.info(json.dumps(survey_map['pages'], indent=4))
+            
         dest = os.path.join(
             settings.MEDIA_ROOT, "jform/defn/", settings_map["form_id"] + ".json"
         )
@@ -284,12 +284,11 @@ def x2jform(filename, title):
         json.dump(survey_map, f)
         f.close()
 
+        logging.info(survey_map)
+
         return survey_map
 
     except Exception as error:
-        print("An exception occurred:", error)
+        logging.error("== exception error")
+        logging.info(error)
         return 0
-
-
-# result = x2jform("sample3.xlsx", "my title")
-# print(result["attachments"])
