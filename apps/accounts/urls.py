@@ -3,6 +3,7 @@ from django.urls.resolvers import URLPattern
 from .views import LogoutView, LoginView, ChangePasswordView, ProfileView, ForgotPasswordView, ResetPasswordView
 from django.contrib.auth import views as auth_views
 from . import users as views
+from . import roles as role_views
 
 app_name = "auth"
 
@@ -20,4 +21,10 @@ urlpatterns = [
     path("users/create", views.UserCreateView.as_view(), name="create-user"),
     path("users/<int:pk>/edit", views.UserUpdateView.as_view(), name="edit-user"),
     path("users/delete/<int:pk>", views.delete_user, name="delete-user"),
+
+    # role management
+    path("roles/lists", role_views.RoleListView.as_view(), name="roles"),
+    path("roles/create", role_views.RoleCreateView.as_view(), name="create-role"),
+    path("roles/<int:pk>/edit", role_views.RoleUpdateView.as_view(), name="edit-role"),
+    path("roles/delete/<int:pk>", role_views.delete_role, name="delete-role"),
 ]

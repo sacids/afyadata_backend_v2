@@ -1,12 +1,25 @@
 import datetime
 from datetime import timedelta
+import re
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm, PasswordChangeForm, SetPasswordForm
+from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from .models import Profile
 
 TW_INPUT_CLASS = "w-full font-normal text-sm rounded-md"
+
+
+def _clean_text_value(value):
+    return (value or "").strip()
+
+
+def _validate_required_text(value, label):
+    cleaned = _clean_text_value(value)
+    if not cleaned:
+        raise ValidationError(f"{label} is required.")
+    return cleaned
 
 class LoginForm(forms.Form):
     """Login form"""
@@ -89,7 +102,7 @@ class ProfileForm(forms.Form):
     email = forms.EmailField(max_length=50, required=True, label="Email ", widget=forms.EmailInput(attrs={'class': TW_INPUT_CLASS, 'placeholder': 'Write email...'}))
     phone = forms.CharField(max_length=20, required=True, label="Phone ", widget=forms.TextInput(attrs={'class': TW_INPUT_CLASS, 'placeholder': 'Write phone...'}))
     #staff_id = forms.CharField(max_length=20, required=False, label="Staff ID ", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Write staff ID...', 'readonly': ''}))
-    # gender = forms.ModelChoiceField(label="Gender ", required=True, widget=forms.ChoiceField(attrs={"class": "form-control"}))
+    #gender = forms.ModelChoiceField(label="Gender ", required=True, widget=forms.ChoiceField(attrs={"class": "form-control"}))
 
     class Meta:
         fields = ('first_name', 'last_name', 'email', 'gender','username', 'phone', 'staff_id')
@@ -126,6 +139,21 @@ class UserForm(UserCreationForm):
         model = User
         fields = ('first_name', 'last_name', 'email', 'username', 'password1', 'password2',)
 
+    def clean_first_name(self):
+        return _validate_required_text(self.cleaned_data.get("first_name"), "First name")
+
+    def clean_last_name(self):
+        return _validate_required_text(self.cleaned_data.get("last_name"), "Last name")
+
+    def clean_username(self):
+        return _validate_required_text(self.cleaned_data.get("username"), "Username")
+
+    def clean_email(self):
+        email = _validate_required_text(self.cleaned_data.get("email"), "Email").lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise ValidationError("Email address already exists.")
+        return email
+
 
 class UserUpdateForm(UserChangeForm):
     """User Form"""
@@ -152,6 +180,23 @@ class UserUpdateForm(UserChangeForm):
         model = User
         fields = ('first_name', 'last_name', 'email')
 
+    def clean_first_name(self):
+        return _validate_required_text(self.cleaned_data.get("first_name"), "First name")
+
+    def clean_last_name(self):
+        return _validate_required_text(self.cleaned_data.get("last_name"), "Last name")
+
+    def clean_email(self):
+        print("== email validation ==")
+        email = _validate_required_text(self.cleaned_data.get("email"), "Email").lower()
+        print(email)
+        print(self.instance.pk)
+        qs = User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk)
+        print(qs)
+        if qs.exists():
+            raise ValidationError("Email address already exists.")
+        return email
+
 
 class UserProfileForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -161,15 +206,36 @@ class UserProfileForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = "__all__"
+        fields = ("phone",)
 
         widgets = {
-            'phone': forms.TextInput(attrs={'class': TW_INPUT_CLASS, 'id': 'phone', 'placeholder': 'Write phone...' }),
+            'phone': forms.TextInput(attrs={
+                'class': TW_INPUT_CLASS,
+                'id': 'phone',
+                'placeholder': 'Write phone...',
+                'autocomplete': 'tel',
+            }),
         }
 
         labels = {
             'phone': 'Phone ',
-        }        
+        }
+
+    def clean_phone(self):
+        phone = _clean_text_value(self.cleaned_data.get("phone"))
+        if not phone:
+            raise ValidationError("Phone is required.")
+
+        if not re.fullmatch(r"^\+?[0-9][0-9\s-]{7,18}$", phone):
+            raise ValidationError("Enter a valid phone number.")
+
+        qs = Profile.objects.filter(phone__iexact=phone)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError("Phone number already exists.")
+
+        return phone
 
 
 class UserPasswordForm(SetPasswordForm):
@@ -186,3 +252,27 @@ class UserPasswordForm(SetPasswordForm):
         model = User
         fields = ('new_password1', 'new_password2')
         exclude = ('old_password')
+
+
+class RoleForm(forms.ModelForm):
+    """Role form"""
+
+    name = forms.CharField(
+        max_length=150,
+        label="Role Name",
+        widget=forms.TextInput(
+            attrs={
+                "class": TW_INPUT_CLASS,
+                "placeholder": "Write role name...",
+            }
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(RoleForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_show_labels = True
+
+    class Meta:
+        model = Group
+        fields = ("name",)

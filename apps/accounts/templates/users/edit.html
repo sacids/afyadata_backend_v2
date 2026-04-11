@@ -4,56 +4,93 @@
 
 {% block content %}
 <main class="bg-white h-full">
-    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 w-full md:max-w-3xl lg:max-w-4xl mx-auto">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-                <h2 class="text-sm font-semibold text-gray-800">{{ title|default:"Edit User" }}</h2>
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-2xl shadow-sm border border-stone-200 w-full md:max-w-4xl mx-auto overflow-hidden">
+            <div class="border-b border-stone-200 bg-stone-50/80 px-6 py-5">
+                <h2 class="text-base font-semibold tracking-tight text-stone-900">{{ title|default:"Edit User" }}</h2>
+                <p class="mt-1 text-sm text-stone-500">Update user profile details, contact information, status, and assigned roles.</p>
             </div>
 
-            <div class="p-4">
+            <div class="p-6">
                 {% if form.errors or profile_form.errors %}
-                    <div class="mb-3 px-4 py-3 rounded-sm text-sm bg-red-100 text-red-800 border border-red-100">
+                    <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                         Please correct the highlighted errors.
+                        {% if form.non_field_errors %}
+                            <div class="mt-2">{{ form.non_field_errors }}</div>
+                        {% endif %}
+                        {% if profile_form.non_field_errors %}
+                            <div class="mt-2">{{ profile_form.non_field_errors }}</div>
+                        {% endif %}
                     </div>
                 {% endif %}
 
                 <form method="post" action="{% url 'auth:edit-user' user.pk %}" enctype="multipart/form-data">
                     {% csrf_token %}
 
-                    {% for field in form.visible_fields %}
-                    <div class="mb-3">
-                        {{ field|as_crispy_field }}
-                    </div>
-                    {% endfor %}
+                    <div class="grid gap-6 lg:grid-cols-2">
+                        <div class="space-y-4">
+                            <div>
+                                <div class="mb-3">
+                                    <span class="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">Account Details</span>
+                                </div>
 
-                    <div class="mb-3">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-                        <input type="text" name="phone" value="{{ profile.phone|default:'' }}"
-                            class="w-full rounded-sm border-gray-300 text-sm focus:ring-slate-500 focus:border-slate-500"
-                            placeholder="Write phone...">
-                    </div>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        {{ form.first_name|as_crispy_field }}
+                                    </div>
+                                    <div>
+                                        {{ form.last_name|as_crispy_field }}
+                                    </div>
+                                </div>
 
-                    <div class="mb-3">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                        <select name="status_id" class="w-full rounded-sm border-gray-300 text-sm focus:ring-slate-500 focus:border-slate-500">
-                            <option value="1" {% if user.is_active %}selected{% endif %}>Active</option>
-                            <option value="0" {% if not user.is_active %}selected{% endif %}>Inactive</option>
-                        </select>
-                    </div>
+                                <div class="mt-4">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Username</label>
+                                    <input type="text" value="{{ user.username }}" readonly
+                                        class="w-full rounded-md border-gray-300 bg-stone-100 text-sm text-stone-500 cursor-not-allowed">
+                                </div>
 
-                    <div class="mb-3">
-                        <label class="block text-xs font-medium text-gray-700 mb-2">Roles</label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 border border-gray-200 rounded-sm p-3">
-                            {% for role in roles %}
-                                <label class="inline-flex items-center text-sm text-gray-700">
-                                    <input type="checkbox" name="role_ids" value="{{ role.id }}"
-                                        class="rounded border-gray-300 text-slate-700 focus:ring-slate-500 mr-2"
-                                        {% if role.id in user_roles %}checked{% endif %}>
-                                    {{ role.name }}
-                                </label>
-                            {% empty %}
-                                <p class="text-xs text-gray-500">No roles available.</p>
-                            {% endfor %}
+                                <div class="mt-4">
+                                    {{ form.email|as_crispy_field }}
+                                </div>
+
+                                <div class="mt-4">
+                                    <label class="block text-xs font-medium text-gray-700 mb-1" for="{{ profile_form.phone.id_for_label }}">{{ profile_form.phone.label }}</label>
+                                    {{ profile_form.phone }}
+                                    {% if profile_form.phone.errors %}<p class="text-xs text-red-600 mt-1">{{ profile_form.phone.errors|striptags }}</p>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="rounded-2xl border border-stone-200 bg-stone-50/70 p-5">
+                                <div class="mb-3">
+                                    <span class="text-xs font-medium uppercase tracking-[0.14em] text-stone-500">Access Control</span>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                                    <select name="status_id" class="w-full rounded-md border-gray-300 text-sm focus:ring-slate-500 focus:border-slate-500">
+                                        <option value="1" {% if selected_status == "1" %}selected{% endif %}>Active</option>
+                                        <option value="0" {% if selected_status == "0" %}selected{% endif %}>Inactive</option>
+                                    </select>
+                                </div>
+
+                                <div class="mt-5">
+                                    <label class="block text-xs font-medium uppercase tracking-[0.14em] text-stone-500 mb-3">Roles</label>
+                                    <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                        {% for role in roles %}
+                                            <label class="inline-flex items-center rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-gray-700">
+                                                <input type="checkbox" name="role_ids" value="{{ role.id }}"
+                                                    class="rounded border-gray-300 text-slate-700 focus:ring-slate-500 mr-2"
+                                                    {% if role.id in user_roles %}checked{% endif %}>
+                                                {{ role.name }}
+                                            </label>
+                                        {% empty %}
+                                            <p class="text-xs text-gray-500">No roles available.</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -61,14 +98,14 @@
                     <input type="hidden" name="user" value="{{ user.id }}">
                     <input type="hidden" name="digest" value="{{ profile.digest|default:user.username }}">
 
-                    <div class="flex justify-end space-x-2 pt-2">
+                    <div class="mt-8 flex justify-end space-x-2 pt-2">
                         <a href="{% url 'auth:users' %}"
-                            class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-3 rounded-sm">
+                            class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-4 rounded-md">
                             Cancel
                         </a>
                         <button type="submit"
-                            class="text-white bg-slate-700 hover:bg-slate-800 text-sm px-3 py-2 rounded-sm">
-                            Submit
+                            class="text-white bg-slate-700 hover:bg-slate-800 text-sm px-4 py-2 rounded-md">
+                            Save Changes
                         </button>
                     </div>
                 </form>

@@ -25,9 +25,9 @@
                     </a>
 
                     <a href="{% url 'auth:users' %}"
-                        class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                        class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' or current_namespace == 'auth' and current_url_name == 'roles' or current_namespace == 'auth' and current_url_name == 'create-role' or current_namespace == 'auth' and current_url_name == 'edit-role' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
                         Users
-                        <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
+                        <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' or current_namespace == 'auth' and current_url_name == 'roles' or current_namespace == 'auth' and current_url_name == 'create-role' or current_namespace == 'auth' and current_url_name == 'edit-role' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
                     </a>
                 </div>
             </div>
@@ -92,7 +92,7 @@
                 OHKR
             </a>
             <a href="{% url 'auth:users' %}"
-                class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' or current_namespace == 'auth' and current_url_name == 'roles' or current_namespace == 'auth' and current_url_name == 'create-role' or current_namespace == 'auth' and current_url_name == 'edit-role' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
                 Users
             </a>
             <a href="{% url 'projects:create' %}"

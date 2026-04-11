@@ -8,6 +8,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.contrib import messages
+from django.db import transaction
 from django.contrib.auth.models import User, Group
 from apps.accounts.models import Profile
 from .forms import UserForm, UserUpdateForm, UserProfileForm
@@ -19,6 +20,7 @@ class UserListView(PermissionRequiredMixin, generic.ListView):
     model = User
     context_object_name = 'users'
     template_name = 'users/lists.html'
+    ordering = ['date_joined']
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -27,6 +29,19 @@ class UserListView(PermissionRequiredMixin, generic.ListView):
     def get_context_data(self, *args, **kwargs):
         context = super(UserListView, self).get_context_data(**kwargs)
         context['title'] = "Manage Users"
+        context["page_title"] = "Manage Users"
+
+        # breadcrumbs
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Users", "url": "#"},
+        ]
+
+        # Add links to context
+        context["links"] = {
+            "Users": reverse_lazy("auth:users"),
+            "Roles": reverse_lazy("auth:roles"),
+        }
 
         return context
 
@@ -48,37 +63,51 @@ class UserCreateView(PermissionRequiredMixin, generic.CreateView):
         profile_form = UserProfileForm()
 
         """context"""
-        context = {"roles": roles, 'form': user_form, 'profile_form': profile_form}
+        context = self._get_context(request, user_form, profile_form, [])
+
+        # render view
         return render(request, 'users/create.html', context)
+
+    def _get_context(self, request, form, profile_form, selected_role_ids=None):
+        return {
+            "roles": Group.objects.all().order_by("name"),
+            "form": form,
+            "profile_form": profile_form,
+            "title": "Register User",
+            "selected_role_ids": selected_role_ids or [],
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Users", "url": reverse_lazy("auth:users")},
+                {"name": "Register User", "url": "#"},
+            ],
+            "links": {
+                "Users": reverse_lazy("auth:users"),
+                "Roles": reverse_lazy("auth:roles"),
+            },
+        }
 
     def post(self, request, *args, **kwargs):
         user_form = UserForm(request.POST)
         profile_form = UserProfileForm(request.POST)
+        selected_role_ids = request.POST.getlist("role_ids")
 
         if user_form.is_valid() and profile_form.is_valid():
-            user = user_form.save(commit=False)
-            user.save()
+            with transaction.atomic():
+                user = user_form.save(commit=False)
+                user.save()
 
-            if user:
-                """create or update profile"""
-                profile, created = Profile.objects.update_or_create(user_id=user.id,  
-                defaults={'phone': request.POST.get("phone")})
+                profile = Profile.objects.get(user=user)
+                profile.phone = profile_form.cleaned_data["phone"]
+                profile.save()
 
-            """insert roles"""
-            role_ids = request.POST.getlist('role_ids')
-
-            for role_id in role_ids:
-                role = Group.objects.get(pk=role_id)
-                user.groups.add(role)
+                roles = Group.objects.filter(pk__in=selected_role_ids)
+                user.groups.set(roles)
 
             messages.success(request, 'User registered!')
             return HttpResponseRedirect(reverse_lazy('auth:users'))
-        
-        """roles"""
-        roles = Group.objects.all()
 
-        """render form if fails"""
-        return render(request, 'users/create.html', {"roles": roles, 'form': user_form, 'profile_form': profile_form, 'title': 'Register User'})  
+        context = self._get_context(request, user_form, profile_form, selected_role_ids)
+        return render(request, 'users/create.html', context)  
 
 
 class UserUpdateView(PermissionRequiredMixin, generic.UpdateView):
@@ -110,7 +139,25 @@ class UserUpdateView(PermissionRequiredMixin, generic.UpdateView):
         roles = Group.objects.all().order_by("name")
 
         """context"""
-        context = {"user": user, "profile": profile, "roles": roles,'form': user_form, 'profile_form': profile_form, 'user_roles': user_roles , 'title': 'Edit User'}
+        context = {
+            "user": user,
+            "profile": profile,
+            "roles": roles,
+            "form": user_form,
+            "profile_form": profile_form,
+            "user_roles": user_roles,
+            "selected_status": "1" if user.is_active else "0",
+            "title": "Edit User",
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Users", "url": reverse_lazy("auth:users")},
+                {"name": "Edit User", "url": "#"},
+            ],
+            "links": {
+                "Users": reverse_lazy("auth:users"),
+                "Roles": reverse_lazy("auth:roles"),
+            },
+        }
         return render(request, 'users/edit.html', context)
     
     def post(self, request, *args, **kwargs):
@@ -118,26 +165,52 @@ class UserUpdateView(PermissionRequiredMixin, generic.UpdateView):
         profile, _ = Profile.objects.get_or_create(user=user)
         user_form = UserUpdateForm(request.POST, instance=user)
         profile_form = UserProfileForm(request.POST, instance=profile)
+        selected_status = request.POST.get("status_id", "1" if user.is_active else "0")
+        user_roles = [int(role_id) for role_id in request.POST.getlist("role_ids") if role_id]
+        status_is_valid = selected_status in {"0", "1"}
+        user_form_is_valid = user_form.is_valid()
+        profile_form_is_valid = profile_form.is_valid()
+        if not status_is_valid:
+            user_form.add_error(None, "Select a valid status.")
 
-        if user_form.is_valid() and profile_form.is_valid():
-            user = user_form.save(commit=False)
-            user.is_active  = request.POST.get("status_id")
-            user.phone      = request.POST.get("phone")
-            user.save()
+        if user_form_is_valid and profile_form_is_valid and status_is_valid:
+            with transaction.atomic():
+                user = user_form.save(commit=False)
+                user.is_active = selected_status == "1"
+                user.save()
 
-            """delete"""
-            user.groups.clear()
+                profile = profile_form.save(commit=False)
+                profile.user = user
+                profile.save()
 
-            """insert/update roles"""
-            role_ids = request.POST.getlist('role_ids')
-
-            for role_id in role_ids:
-                role = Group.objects.get(pk=role_id)
-                user.groups.add(role)
+                roles = Group.objects.filter(pk__in=user_roles)
+                user.groups.set(roles)
 
             """message with redirect"""
             messages.success(self.request, 'User updated!')
             return HttpResponseRedirect(reverse_lazy('auth:users')) 
+
+        roles = Group.objects.all().order_by("name")
+        context = {
+            "user": user,
+            "profile": profile,
+            "roles": roles,
+            "form": user_form,
+            "profile_form": profile_form,
+            "user_roles": user_roles,
+            "selected_status": selected_status,
+            "title": "Edit User",
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Users", "url": reverse_lazy("auth:users")},
+                {"name": "Edit User", "url": "#"},
+            ],
+            "links": {
+                "Users": reverse_lazy("auth:users"),
+                "Roles": reverse_lazy("auth:roles"),
+            },
+        }
+        return render(request, "users/edit.html", context)
    
 
 class UserDeleteView(PermissionRequiredMixin, generic.DeleteView):
@@ -165,4 +238,3 @@ def delete_user(request, *args, **kwargs):
     except:
         return JsonResponse({"error": True, "error_msg": "Failed to delete user"}, safe=False)    
  
-

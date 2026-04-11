@@ -1,0 +1,154 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        {% url 'auth:create-role' as create_role_url %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {% include 'partials/list_header.html' with header_title="Role Directory" header_subtitle="Create, review, and maintain user roles used across the platform." search_id="role_search" search_placeholder="Search role name..." export_button_id="roles_export" primary_action_url=create_role_url primary_action_label="Create Role" primary_action_icon="bx bx-plus" %}
+
+            <div class="p-4">
+                {% if messages %}
+                    <div class="mb-3 space-y-2">
+                        {% for message in messages %}
+                            <div class="px-4 py-3 rounded-sm text-sm {% if message.tags == 'success' %}bg-green-100 text-green-800 border border-green-100{% else %}bg-red-100 text-red-800 border border-red-100{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="relative overflow-x-auto">
+                    <table id="roles_table" class="w-full text-xs text-left text-gray-700 border-collapse">
+                        <thead class="text-xs bg-gray-50 text-gray-600 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3">Role</th>
+                                <th class="px-4 py-3">Users</th>
+                                <th class="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role in roles %}
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 role-row"
+                                data-search="{{ role.name|lower }}">
+                                <td class="px-4 py-3">
+                                    <div class="min-w-[220px]">
+                                        <div class="text-xs font-semibold text-slate-800">{{ role.name }}</div>
+                                        <div class="mt-1 text-[11px] leading-5 text-gray-500">Permission group</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-700">
+                                        {{ role.user_set.count }} users
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-right whitespace-nowrap">
+                                    <a href="{% url 'auth:edit-role' role.pk %}"
+                                        class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">
+                                        <i class="bx bx-edit-alt bx-xs"></i>
+                                    </a>
+                                    <button type="button" onclick="deleteRole('{{ role.pk }}', '{{ role.name|escapejs }}')"
+                                        class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer ml-1">
+                                        <i class="bx bx-trash bx-xs"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr id="roles_empty_row">
+                                <td colspan="3" class="px-4 py-8 text-center text-gray-500">No roles found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra-js %}
+<script>
+    function filterRoles() {
+        const query = ($('#role_search').val() || '').trim().toLowerCase();
+        let visibleRows = 0;
+
+        $('#roles_table tbody .role-row').each(function () {
+            const haystack = ($(this).data('search') || '').toString();
+            const match = !query || haystack.includes(query);
+            $(this).toggle(match);
+            if (match) visibleRows += 1;
+        });
+
+        if ($('#roles_table tbody .role-row').length > 0) {
+            if (visibleRows === 0) {
+                if (!$('#roles_filtered_empty_row').length) {
+                    $('#roles_table tbody').append(`
+                        <tr id="roles_filtered_empty_row">
+                            <td colspan="3" class="px-4 py-8 text-center text-gray-500">No roles match your search.</td>
+                        </tr>
+                    `);
+                }
+            } else {
+                $('#roles_filtered_empty_row').remove();
+            }
+        }
+    }
+
+    function exportRolesTable() {
+        const rows = [["Role", "Users"]];
+
+        $('#roles_table tbody .role-row:visible').each(function () {
+            const cells = $(this).find('td');
+            rows.push([
+                $(cells[0]).text().trim().replace(/\s+/g, ' '),
+                $(cells[1]).text().trim().replace(/\s+/g, ' '),
+            ]);
+        });
+
+        const csv = rows
+            .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'roles.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    $('#role_search').on('keyup', filterRoles);
+    $('#roles_export').on('click', exportRolesTable);
+
+    function deleteRole(roleId, roleName) {
+        const deleteUrl = "{% url 'auth:delete-role' 0 %}".replace("/0", `/${roleId}`);
+        Swal.fire({
+            title: "Delete role?",
+            text: `This will permanently delete ${roleName}.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#b91c1c",
+            cancelButtonColor: "#475569",
+            confirmButtonText: "Yes, delete"
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            fetch(deleteUrl)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error === false) {
+                        Swal.fire("Deleted", data.success_msg, "success").then(() => window.location.reload());
+                    } else {
+                        Swal.fire("Error", data.error_msg || "Failed to delete role", "error");
+                    }
+                })
+                .catch(() => {
+                    Swal.fire("Error", "Failed to delete role", "error");
+                });
+        });
+    }
+</script>
+{% endblock %}

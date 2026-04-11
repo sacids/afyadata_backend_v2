@@ -1,0 +1,43 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 w-full md:max-w-2xl mx-auto">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                <h2 class="text-sm font-semibold text-gray-800">{{ title|default:"Create Role" }}</h2>
+            </div>
+
+            <div class="p-4">
+                {% if form.errors %}
+                    <div class="mb-3 px-4 py-3 rounded-sm text-sm bg-red-100 text-red-800 border border-red-100">
+                        Please correct the highlighted errors.
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'auth:create-role' %}">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<p class="text-xs text-red-600 mt-1">{{ form.name.errors|striptags }}</p>{% endif %}
+                    </div>
+
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <a href="{% url 'auth:roles' %}"
+                            class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-3 rounded-md">
+                            Cancel
+                        </a>
+                        <button type="submit"
+                            class="text-white bg-slate-700 hover:bg-slate-800 text-sm px-4 py-2 rounded-md">
+                            Submit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
