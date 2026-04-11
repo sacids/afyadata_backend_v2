@@ -113,32 +113,31 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
             "</a>"
             
             # Activate / Deactivate
-            '<a href="javascript:void(0)" '
-            'hx-get="{}" '
-            'hx-target="#message_wrp" '
-            'hx-swap="innerHTML" '
-            'hx-confirm="{}" '
-            'hx-on::after-request="setTimeout(() => window.location.reload(), 300)" '
+            '<button type="button" '
+            'data-url="{}" '
+            'data-title={} '
+            'data-active="{}" '
             'title="Toggle project status" '
-            'class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer">'
+            'class="project-toggle-status inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer">'
             '<i class="bx bx-power-off bx-xs"></i>'
-            '</a>'
+            '</button>'
             
             # Delete
-            '<a href="#" '
-            'hx-get="{}" '
-            'hx-target="#modal_container" '
-            'hx-swap="innerHTML" '
+            '<button type="button" '
+            'data-url="{}" '
+            'data-title={} '
             'title="Delete project" '
-            'class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">'
+            'class="project-delete inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">'
             '<i class="bx bx-trash bx-xs"></i>'
-            '</a>'
+            '</button>'
             "</div>"
         ).format(
             reverse("projects:edit", kwargs={"pk": obj.id}),
             reverse("projects:activate", kwargs={"pk": obj.id}),
-            "Deactivate this project?" if obj.active else "Activate this project?",
-            reverse("projects:delete", kwargs={"pk": obj.id}),  
+            json.dumps(obj.title),
+            "true" if obj.active else "false",
+            reverse("projects:delete", kwargs={"pk": obj.id}),
+            json.dumps(obj.title),
         )
 
 

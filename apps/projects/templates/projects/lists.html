@@ -32,8 +32,6 @@
                 <div class="relative overflow-x-auto">
                     <div id="message_wrp" class="mb-3" hx-preserve></div>
 
-                    <div id="modal_container"></div>
-
                     <table id="datatable_projects" class="w-full text-xs text-left text-gray-700 border-collapse">
                     </table>
                 </div>
@@ -98,6 +96,73 @@
 
         $('#projects_export').on('click', function () {
             $('#datatable_projects').DataTable().button('.buttons-csv').trigger();
+        });
+
+        $(document).on('click', '.project-delete', function () {
+            const url = $(this).data('url');
+            const title = $(this).data('title');
+
+            Swal.fire({
+                title: 'Delete project?',
+                text: `This will remove ${title} from the active project directory.`,
+                icon: 'error',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: '#166534',
+                cancelButtonColor: '#475569',
+                confirmButtonText: 'Yes, delete'
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                fetch(url)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.error === false) {
+                            Swal.fire('Deleted', data.success_msg, 'success').then(() => window.location.reload());
+                        } else {
+                            Swal.fire('Error', data.error_msg || 'Failed to delete project', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Error', 'Failed to delete project', 'error');
+                    });
+            });
+        });
+
+        $(document).on('click', '.project-toggle-status', function () {
+            const url = $(this).data('url');
+            const title = $(this).data('title');
+            const isActive = String($(this).data('active')) === 'true';
+            const actionLabel = isActive ? 'Deactivate' : 'Activate';
+
+            Swal.fire({
+                title: `${actionLabel} project?`,
+                text: isActive
+                    ? `${title} will stop accepting active use until it is reactivated.`
+                    : `${title} will become active and available again.`,
+                icon: 'question',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: isActive ? '#d97706' : '#166534',
+                cancelButtonColor: '#475569',
+                confirmButtonText: `Yes, ${actionLabel.toLowerCase()}`
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                fetch(url)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.error === false) {
+                            const stateLabel = data.active ? 'Activated' : 'Deactivated';
+                            Swal.fire(stateLabel, data.success_msg, 'success').then(() => window.location.reload());
+                        } else {
+                            Swal.fire('Error', data.error_msg || 'Failed to update project status', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Error', 'Failed to update project status', 'error');
+                    });
+            });
         });
     });
 

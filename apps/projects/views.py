@@ -254,20 +254,22 @@ class ProjectActivateView(generic.TemplateView):
     def get(self, request, *args, **kwargs):
         try:
             project = Project.objects.get(pk=kwargs["pk"])
-            if project.active:
-                project.active = False
-            else:
-                project.active = True
+            project.active = not project.active
             project.save()
 
-            # success response
-            return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project status updated.</div>'
+            return JsonResponse(
+                {
+                    "error": False,
+                    "success_msg": "Project activated."
+                    if project.active
+                    else "Project deactivated.",
+                    "active": project.active,
+                },
+                status=200,
             )
         except:
-            # error response
-            return HttpResponse(
-                f'<div class="bg-red-100 rounded-b text-red-900 rounded-sm text-sm px-4 py-4">Project not found</div>'
+            return JsonResponse(
+                {"error": True, "error_msg": "Project not found."}, status=404
             )
 
 
