@@ -14,6 +14,8 @@ from django.views import generic
 from django.http import JsonResponse, Http404
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import permission_required
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.shortcuts import render
 from django.contrib import messages
 from django.utils.safestring import mark_safe
@@ -190,8 +192,51 @@ def get_accessible_project_or_404(user, pk):
     raise Http404("Project not found")
 
 
-class ProjectListView(generic.ListView):
-    # permission_required = ''
+def get_accessible_survey_or_404(user, pk):
+    survey = get_object_or_404(FormDefinition, pk=pk)
+    get_accessible_project_or_404(user, survey.project.pk)
+    return survey
+
+
+def build_project_directory_links(user):
+    links = {"Project Directory": reverse_lazy("projects:lists")}
+    if user.has_perm("projects.add_project"):
+        links["Create Project"] = reverse_lazy("projects:create")
+    return links
+
+
+def build_project_workspace_links(user, project_pk):
+    links = {
+        "Members": reverse_lazy("projects:members", kwargs={"pk": project_pk}),
+        "Forms": reverse_lazy("projects:forms", kwargs={"pk": project_pk}),
+    }
+    if user.has_perm("projects.add_formdefinition"):
+        links["Upload Form"] = reverse_lazy("projects:upload-form", kwargs={"pk": project_pk})
+
+    links["Data"] = reverse_lazy("projects:data", kwargs={"pk": project_pk})
+    return links
+
+
+def build_form_management_links(user, survey):
+    links = {}
+    if user.has_perm("projects.change_formdefinition"):
+        links["Update Form"] = reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk})
+        links["API Config"] = reverse_lazy("projects:form-api-config", kwargs={"pk": survey.pk})
+        links["Attachments"] = reverse_lazy("projects:form-attachments", kwargs={"pk": survey.pk})
+    return links
+
+
+def build_form_data_links(form_pk):
+    return {
+        "Summary": "#",
+        "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": form_pk}),
+        "Charts": reverse_lazy("projects:form-data-charts", kwargs={"pk": form_pk}),
+        "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": form_pk}),
+    }
+
+
+class ProjectListView(PermissionRequiredMixin, generic.ListView):
+    permission_required = "projects.view_project"
 
     """Project Listing"""
     model = Project
@@ -213,16 +258,13 @@ class ProjectListView(generic.ListView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Project Directory": reverse_lazy("projects:lists"),
-            "Create Project": reverse_lazy("projects:create"),
-        }
+        context["links"] = build_project_directory_links(self.request.user)
 
         return context
 
 
-class ProjectDetailView(generic.DetailView):
-    # permission_required = ''
+class ProjectDetailView(PermissionRequiredMixin, generic.DetailView):
+    permission_required = "projects.view_project"
 
     """View details"""
     model = Project
@@ -252,20 +294,13 @@ class ProjectDetailView(generic.DetailView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Information": reverse_lazy("projects:lists"),
-            "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
-            "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
-            "Upload Form": reverse_lazy(
-                "projects:upload-form", kwargs={"pk": kwargs["pk"]}
-            ),
-        }
+        context["links"] = build_project_workspace_links(request.user, kwargs["pk"])
 
         return render(request, self.template_name, context)
 
 
-class ProjectCreateView(generic.CreateView):
-    # permission_required = ''
+class ProjectCreateView(PermissionRequiredMixin, generic.CreateView):
+    permission_required = "projects.add_project"
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -281,10 +316,7 @@ class ProjectCreateView(generic.CreateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Project Directory": reverse_lazy("projects:lists"),
-            "Create Project": reverse_lazy("projects:create"),
-        }
+        context["links"] = build_project_directory_links(request.user)
 
         return render(request, "projects/create.html", context)
 
@@ -314,8 +346,8 @@ class ProjectCreateView(generic.CreateView):
             )
 
 
-class ProjectUpdateView(generic.UpdateView):
-    # permission_required = ''
+class ProjectUpdateView(PermissionRequiredMixin, generic.UpdateView):
+    permission_required = "projects.change_project"
 
     """View to update"""
     model = Project
@@ -338,10 +370,7 @@ class ProjectUpdateView(generic.UpdateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Project Directory": reverse_lazy("projects:lists"),
-            "Create New": reverse_lazy("projects:create"),
-        }
+        context["links"] = build_project_directory_links(request.user)
 
         return render(request, "projects/edit.html", context)
 
@@ -369,20 +398,26 @@ class ProjectUpdateView(generic.UpdateView):
             )
 
 
-class ProjectDeleteConfirmView(generic.DetailView):
+class ProjectDeleteConfirmView(PermissionRequiredMixin, generic.DetailView):
+    permission_required = "projects.delete_project"
     model = Project
     template_name = "projects/_delete_confirm_modal.html"
 
     def get_object(self, queryset=None):
-        return get_object_or_404(Project, pk=self.kwargs["pk"])
+        return get_accessible_project_or_404(self.request.user, self.kwargs["pk"])
 
 
-class ProjectDeleteView(generic.TemplateView):
+class ProjectDeleteView(PermissionRequiredMixin, generic.TemplateView):
     """View to delete project"""
+    permission_required = "projects.delete_project"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectDeleteView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         try:
-            project = Project.objects.get(pk=kwargs["pk"])
+            project = get_accessible_project_or_404(request.user, kwargs["pk"])
             project.deleted = 1
             project.save()
 
@@ -395,12 +430,17 @@ class ProjectDeleteView(generic.TemplateView):
             )
 
 
-class ProjectActivateView(generic.TemplateView):
+class ProjectActivateView(PermissionRequiredMixin, generic.TemplateView):
     """View to activate or deactivate a project"""
+    permission_required = "projects.change_project"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectActivateView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         try:
-            project = Project.objects.get(pk=kwargs["pk"])
+            project = get_accessible_project_or_404(request.user, kwargs["pk"])
             project.active = not project.active
             project.save()
 
@@ -420,8 +460,9 @@ class ProjectActivateView(generic.TemplateView):
             )
 
 
-class ProjectMembersListView(generic.TemplateView):
+class ProjectMembersListView(PermissionRequiredMixin, generic.TemplateView):
     """View to list all project members"""
+    permission_required = "projects.view_project"
 
     def get(self, request, *args, **kwargs):
         # get project
@@ -442,22 +483,16 @@ class ProjectMembersListView(generic.TemplateView):
             {"name": project.title, "url": "#"},
         ]
 
-        context["links"] = {
-            "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
-            "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
-            "Upload Form": reverse_lazy(
-                "projects:upload-form", kwargs={"pk": kwargs["pk"]}
-            ),
-            "Knowledge Base": "#",
-            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
-        }
+        context["links"] = build_project_workspace_links(request.user, kwargs["pk"])
+        context["can_assign_members"] = request.user.has_perm("projects.change_projectmember")
 
         # render view
         return render(request, "projects/members.html", context=context)
 
 
-class ProjectAssignMembersView(generic.View):
+class ProjectAssignMembersView(PermissionRequiredMixin, generic.View):
     """Assign project members from eligible user roles."""
+    permission_required = "projects.change_projectmember"
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -500,8 +535,9 @@ class ProjectAssignMembersView(generic.View):
         return HttpResponseRedirect(reverse_lazy("projects:members", kwargs={"pk": project.pk}))
 
 
-class ProjectDataView(generic.TemplateView):
+class ProjectDataView(PermissionRequiredMixin, generic.TemplateView):
     """View to list all project data"""
+    permission_required = "projects.view_project"
 
     def get(self, request, *args, **kwargs):
         # get project
@@ -531,22 +567,15 @@ class ProjectDataView(generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
-            "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
-            "Upload Form": reverse_lazy(
-                "projects:upload-form", kwargs={"pk": kwargs["pk"]}
-            ),
-            "Knowledge Base": "#",
-            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
-        }
+        context["links"] = build_project_workspace_links(request.user, kwargs["pk"])
 
         # render view
         return render(request, "projects/data.html", context=context)
 
 
-class SurveyListView(generic.TemplateView):
+class SurveyListView(PermissionRequiredMixin, generic.TemplateView):
     """View to list all surveys"""
+    permission_required = "projects.view_formdefinition"
 
     def get(self, request, *args, **kwargs):
         # get project
@@ -565,22 +594,16 @@ class SurveyListView(generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
-            "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
-            "Upload Form": reverse_lazy(
-                "projects:upload-form", kwargs={"pk": kwargs["pk"]}
-            ),
-            "Knowledge Base": "#",
-            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
-        }
+        context["links"] = build_project_workspace_links(request.user, kwargs["pk"])
+        context["can_upload_form"] = request.user.has_perm("projects.add_formdefinition")
 
         # render view
         return render(request, "surveys/lists.html", context=context)
 
 
-class SurveyCreateView(generic.CreateView):
+class SurveyCreateView(PermissionRequiredMixin, generic.CreateView):
     """Register new Survey"""
+    permission_required = "projects.add_formdefinition"
 
     def get(self, request, *args, **kwargs):
         # get project
@@ -599,15 +622,7 @@ class SurveyCreateView(generic.CreateView):
             {"name": "Upload Form", "url": ""},
         ]
 
-        context["links"] = {
-            "Members": reverse_lazy("projects:members", kwargs={"pk": kwargs["pk"]}),
-            "Forms": reverse_lazy("projects:forms", kwargs={"pk": kwargs["pk"]}),
-            "Upload Form": reverse_lazy(
-                "projects:upload-form", kwargs={"pk": kwargs["pk"]}
-            ),
-            "Knowledge Base": "#",
-            "Data": reverse_lazy("projects:data", kwargs={"pk": kwargs["pk"]}),
-        }
+        context["links"] = build_project_workspace_links(request.user, kwargs["pk"])
 
         # render view
         return render(request, "surveys/upload.html", context=context)
@@ -652,12 +667,13 @@ class SurveyCreateView(generic.CreateView):
             )
 
 
-class SurveyUpdateView(generic.UpdateView):
+class SurveyUpdateView(PermissionRequiredMixin, generic.UpdateView):
     """Edit Survey"""
+    permission_required = "projects.change_formdefinition"
 
     def get(self, request, *args, **kwargs):
         # survey
-        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
         # context
         context = {
@@ -674,17 +690,14 @@ class SurveyUpdateView(generic.UpdateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Update Form": "#",
-            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
-        }
+        context["links"] = build_form_management_links(request.user, survey)
 
         # render view
         return render(request, "surveys/edit.html", context=context)
 
     def post(self, request, *args, **kwargs):
         # survey
-        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
         # survey form
         survey_form = SurveyUpdateForm(
@@ -721,11 +734,15 @@ class SurveyUpdateView(generic.UpdateView):
             )
 
 
-class SurveyDeleteView(generic.DeleteView):
+class SurveyDeleteView(PermissionRequiredMixin, generic.DeleteView):
     """Delete survey"""
+    permission_required = "projects.delete_formdefinition"
 
     model = FormDefinition
     template_name = "surveys/confirm_delete.html"
+
+    def get_object(self, queryset=None):
+        return get_accessible_survey_or_404(self.request.user, self.kwargs["pk"])
 
     def get_success_url(self):
         # success response
@@ -734,8 +751,9 @@ class SurveyDeleteView(generic.DeleteView):
             )
 
 
-class SurveyAPIConfig(generic.TemplateView):
+class SurveyAPIConfig(PermissionRequiredMixin, generic.TemplateView):
     template_name = "surveys/api_config.html"
+    permission_required = "projects.change_formdefinition"
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -796,12 +814,12 @@ class SurveyAPIConfig(generic.TemplateView):
         return context
 
     def get(self, request, *args, **kwargs):
-        survey = get_object_or_404(FormDefinition, pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
         context = self.get_context(survey)
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
-        survey = get_object_or_404(FormDefinition, pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
         payload_config = self.get_payload_config(survey)
         action = request.POST.get("action") or "save-api-config"
 
@@ -915,11 +933,12 @@ class SurveyAPIConfig(generic.TemplateView):
         return render(request, self.template_name, context)
 
 
-class SurveyRuleView(generic.TemplateView):
+class SurveyRuleView(PermissionRequiredMixin, generic.TemplateView):
     """Survey Attachment"""
+    permission_required = "projects.change_formdefinition"
     def get(self, request, *args, **kwargs):
         # survey
-        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
         # context
         context = {
@@ -936,18 +955,14 @@ class SurveyRuleView(generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Update Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
-            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
-            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
-        }
+        context["links"] = build_form_management_links(request.user, survey)
 
         # render view
         return render(request, "surveys/rules.html", context=context)
     
     def post(self, request, *args, **kwargs):
         # survey
-        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
         # success response
         return HttpResponse(
@@ -955,11 +970,12 @@ class SurveyRuleView(generic.TemplateView):
         )
 
 
-class SurveyAttachmentView(generic.TemplateView):
+class SurveyAttachmentView(PermissionRequiredMixin, generic.TemplateView):
     """Survey Attachment"""
+    permission_required = "projects.change_formdefinition"
     def get(self, request, *args, **kwargs):
         # survey
-        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
         # context
         context = {
@@ -977,17 +993,13 @@ class SurveyAttachmentView(generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Update Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
-            "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
-            "Attachments": '#'
-        }
+        context["links"] = build_form_management_links(request.user, survey)
 
         # render view
         return render(request, "surveys/attachments.html", context=context)
     
     def post(self, request, *args, **kwargs):
-        survey = FormDefinition.objects.get(pk=kwargs["pk"])
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
         form = SurveyAttachmentForm(request.POST, request.FILES)
 
         if form.is_valid():
@@ -1013,12 +1025,17 @@ class SurveyAttachmentView(generic.TemplateView):
             )
 
 
-class SurveyDataExportView(generic.View):
+class SurveyDataExportView(PermissionRequiredMixin, generic.View):
     """Export form data into csv"""
+    permission_required = "projects.view_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataExportView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         # get form
-        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        cur_form = get_accessible_survey_or_404(request.user, kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
         lang = request.GET.get("lang") or None
         if lang and lang not in data.get("languages", []):
@@ -1051,14 +1068,16 @@ class SurveyDataExportView(generic.View):
         return response
 
 
-class SurveyDataView(generic.DetailView):
+class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
+    permission_required = "projects.view_formdefinition"
+
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(SurveyDataView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         # get form
-        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        cur_form = get_accessible_survey_or_404(request.user, kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
         lang = request.GET.get("lang") or None
         if lang and lang not in data.get("languages", []):
@@ -1106,13 +1125,19 @@ class SurveyDataView(generic.DetailView):
         )
 
 
-class SurveyDataInstanceView(generic.TemplateView):
+class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
     """View to list all project form data"""
+    permission_required = "projects.view_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataInstanceView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         # get form data
         data_id = kwargs["data_id"]
         form_data = FormData.objects.get(uuid=data_id)
+        get_accessible_project_or_404(request.user, form_data.form.project.pk)
         form_definition = utils.load_json(form_data.form.form_defn)
         localized_form_title = (
             utils.get_localized_form_title(form_definition) or form_data.form.title
@@ -1175,31 +1200,22 @@ class SurveyDataInstanceView(generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Members": reverse_lazy(
-                "projects:members", kwargs={"pk": cur_form.project.pk}
-            ),
-            "Forms": reverse_lazy("projects:forms", kwargs={"pk": cur_form.project.pk}),
-            "Upload Form": reverse_lazy(
-                "projects:upload-form", kwargs={"pk": cur_form.project.pk}
-            ),
-            "Knowledge Base": "#",
-            "Data": reverse_lazy("projects:data", kwargs={"pk": cur_form.project.pk}),
-        }
+        context["links"] = build_project_workspace_links(request.user, cur_form.project.pk)
 
         # render view
         return render(request, "surveys/data.html", context=context)
 
 
-class ChartsDataView(generic.TemplateView):
+class ChartsDataView(PermissionRequiredMixin, generic.TemplateView):
     template_name = "surveys/data/charts.html"
+    permission_required = "projects.view_formdefinition"
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(ChartsDataView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        cur_form = get_accessible_survey_or_404(request.user, kwargs["pk"])
         context = {"cur_form": cur_form}
         context["title"] = cur_form.title
 
@@ -1211,14 +1227,7 @@ class ChartsDataView(generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Summary": "#",
-            "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
-            "Charts": reverse_lazy(
-                "projects:form-data-charts", kwargs={"pk": kwargs["pk"]}
-            ),
-            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
-        }
+        context["links"] = build_form_data_links(kwargs["pk"])
 
         return self.render_to_response(context)
 
@@ -1226,7 +1235,7 @@ class ChartsDataView(generic.TemplateView):
         """
         Get chart data
         """
-        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        cur_form = get_accessible_survey_or_404(request.user, kwargs["pk"])
         data = utils.load_json(cur_form.form_defn)
 
         tbl_header_dict = utils.get_table_header(data)
@@ -1320,8 +1329,9 @@ class ChartsDataView(generic.TemplateView):
         )
 
 
-class MapDataView(generic.TemplateView):
+class MapDataView(PermissionRequiredMixin, generic.TemplateView):
     template_name = "surveys/data/map.html"
+    permission_required = "projects.view_formdefinition"
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -1329,7 +1339,7 @@ class MapDataView(generic.TemplateView):
 
     def get(self, request, *args, **kwargs):
         # get form
-        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        cur_form = get_accessible_survey_or_404(request.user, kwargs["pk"])
         context = {"cur_form": cur_form}
 
         # breadcrumbs
@@ -1346,22 +1356,16 @@ class MapDataView(generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Summary": "#",
-            "Tabular": reverse_lazy("projects:form-data", kwargs={"pk": kwargs["pk"]}),
-            "Charts": reverse_lazy(
-                "projects:form-data-charts", kwargs={"pk": kwargs["pk"]}
-            ),
-            "Map": reverse_lazy("projects:form-data-map", kwargs={"pk": kwargs["pk"]}),
-        }
+        context["links"] = build_form_data_links(kwargs["pk"])
 
         return render(request, self.template_name, context)
 
 
 def form_definition(request, *args, **kwargs):
+    """get form definition"""
     # get form
     try:
-        cur_form = FormDefinition.objects.get(pk=kwargs["pk"])
+        cur_form = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
         data = utils.load_json(cur_form.form_defn)
         lang = request.GET.get("lang") or None
@@ -1388,11 +1392,14 @@ def form_definition(request, *args, **kwargs):
 
 
 def form_points(request, *args, **kwargs):
+    """get form data point for map"""
     # declare points
     points = []
 
+    cur_form = get_accessible_survey_or_404(request.user, kwargs["form_id"])
+
     # form data
-    adata = FormData.objects.filter(form_id=kwargs["form_id"])
+    adata = FormData.objects.filter(form_id=cur_form.id)
 
     if "parent_id" in request.GET and request.GET["parent_id"]:
         adata = adata.filter(parent_id=request.GET["parent_id"])
@@ -1427,12 +1434,18 @@ def form_points(request, *args, **kwargs):
         if lat is None or lng is None:
             continue
 
+        try:
+            lat = float(lat)
+            lng = float(lng)
+        except (TypeError, ValueError):
+            continue
+
         points.append(
             {
                 "uuid": row.uuid,
                 "title": row.title or "",
-                "lat": float(lat),
-                "lng": float(lng),
+                "lat": lat,
+                "lng": lng,
                 "form_data": row.form_data if row.form_data else {},
                 "created_at": row.created_at.isoformat() if row.created_at else None,
             }

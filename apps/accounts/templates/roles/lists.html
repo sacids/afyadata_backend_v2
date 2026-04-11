@@ -4,7 +4,9 @@
 {% block content %}
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
-        {% url 'auth:create-role' as create_role_url %}
+        {% if perms.auth.add_group %}
+            {% url 'auth:create-role' as create_role_url %}
+        {% endif %}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             {% include 'partials/list_header.html' with header_title="Role Directory" header_subtitle="Create, review, and maintain user roles used across the platform." search_id="role_search" search_placeholder="Search role name..." export_button_id="roles_export" primary_action_url=create_role_url primary_action_label="Create Role" primary_action_icon="bx bx-plus" %}
 
@@ -25,7 +27,9 @@
                             <tr>
                                 <th class="px-4 py-3">Role</th>
                                 <th class="px-4 py-3">Users</th>
+                                {% if perms.auth.change_group or perms.auth.delete_group %}
                                 <th class="px-4 py-3 text-right">Actions</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -43,20 +47,26 @@
                                         {{ role.user_set.count }} users
                                     </span>
                                 </td>
+                                {% if perms.auth.change_group or perms.auth.delete_group %}
                                 <td class="px-4 py-3 text-right whitespace-nowrap">
+                                    {% if perms.auth.change_group %}
                                     <a href="{% url 'auth:edit-role' role.pk %}"
                                         class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">
                                         <i class="bx bx-edit-alt bx-xs"></i>
                                     </a>
+                                    {% endif %}
+                                    {% if perms.auth.delete_group %}
                                     <button type="button" onclick="deleteRole('{{ role.pk }}', '{{ role.name|escapejs }}')"
                                         class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer ml-1">
                                         <i class="bx bx-trash bx-xs"></i>
                                     </button>
+                                    {% endif %}
                                 </td>
+                                {% endif %}
                             </tr>
                             {% empty %}
                             <tr id="roles_empty_row">
-                                <td colspan="3" class="px-4 py-8 text-center text-gray-500">No roles found.</td>
+                                <td colspan="{% if perms.auth.change_group or perms.auth.delete_group %}3{% else %}2{% endif %}" class="px-4 py-8 text-center text-gray-500">No roles found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -86,7 +96,7 @@
                 if (!$('#roles_filtered_empty_row').length) {
                     $('#roles_table tbody').append(`
                         <tr id="roles_filtered_empty_row">
-                            <td colspan="3" class="px-4 py-8 text-center text-gray-500">No roles match your search.</td>
+                            <td colspan="{% if perms.auth.change_group or perms.auth.delete_group %}3{% else %}2{% endif %}" class="px-4 py-8 text-center text-gray-500">No roles match your search.</td>
                         </tr>
                     `);
                 }

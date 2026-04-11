@@ -14,28 +14,34 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.contrib import messages
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from django.db import transaction
 from .models import *
 from .utils import sync_locations
 from apps.esb.services import get_auth_headers
 
+
+class OHKRPermissionMixin(PermissionRequiredMixin):
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(OHKRPermissionMixin, self).dispatch(*args, **kwargs)
+
+
 # Create your views here.
-class LocationListView(generic.ListView):
-    # permission_required = ''
+class LocationListView(OHKRPermissionMixin, generic.ListView):
+    permission_required = "ohkr.view_location"
 
     model = Location
     context_object_name = "locations"
     template_name = "locations/lists.html"
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(LocationListView, self).dispatch(*args, **kwargs)
-
     def get_context_data(self, *args, **kwargs):
         context = super(LocationListView, self).get_context_data(**kwargs)
         context["title"] = "Locations"
         context["page_title"] = "Locations"
+        context["can_sync"] = self.request.user.has_perm("ohkr.change_location")
+        context["can_manage"] = self.request.user.has_perm("ohkr.change_location")
 
         # breadcrumbs
         context["breadcrumbs"] = [
@@ -56,13 +62,10 @@ class LocationListView(generic.ListView):
         return context
 
 
-class LocationSyncView(generic.CreateView):
+class LocationSyncView(OHKRPermissionMixin, generic.CreateView):
     """Pull locations from FAO RDS API and insert/update locally"""
+    permission_required = "ohkr.change_location"
     model = Location
-
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(LocationSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
         tza_country_id = 'fdd6e49b-b1ed-4c38-923c-be3b7bbb3b1c' #TZA country_id
@@ -104,21 +107,19 @@ class LocationSyncView(generic.CreateView):
             )
 
 
-class DiseaseListView(generic.ListView):
-    # permission_required = ''
+class DiseaseListView(OHKRPermissionMixin, generic.ListView):
+    permission_required = "ohkr.view_disease"
 
     model = Disease
     context_object_name = "diseases"
     template_name = "diseases/lists.html"
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(DiseaseListView, self).dispatch(*args, **kwargs)
-
     def get_context_data(self, *args, **kwargs):
         context = super(DiseaseListView, self).get_context_data(**kwargs)
         context["title"] = "Diseases"
         context["page_title"] = "Diseases"
+        context["can_sync"] = self.request.user.has_perm("ohkr.change_disease")
+        context["can_manage"] = self.request.user.has_perm("ohkr.change_disease")
 
         # breadcrumbs
         context["breadcrumbs"] = [
@@ -139,14 +140,11 @@ class DiseaseListView(generic.ListView):
         return context
 
 
-class DiseaseSyncView(generic.CreateView):
+class DiseaseSyncView(OHKRPermissionMixin, generic.CreateView):
     """Pull diseases from FAO RDS API and insert/update locally"""
+    permission_required = "ohkr.change_disease"
 
     model = Disease
-
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(DiseaseSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
         api_url = f"{config('FAO_BASE_URL')}/api/diseases/"
@@ -193,21 +191,19 @@ class DiseaseSyncView(generic.CreateView):
             )
 
 
-class SpecieListView(generic.ListView):
-    # permission_required = ''
+class SpecieListView(OHKRPermissionMixin, generic.ListView):
+    permission_required = "ohkr.view_specie"
 
     model = Specie
     context_object_name = "species"
     template_name = "species/lists.html"
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(SpecieListView, self).dispatch(*args, **kwargs)
-
     def get_context_data(self, *args, **kwargs):
         context = super(SpecieListView, self).get_context_data(**kwargs)
         context["title"] = "Species"
         context["page_title"] = "Species"
+        context["can_sync"] = self.request.user.has_perm("ohkr.change_specie")
+        context["can_manage"] = self.request.user.has_perm("ohkr.change_specie")
 
         # breadcrumbs
         context["breadcrumbs"] = [
@@ -228,13 +224,10 @@ class SpecieListView(generic.ListView):
         return context
 
 
-class SpecieSyncView(generic.CreateView):
+class SpecieSyncView(OHKRPermissionMixin, generic.CreateView):
     """Pull species from FAO RDS  API and insert/update locally"""
+    permission_required = "ohkr.change_specie"
     model = Specie
-
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(SpecieSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
         api_url = f"{config('FAO_BASE_URL')}/api/species/"
@@ -285,21 +278,19 @@ class SpecieSyncView(generic.CreateView):
             )
 
 
-class ClinicalSignListView(generic.ListView):
-    # permission_required = ''
+class ClinicalSignListView(OHKRPermissionMixin, generic.ListView):
+    permission_required = "ohkr.view_clinicalsign"
 
     model = ClinicalSign
     context_object_name = "clinical_signs"
     template_name = "clinical_signs/lists.html"
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(ClinicalSignListView, self).dispatch(*args, **kwargs)
-
     def get_context_data(self, *args, **kwargs):
         context = super(ClinicalSignListView, self).get_context_data(**kwargs)
         context["title"] = "Clinical Signs"
         context["page_title"] = "Clinical Signs"
+        context["can_sync"] = self.request.user.has_perm("ohkr.change_clinicalsign")
+        context["can_manage"] = self.request.user.has_perm("ohkr.change_clinicalsign")
 
         # breadcrumbs
         context["breadcrumbs"] = [
@@ -320,13 +311,10 @@ class ClinicalSignListView(generic.ListView):
         return context
 
 
-class ClinicalSignSyncView(generic.CreateView):
+class ClinicalSignSyncView(OHKRPermissionMixin, generic.CreateView):
     """Pull clinical signs from FAO RDS API and insert/update locally"""
+    permission_required = "ohkr.change_clinicalsign"
     model = ClinicalSign
-
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(ClinicalSignSyncView, self).dispatch(*args, **kwargs)
 
     def get(self, *args, **kwargs):
         api_url = f"{config('FAO_BASE_URL')}/api/clinical-signs/"
@@ -377,21 +365,18 @@ class ClinicalSignSyncView(generic.CreateView):
             )
 
 
-class ResponseListView(generic.ListView):
-    # permission_required = ''
+class ResponseListView(OHKRPermissionMixin, generic.ListView):
+    permission_required = "ohkr.view_response"
 
     model = Response
     context_object_name = "responses"
     template_name = "responses/lists.html"
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super(ResponseListView, self).dispatch(*args, **kwargs)
-
     def get_context_data(self, *args, **kwargs):
         context = super(ResponseListView, self).get_context_data(**kwargs)
         context["title"] = "Responses"
         context["page_title"] = "Responses"
+        context["can_manage"] = self.request.user.has_perm("ohkr.change_response")
 
         # breadcrumbs
         context["breadcrumbs"] = [

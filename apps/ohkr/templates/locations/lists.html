@@ -24,7 +24,11 @@
 <main class="bg-white h-full" x-data="initData()">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            {% include 'partials/list_header.html' with header_title="Locations" header_subtitle="Search administrative locations, review source coverage, and sync the latest registry data." search_id="location_search" search_placeholder="Search location, level, source..." export_button_id="locations_export" sync_button_binding="btnSync" sync_button_action="syncData();" %}
+            {% if can_sync %}
+                {% include 'partials/list_header.html' with header_title="Locations" header_subtitle="Search administrative locations, review source coverage, and sync the latest registry data." search_id="location_search" search_placeholder="Search location, level, source..." export_button_id="locations_export" sync_button_binding="btnSync" sync_button_action="syncData();" %}
+            {% else %}
+                {% include 'partials/list_header.html' with header_title="Locations" header_subtitle="Search administrative locations and review source coverage." search_id="location_search" search_placeholder="Search location, level, source..." export_button_id="locations_export" %}
+            {% endif %}
 
             <div class="p-4">
                 <div class="relative overflow-x-auto">

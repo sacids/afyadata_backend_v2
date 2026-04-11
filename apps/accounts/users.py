@@ -6,12 +6,22 @@ from django.http import JsonResponse
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import permission_required
 from django.shortcuts import render
 from django.contrib import messages
 from django.db import transaction
 from django.contrib.auth.models import User, Group
 from apps.accounts.models import Profile
 from .forms import UserForm, UserUpdateForm, UserProfileForm, UserPasswordForm
+
+
+def build_user_management_links(user):
+    links = {}
+    if user.has_perm("auth.view_user"):
+        links["Users"] = reverse_lazy("auth:users")
+    if user.has_perm("auth.view_group"):
+        links["Roles"] = reverse_lazy("auth:roles")
+    return links
 
 
 class UserListView(PermissionRequiredMixin, generic.ListView):
@@ -38,10 +48,7 @@ class UserListView(PermissionRequiredMixin, generic.ListView):
         ]
 
         # Add links to context
-        context["links"] = {
-            "Users": reverse_lazy("auth:users"),
-            "Roles": reverse_lazy("auth:roles"),
-        }
+        context["links"] = build_user_management_links(self.request.user)
 
         return context
 
@@ -80,10 +87,7 @@ class UserCreateView(PermissionRequiredMixin, generic.CreateView):
                 {"name": "Users", "url": reverse_lazy("auth:users")},
                 {"name": "Register User", "url": "#"},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_user_management_links(request.user),
         }
 
     def post(self, request, *args, **kwargs):
@@ -153,10 +157,7 @@ class UserUpdateView(PermissionRequiredMixin, generic.UpdateView):
                 {"name": "Users", "url": reverse_lazy("auth:users")},
                 {"name": "Edit User", "url": "#"},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_user_management_links(request.user),
         }
         return render(request, 'users/edit.html', context)
     
@@ -205,10 +206,7 @@ class UserUpdateView(PermissionRequiredMixin, generic.UpdateView):
                 {"name": "Users", "url": reverse_lazy("auth:users")},
                 {"name": "Edit User", "url": "#"},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_user_management_links(request.user),
         }
         return render(request, "users/edit.html", context)
    
@@ -243,10 +241,7 @@ class UserChangePasswordView(PermissionRequiredMixin, generic.TemplateView):
                 {"name": "Users", "url": reverse_lazy("auth:users")},
                 {"name": "Change Password", "url": "#"},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_user_management_links(request.user),
         }
         return render(request, self.template_name, context)
 
@@ -276,6 +271,8 @@ class UserChangePasswordView(PermissionRequiredMixin, generic.TemplateView):
         return render(request, self.template_name, context)
     
 
+@login_required
+@permission_required("auth.delete_user", raise_exception=True)
 def delete_user(request, *args, **kwargs):
     """delete user"""
     user_id = kwargs['pk']

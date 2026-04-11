@@ -23,7 +23,9 @@
 
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
-        {% url 'projects:upload-form' project.pk as upload_form_url %}
+        {% if perms.projects.add_formdefinition %}
+            {% url 'projects:upload-form' project.pk as upload_form_url %}
+        {% endif %}
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             {% include 'partials/list_header.html' with header_title="Project Forms" header_subtitle="Search forms, review submission activity, and manage configuration from one place." search_id="form_search" search_placeholder="Search project forms..." export_button_id="forms_export" primary_action_url=upload_form_url primary_action_label="Upload Form" primary_action_icon="bx bx-plus" %}

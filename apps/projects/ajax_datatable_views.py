@@ -5,7 +5,25 @@ from .models import *
 from apps.accounts.utils import is_admin_user
 
 
-class ProjectAjaxDatatableView(AjaxDatatableView):
+class ProjectDatatablePermissionMixin:
+    actions_column_name = "actions"
+
+    def can_manage(self):
+        return self.request.user.has_perm("projects.change_project") or self.request.user.has_perm("projects.delete_project")
+
+    def get_column_defs(self, request):
+        columns = super().get_column_defs(request)
+        if self.can_manage():
+            return columns
+        return [
+            {**column, "visible": False}
+            if column.get("name") == self.actions_column_name
+            else column
+            for column in columns
+        ]
+
+
+class ProjectAjaxDatatableView(ProjectDatatablePermissionMixin, AjaxDatatableView):
     model = Project
     title = "Projects"
     initial_order = [
@@ -62,6 +80,8 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
     ]
 
     def get_initial_queryset(self, request=None):
+        if request is not None and not request.user.has_perm("projects.view_project"):
+            return Project.objects.none()
         queryset = Project.objects.filter(deleted=False)
         if request is not None and not is_admin_user(request.user):
             queryset = queryset.filter(members__member=request.user, members__active=True).distinct()
@@ -109,43 +129,49 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
             + '"> {} </span>'.format("Accepting" if obj.accept_data else "Paused")
         )
 
+        action_bits = []
+        if self.request.user.has_perm("projects.change_project"):
+            action_bits.append(
+                '<a href="{}" title="Edit project" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
+                '<i class="bx bx-edit-alt bx-xs"></i>'
+                "</a>".format(reverse("projects:edit", kwargs={"pk": obj.id}))
+            )
+            action_bits.append(
+                '<button type="button" '
+                'data-url="{}" '
+                'data-title={} '
+                'data-active="{}" '
+                'title="Toggle project status" '
+                'class="project-toggle-status inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer">'
+                '<i class="bx bx-power-off bx-xs"></i>'
+                '</button>'.format(
+                    reverse("projects:activate", kwargs={"pk": obj.id}),
+                    json.dumps(obj.title),
+                    "true" if obj.active else "false",
+                )
+            )
+        if self.request.user.has_perm("projects.delete_project"):
+            action_bits.append(
+                '<button type="button" '
+                'data-url="{}" '
+                'data-title={} '
+                'title="Delete project" '
+                'class="project-delete inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">'
+                '<i class="bx bx-trash bx-xs"></i>'
+                '</button>'.format(
+                    reverse("projects:delete", kwargs={"pk": obj.id}),
+                    json.dumps(obj.title),
+                )
+            )
+
         row["actions"] = (
-            '<div class="flex items-center gap-1.5 text-[.50rem]">'
-            # Edit
-            '<a href="{}" title="Edit project" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
-            '<i class="bx bx-edit-alt bx-xs"></i>'
-            "</a>"
-            
-            # Activate / Deactivate
-            '<button type="button" '
-            'data-url="{}" '
-            'data-title={} '
-            'data-active="{}" '
-            'title="Toggle project status" '
-            'class="project-toggle-status inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer">'
-            '<i class="bx bx-power-off bx-xs"></i>'
-            '</button>'
-            
-            # Delete
-            '<button type="button" '
-            'data-url="{}" '
-            'data-title={} '
-            'title="Delete project" '
-            'class="project-delete inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">'
-            '<i class="bx bx-trash bx-xs"></i>'
-            '</button>'
-            "</div>"
-        ).format(
-            reverse("projects:edit", kwargs={"pk": obj.id}),
-            reverse("projects:activate", kwargs={"pk": obj.id}),
-            json.dumps(obj.title),
-            "true" if obj.active else "false",
-            reverse("projects:delete", kwargs={"pk": obj.id}),
-            json.dumps(obj.title),
+            f'<div class="flex items-center gap-1.5 text-[.50rem]">{"".join(action_bits)}</div>'
+            if action_bits
+            else ""
         )
 
 
-class FormsAjaxDatatableView(AjaxDatatableView):
+class FormsAjaxDatatableView(ProjectDatatablePermissionMixin, AjaxDatatableView):
     model = FormDefinition
     title = "Forms"
     initial_order = [
@@ -209,7 +235,17 @@ class FormsAjaxDatatableView(AjaxDatatableView):
 
     def get_initial_queryset(self, request=None):
         project_pk = self.kwargs.get("pk")  # or whatever related FK you're filtering on
+        if request is not None and not request.user.has_perm("projects.view_formdefinition"):
+            return FormDefinition.objects.none()
+        project_queryset = Project.objects.filter(pk=project_pk, deleted=False)
+        if request is not None and not is_admin_user(request.user):
+            project_queryset = project_queryset.filter(members__member=request.user, members__active=True)
+        if not project_queryset.exists():
+            return FormDefinition.objects.none()
         return FormDefinition.objects.filter(project_id=project_pk)
+
+    def can_manage(self):
+        return self.request.user.has_perm("projects.change_formdefinition") or self.request.user.has_perm("projects.delete_formdefinition")
 
     def customize_row(self, row, obj):
         form_data = FormData.objects.filter(form=obj).count()
@@ -248,25 +284,28 @@ class FormsAjaxDatatableView(AjaxDatatableView):
             f'<span class="text-[11px] font-medium text-gray-600">{obj.updated_at.strftime("%d-%m-%Y")}</span>'
         )
 
-        row["actions"] = (
-            '<div class="flex items-center gap-1.5 text-[.50rem]">'
-                '<a href="{}" title="Edit form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
-                '<i class="bx bx-edit-alt bx-xs"></i>'
-                '</a>'
-                '<a href="{}" title="API config" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 cursor-pointer">'
-                '<i class="bx bx-transfer-alt bx-xs"></i>'
-                '</a>'
-                # '<a href="{}" title="Attachments" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-teal-100 text-teal-700 hover:bg-teal-200 cursor-pointer">'
-                # '<i class="bx bx-paperclip bx-xs"></i>'
-                # '</a>'
+        action_bits = []
+        if self.request.user.has_perm("projects.change_formdefinition"):
+            action_bits.extend(
+                [
+                    '<a href="{}" title="Edit form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
+                    '<i class="bx bx-edit-alt bx-xs"></i>'
+                    '</a>'.format(reverse("projects:edit-form", kwargs={"pk": obj.id})),
+                    '<a href="{}" title="API config" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 cursor-pointer">'
+                    '<i class="bx bx-transfer-alt bx-xs"></i>'
+                    '</a>'.format(reverse("projects:form-api-config", kwargs={"pk": obj.id})),
+                ]
+            )
+        if self.request.user.has_perm("projects.delete_formdefinition"):
+            action_bits.append(
                 '<a href="#" title="Delete form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer delete">'
                 '<i class="bx bx-trash bx-xs"></i>'
                 '</a>'
-            '</div>'
-        ).format(
-            reverse("projects:edit-form", kwargs={"pk": obj.id}),
-            reverse("projects:form-api-config", kwargs={"pk": obj.id}),
-            # reverse("projects:form-attachments", kwargs={"pk": obj.id}),
+            )
+        row["actions"] = (
+            f'<div class="flex items-center gap-1.5 text-[.50rem]">{"".join(action_bits)}</div>'
+            if action_bits
+            else ""
         )
 
 
@@ -310,6 +349,13 @@ class MembersAjaxDatatableView(AjaxDatatableView):
 
     def get_initial_queryset(self, request=None):
         project_pk = self.kwargs.get("pk")  # or whatever related FK you're filtering on
+        if request is not None and not request.user.has_perm("projects.view_project"):
+            return ProjectMember.objects.none()
+        project_queryset = Project.objects.filter(pk=project_pk, deleted=False)
+        if request is not None and not is_admin_user(request.user):
+            project_queryset = project_queryset.filter(members__member=request.user, members__active=True)
+        if not project_queryset.exists():
+            return ProjectMember.objects.none()
         return ProjectMember.objects.filter(project_id=project_pk).select_related("member")
 
     def customize_row(self, row, obj):

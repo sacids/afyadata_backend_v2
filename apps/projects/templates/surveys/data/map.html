@@ -50,14 +50,15 @@
     const tile = L.tileLayer(tileUrl, {
         maxZoom: 19,
         attribution: attribution,
-        id: 'mapbox/streets-v11'
+        id: 'mapbox/streets-v11',
+        referrerPolicy: 'strict-origin-when-cross-origin'
     });
 
     //add tile to map
     tile.addTo(map);
 
     // 3. Fetch points from Django endpoint
-    fetch("/projects/forms/points/" + "{{ cur_form.pk }}")
+    fetch("/projects/forms/" + "{{ cur_form.pk }}" + "/data/points")
         .then(response => response.json())
         .then(points => {
             if (!Array.isArray(points)) return;

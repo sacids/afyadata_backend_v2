@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth.models import Group
 from django.http import HttpResponseRedirect, JsonResponse
@@ -9,6 +10,15 @@ from django.utils.decorators import method_decorator
 from django.views import generic
 
 from .forms import RoleForm
+
+
+def build_role_management_links(user):
+    links = {}
+    if user.has_perm("auth.view_user"):
+        links["Users"] = reverse_lazy("auth:users")
+    if user.has_perm("auth.view_group"):
+        links["Roles"] = reverse_lazy("auth:roles")
+    return links
 
 
 class RoleListView(PermissionRequiredMixin, generic.ListView):
@@ -32,10 +42,7 @@ class RoleListView(PermissionRequiredMixin, generic.ListView):
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Roles", "url": ""},
         ]
-        context["links"] = {
-            "Users": reverse_lazy("auth:users"),
-            "Roles": reverse_lazy("auth:roles"),
-        }
+        context["links"] = build_role_management_links(self.request.user)
         return context
 
 
@@ -55,10 +62,7 @@ class RoleCreateView(PermissionRequiredMixin, generic.CreateView):
                 {"name": "Roles", "url": reverse_lazy("auth:roles")},
                 {"name": "Create Role", "url": ""},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_role_management_links(request.user),
         }
         return render(request, "roles/create.html", context)
 
@@ -77,10 +81,7 @@ class RoleCreateView(PermissionRequiredMixin, generic.CreateView):
                 {"name": "Roles", "url": reverse_lazy("auth:roles")},
                 {"name": "Create Role", "url": ""},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_role_management_links(request.user),
         }
         return render(request, "roles/create.html", context)
 
@@ -106,10 +107,7 @@ class RoleUpdateView(PermissionRequiredMixin, generic.UpdateView):
                 {"name": "Roles", "url": reverse_lazy("auth:roles")},
                 {"name": "Edit Role", "url": ""},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_role_management_links(request.user),
         }
         return render(request, "roles/edit.html", context)
 
@@ -130,14 +128,13 @@ class RoleUpdateView(PermissionRequiredMixin, generic.UpdateView):
                 {"name": "Roles", "url": reverse_lazy("auth:roles")},
                 {"name": "Edit Role", "url": ""},
             ],
-            "links": {
-                "Users": reverse_lazy("auth:users"),
-                "Roles": reverse_lazy("auth:roles"),
-            },
+            "links": build_role_management_links(request.user),
         }
         return render(request, "roles/edit.html", context)
 
 
+@login_required
+@permission_required("auth.delete_group", raise_exception=True)
 def delete_role(request, *args, **kwargs):
     role_id = kwargs["pk"]
 

@@ -273,6 +273,11 @@
                 });
 
                 // basic validation
+                if (!this.form.x_axis) {
+                    this.messageType = 'error';
+                    this.message = 'Please select an X-axis field first.';
+                    return;
+                }
                 if (this.form.agg !== 'count' && !this.form.y_axis) {
                     this.messageType = 'error';
                     this.message = 'Please select a numeric Y-axis field for this aggregation.';
@@ -390,6 +395,7 @@
                         L.tileLayer(tileUrl, {
                             maxZoom: 19,
                             attribution: attribution,
+                            referrerPolicy: 'strict-origin-when-cross-origin',
                         }).addTo(this.map);
 
                         // layer group to manage markers (easy clear/reload)

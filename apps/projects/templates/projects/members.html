@@ -32,7 +32,11 @@
         @keydown.escape.window="assignMembersOpen = false">
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            {% include 'partials/list_header.html' with header_title="Project Members" header_subtitle="Review member access and activity from a single project roster." search_id="member_search" search_placeholder="Search project member..." export_button_id="members_export" secondary_button_id="assign_members_button" secondary_button_label="Assign Members" secondary_button_icon="bx bx-user-plus" %}
+            {% if can_assign_members %}
+                {% include 'partials/list_header.html' with header_title="Project Members" header_subtitle="Review member access and activity from a single project roster." search_id="member_search" search_placeholder="Search project member..." export_button_id="members_export" secondary_button_id="assign_members_button" secondary_button_label="Assign Members" secondary_button_icon="bx bx-user-plus" %}
+            {% else %}
+                {% include 'partials/list_header.html' with header_title="Project Members" header_subtitle="Review member access and activity from a single project roster." search_id="member_search" search_placeholder="Search project member..." export_button_id="members_export" %}
+            {% endif %}
 
             <div class="p-4">
                 {% if messages %}
@@ -54,6 +58,7 @@
             </div>
         </div>
 
+        {% if can_assign_members %}
         <div x-show="assignMembersOpen" x-cloak class="fixed inset-0 z-40">
             <div class="absolute inset-0 bg-stone-950/30 backdrop-blur-sm" @click="assignMembersOpen = false"></div>
 
@@ -139,6 +144,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </main>
 

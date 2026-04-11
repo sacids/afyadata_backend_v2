@@ -4,8 +4,28 @@ from django.urls import reverse
 from .models import *
 
 
-class LocationAjaxDatatableView(AjaxDatatableView):
+class OHKRDatatablePermissionMixin:
+    change_permission = None
+
+    def can_manage(self):
+        return bool(
+            self.change_permission
+            and getattr(self.request, "user", None)
+            and self.request.user.has_perm(self.change_permission)
+        )
+
+    def get_column_defs(self, request):
+        column_defs = super().get_column_defs(request)
+        if not self.can_manage():
+            for column in column_defs:
+                if column.get("name") == "actions":
+                    column["visible"] = False
+        return column_defs
+
+
+class LocationAjaxDatatableView(OHKRDatatablePermissionMixin, AjaxDatatableView):
     model = Location
+    change_permission = "ohkr.change_location"
     title = "Locations"
     initial_order = [
         ["level", "asc"],
@@ -81,11 +101,12 @@ class LocationAjaxDatatableView(AjaxDatatableView):
             '<i class="bx bx-trash bx-xs"></i>'
             "</a>"
             "</div>"
-        )
+        ) if self.can_manage() else ""
 
 
-class DiseaseAjaxDatatableView(AjaxDatatableView):
+class DiseaseAjaxDatatableView(OHKRDatatablePermissionMixin, AjaxDatatableView):
     model = Disease
+    change_permission = "ohkr.change_disease"
     title = "Diseases"
     initial_order = [
         ["name", "asc"],
@@ -149,11 +170,12 @@ class DiseaseAjaxDatatableView(AjaxDatatableView):
             '<i class="bx bx-trash bx-xs"></i>'
             "</a>"
             "</div>"
-        )
+        ) if self.can_manage() else ""
 
 
-class SpecieAjaxDatatableView(AjaxDatatableView):
+class SpecieAjaxDatatableView(OHKRDatatablePermissionMixin, AjaxDatatableView):
     model = Specie
+    change_permission = "ohkr.change_specie"
     title = "Species"
     initial_order = [
         ["name", "asc"],
@@ -213,11 +235,12 @@ class SpecieAjaxDatatableView(AjaxDatatableView):
             '<i class="bx bx-trash bx-xs"></i>'
             "</a>"
             "</div>"
-        )
+        ) if self.can_manage() else ""
 
 
-class ClinicalSignAjaxDatatableView(AjaxDatatableView):
+class ClinicalSignAjaxDatatableView(OHKRDatatablePermissionMixin, AjaxDatatableView):
     model = ClinicalSign
+    change_permission = "ohkr.change_clinicalsign"
     title = "Clinical Signs"
     initial_order = [
         ["name", "asc"],
@@ -277,11 +300,12 @@ class ClinicalSignAjaxDatatableView(AjaxDatatableView):
             '<i class="bx bx-trash bx-xs"></i>'
             "</a>"
             "</div>"
-        )
+        ) if self.can_manage() else ""
 
 
-class ResponseAjaxDatatableView(AjaxDatatableView):
+class ResponseAjaxDatatableView(OHKRDatatablePermissionMixin, AjaxDatatableView):
     model = Response
+    change_permission = "ohkr.change_response"
     title = "Clinical Response"
     initial_order = [
         ["name", "asc"],
@@ -326,4 +350,4 @@ class ResponseAjaxDatatableView(AjaxDatatableView):
             '<i class="bx bx-trash bx-xs"></i>'
             "</a>"
             "</div>"
-        )
+        ) if self.can_manage() else ""

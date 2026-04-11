@@ -30,7 +30,9 @@
                                 <th class="px-4 py-3">Email</th>
                                 <th class="px-4 py-3">Roles</th>
                                 <th class="px-4 py-3">Status</th>
+                                {% if perms.auth.change_user or perms.auth.delete_user %}
                                 <th class="px-4 py-3 text-right">Actions</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -61,6 +63,7 @@
                                         <span class="inline-flex rounded-full bg-red-100 text-red-700 px-2.5 py-1 text-[11px] font-medium">Inactive</span>
                                     {% endif %}
                                 </td>
+                                {% if perms.auth.change_user or perms.auth.delete_user %}
                                 <td class="px-4 py-3 text-right whitespace-nowrap">
                                     {% if perms.auth.change_user %}
                                     <a href="{% url 'auth:change-user-password' user.pk %}"
@@ -74,11 +77,20 @@
                                         <i class="bx bx-edit-alt bx-xs"></i>
                                     </a>
                                     {% endif %}
+                                    {% if perms.auth.delete_user %}
+                                    <button type="button"
+                                        onclick="deleteUser('{{ user.pk }}', '{{ user.username|escapejs }}')"
+                                        title="Delete user"
+                                        class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">
+                                        <i class="bx bx-trash bx-xs"></i>
+                                    </button>
+                                    {% endif %}
                                 </td>
+                                {% endif %}
                             </tr>
                             {% empty %}
                             <tr id="users_empty_row">
-                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                <td colspan="{% if perms.auth.change_user or perms.auth.delete_user %}6{% else %}5{% endif %}" class="px-4 py-8 text-center text-gray-500">
                                     No users found.
                                 </td>
                             </tr>
@@ -110,7 +122,7 @@
                 if (!$('#users_filtered_empty_row').length) {
                     $('#users_table tbody').append(`
                         <tr id="users_filtered_empty_row">
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No users match your search.</td>
+                            <td colspan="{% if perms.auth.change_user or perms.auth.delete_user %}6{% else %}5{% endif %}" class="px-4 py-8 text-center text-gray-500">No users match your search.</td>
                         </tr>
                     `);
                 }
