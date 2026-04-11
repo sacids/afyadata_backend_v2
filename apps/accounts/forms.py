@@ -10,11 +10,55 @@ TW_INPUT_CLASS = "w-full font-normal text-sm rounded-md"
 
 class LoginForm(forms.Form):
     """Login form"""
-    username = forms.CharField(max_length=30, required=True, label=False, widget=forms.TextInput(attrs={'class': TW_INPUT_CLASS, 'placeholder': 'Write username/email...'}))
-    password = forms.CharField(max_length=20, required=True, label=False, widget=forms.PasswordInput(attrs={'class': TW_INPUT_CLASS, 'id': "signin-password", 'placeholder': 'Write password...'}))
+    username = forms.CharField(
+        max_length=30,
+        required=True,
+        label=False,
+        widget=forms.TextInput(
+            attrs={
+                'class': TW_INPUT_CLASS,
+                'placeholder': 'Write username...',
+                'autocomplete': 'username',
+                'autofocus': '',
+            }
+        ),
+    )
+    password = forms.CharField(
+        max_length=20,
+        required=True,
+        label=False,
+        widget=forms.PasswordInput(
+            attrs={
+                'class': TW_INPUT_CLASS,
+                'id': "signin-password",
+                'placeholder': 'Write password...',
+                'autocomplete': 'current-password',
+            }
+        ),
+    )
 
     class Meta: 
         fields = ('username', 'password')
+
+
+class PasswordResetRequestForm(forms.Form):
+    """Forgot password form"""
+    identifier = forms.CharField(
+        max_length=100,
+        required=True,
+        label=False,
+        widget=forms.TextInput(
+            attrs={
+                'class': TW_INPUT_CLASS,
+                'placeholder': 'Write username or email...',
+                'autocomplete': 'username',
+                'autofocus': '',
+            }
+        ),
+    )
+
+    class Meta:
+        fields = ('identifier',)
 
 
 class ChangePasswordForm(PasswordChangeForm):

@@ -9,11 +9,14 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.template.loader import render_to_string
+from django.core.mail import send_mail
 
 from django.contrib.auth import login, authenticate, logout
 from django.conf import settings
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
+from django.db.models import Q
 
 from django.contrib.auth import update_session_auth_hash
 from django.utils.decorators import method_decorator
@@ -40,8 +43,8 @@ class LoginView(View):
         form = LoginForm(data=request.POST)
 
         if form.is_valid():
-            username = request.POST.get('username')
-            password = request.POST.get('password')
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
 
             # authenticate user
             user = authenticate(request, username=username, password=password)
@@ -50,19 +53,124 @@ class LoginView(View):
                 login(request, user)
 
                 remember_me = request.POST.get("remember_me")
-                if remember_me is True:
+                if remember_me:
                     ONE_MONTH = 30 * 24 * 60 * 60
                     expiry = getattr(
                         settings, "KEEP_LOGGED_DURATION", ONE_MONTH)
                     request.session.set_expiry(expiry)
+                else:
+                    request.session.set_expiry(0)
 
                 # redirect
                 return redirect(self.success_url)
             else:
-                messages.error(request, 'Wrong credentials, try again!')      
+                messages.error(request, 'Invalid username or password. Please try again.')      
+        else:
+            messages.error(request, 'Please fill in both username and password.')
 
         # render view
         return render(request, self.template_name, {'form': form})
+
+
+class ForgotPasswordView(View):
+    template_name = "forgot_password.html"
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect("/projects/lists")
+        return render(request, self.template_name, {"form": PasswordResetRequestForm()})
+
+    def post(self, request, *args, **kwargs):
+        form = PasswordResetRequestForm(request.POST)
+
+        if form.is_valid():
+            identifier = form.cleaned_data["identifier"].strip()
+            user = (
+                User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier))
+                .order_by("id")
+                .first()
+            )
+
+            if user and user.email:
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                reset_url = request.build_absolute_uri(
+                    reverse_lazy("auth:reset-password", kwargs={"uidb64": uid, "token": token})
+                )
+
+                subject = "Afyadata Password Reset"
+                message = (
+                    "You requested a password reset for your Afyadata account.\n\n"
+                    f"Use the link below to set a new password:\n{reset_url}\n\n"
+                    "If you did not request this, you can ignore this email."
+                )
+
+                try:
+                    send_mail(
+                        subject,
+                        message,
+                        getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@afyadata.local"),
+                        [user.email],
+                        fail_silently=False,
+                    )
+                    messages.success(request, "Password reset instructions have been sent to your email.")
+                except Exception:
+                    messages.error(
+                        request,
+                        "We could not send the reset email right now. Please contact your administrator.",
+                    )
+            else:
+                messages.success(
+                    request,
+                    "If the account exists, password reset instructions will be sent to the registered email.",
+                )
+        else:
+            messages.error(request, "Please provide your username or email.")
+
+        return render(request, self.template_name, {"form": form})
+
+
+class ResetPasswordView(View):
+    template_name = "reset_password.html"
+
+    def get_user(self, uidb64):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            return User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return None
+
+    def get(self, request, uidb64, token, *args, **kwargs):
+        user = self.get_user(uidb64)
+        if not user or not default_token_generator.check_token(user, token):
+            messages.error(request, "This password reset link is invalid or has expired.")
+            return redirect("auth:forgot-password")
+
+        form = UserPasswordForm(user)
+        return render(
+            request,
+            self.template_name,
+            {"form": form, "uidb64": uidb64, "token": token},
+        )
+
+    def post(self, request, uidb64, token, *args, **kwargs):
+        user = self.get_user(uidb64)
+        if not user or not default_token_generator.check_token(user, token):
+            messages.error(request, "This password reset link is invalid or has expired.")
+            return redirect("auth:forgot-password")
+
+        form = UserPasswordForm(user, request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your password has been reset. You can now sign in.")
+            return redirect("auth:login")
+
+        messages.error(request, "Please correct the password errors below.")
+        return render(
+            request,
+            self.template_name,
+            {"form": form, "uidb64": uidb64, "token": token},
+        )
 
 
 class ProfileView(View):

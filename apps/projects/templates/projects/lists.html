@@ -2,45 +2,65 @@
 {% load static %}
 {% load humanize %}
 
+{% block extra-css %}
+<style>
+    #datatable_projects_wrapper .dataTables_filter {
+        display: none !important;
+    }
+
+    #datatable_projects thead tr:nth-child(2) {
+        display: none !important;
+    }
+
+    #datatable_projects thead input,
+    #datatable_projects thead select {
+        display: none !important;
+    }
+</style>
+{% endblock extra-css %}
+
 {% block content %}
 
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
 
-        <!-- Card -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="border-b border-gray-200 bg-gray-50/70 px-5 py-4">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-800">
+                            Project Directory
+                        </h2>
+                        <p class="text-xs text-gray-500">
+                            Search, review status, and manage project settings from one place.
+                        </p>
+                    </div>
 
-            <!-- Card Header -->
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-                <div>
-                    <h2 class="text-sm font-semibold text-gray-800">
-                        Projects
-                    </h2>
-                    <p class="text-xs text-gray-500">
-                        List of all registered projects
-                    </p>
-                </div>
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div class="relative min-w-[260px]">
+                            <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'></i>
+                            <input id="project_search" type="text"
+                                placeholder="Search project title, code..."
+                                class="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500">
+                        </div>
 
-                <!-- Optional actions -->
-                <div class="flex items-center space-x-2">
-                    <button
-                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
-                        <i class='bx bxs-file-export px-1' ></i> Export
-                    </button>
+                        <a href="{% url 'projects:create' %}"
+                            class="inline-flex shrink-0 items-center rounded-md bg-slate-700 px-2 py-2 text-xs font-normal text-white hover:bg-slate-800">
+                            <i class='bx bx-plus mr-1'></i> Create Project
+                        </a>
 
-                    <a href="{% url 'projects:create' %}"
-                        class="inline-flex items-center rounded-sm bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
-                        + Create Project
-                    </a>
+                        <button id="projects_export"
+                            class="inline-flex items-center justify-center rounded-md border border-green-700 bg-green-700 px-2 py-2 text-xs font-normal text-white hover:bg-green-800">
+                            <i class='bx bxs-file-export mr-2'></i> Export CSV
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Card Body -->
             <div class="p-4">
                 <div class="relative overflow-x-auto">
                     <div id="message_wrp" class="mb-3" hx-preserve></div>
 
-                    <!-- Modal container -->
                     <div id="modal_container"></div>
 
                     <table id="datatable_projects" class="w-full text-xs text-left text-gray-700 border-collapse">
@@ -48,10 +68,7 @@
                 </div>
             </div>
         </div>
-        <!-- End Card -->
     </div>
-
-
 </main>
 
 {% endblock %}
@@ -70,35 +87,47 @@
             $('#datatable_projects'),
             "{% url 'projects:dt-projects' %}",
             {
-                // extra_options (example)
                 processing: false,
                 autoWidth: false,
                 scrollX: false,
                 dom: `
-                    <"flex justify-between items-center py-2 border-b text-sm"
-                        <"flex gap-2 items-center"B>
+                    <"flex justify-between items-center py-3 text-sm"
+                        <"flex gap-2 items-center">
                         <"flex items-center"p>
                     >
                     t
                 `,
                 buttons: [
-                    // {
-                    //     extend: 'csv',
-                    //     text: 'Export',
-                    //     filename: 'Project-Data-csv',
-                    //     className: 'bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600'
-                    // }
+                    {
+                        extend: 'csvHtml5',
+                        text: 'Export',
+                        filename: 'Project-Data-csv',
+                        className: 'buttons-csv hidden'
+                    }
                 ],
-                "pageLength": 13,
+                pageLength: 13,
                 responsive: false,
                 language: {
                     search: "",
                     info: "_PAGE_ of _PAGES_",
+                    emptyTable: "No projects found.",
                 },
+                drawCallback: function () {
+                    const api = this.api();
+                    const info = api.page.info();
+                    $('#projects_count').text(info.recordsDisplay || 0);
+                    $('#projects_page_info').text(`Page ${info.page + 1} of ${info.pages || 1}`);
+                }
             }, {
-            // extra_data
-            // ...
         },);
+
+        $('#project_search').on('keyup', function () {
+            $('#datatable_projects').DataTable().search(this.value).draw();
+        });
+
+        $('#projects_export').on('click', function () {
+            $('#datatable_projects').DataTable().button('.buttons-csv').trigger();
+        });
     });
 
 </script>

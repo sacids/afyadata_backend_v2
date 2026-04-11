@@ -18,25 +18,25 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
             "name": "title",
             "title": "Project Title",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "active",
             "title": "Status",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "code",
             "title": "Code",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "access",
             "title": "Access",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "auto_join",
@@ -60,23 +60,55 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
         },
     ]
 
+    def get_initial_queryset(self, request=None):
+        return Project.objects.filter(deleted=False)
+
     def customize_row(self, row, obj):
         # absoluteURL
         detail_url = reverse("projects:forms", kwargs=({"pk": obj.id}))
+        description = (obj.description or "No description added yet.").strip()
+        short_description = (
+            description[:96] + "..." if len(description) > 96 else description
+        )
         row["title"] = (
-            f'<a href="{detail_url}" class="text-blue-600 hover:underline">{obj.title}</a>'
+            f'<div class="min-w-[220px]">'
+            f'<a href="{detail_url}" class="text-sm font-semibold text-slate-800 hover:text-blue-700 hover:underline">{obj.title}</a>'
+            f'<div class="mt-1 text-[11px] leading-5 text-gray-500">{short_description}</div>'
+            f'</div>'
         )
 
         row["active"] = (
-            '<span class="px-2 py-0.5 text-xs font-medium rounded-full '
+            '<span class="inline-flex px-2.5 py-1 text-[11px] font-medium rounded-full '
             + ("bg-green-100 text-green-600" if obj.active else "bg-red-100 text-red-600")
             + '"> {} </span>'.format("Active" if obj.active else "Inactive")
         )
 
+        row["code"] = (
+            f'<span class="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">{obj.code or "N/A"}</span>'
+        )
+
+        row["access"] = (
+            '<span class="inline-flex px-2.5 py-1 text-[11px] font-medium rounded-full '
+            + ("bg-blue-100 text-blue-700" if obj.access == "public" else "bg-amber-100 text-amber-700")
+            + f'">{obj.access.title()}</span>'
+        )
+
+        row["auto_join"] = (
+            '<span class="inline-flex px-2.5 py-1 text-[11px] font-medium rounded-full '
+            + ("bg-emerald-100 text-emerald-700" if obj.auto_join else "bg-gray-100 text-gray-600")
+            + '"> {} </span>'.format("Enabled" if obj.auto_join else "Disabled")
+        )
+
+        row["accept_data"] = (
+            '<span class="inline-flex px-2.5 py-1 text-[11px] font-medium rounded-full '
+            + ("bg-teal-100 text-teal-700" if obj.accept_data else "bg-gray-100 text-gray-600")
+            + '"> {} </span>'.format("Accepting" if obj.accept_data else "Paused")
+        )
+
         row["actions"] = (
-            '<div class="hstack flex gap-1 text-[.50rem]">'
+            '<div class="flex items-center gap-1.5 text-[.50rem]">'
             # Edit
-            '<a href="{}" class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
+            '<a href="{}" title="Edit project" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
             '<i class="bx bx-edit-alt bx-xs"></i>'
             "</a>"
             
@@ -87,8 +119,9 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
             'hx-swap="innerHTML" '
             'hx-confirm="{}" '
             'hx-on::after-request="setTimeout(() => window.location.reload(), 300)" '
-            'class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-blue-100 text-gray-600 hover:bg-gray-200 cursor-pointer">'
-            '<i class="bx bx-info-square bx-xs"></i>'
+            'title="Toggle project status" '
+            'class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer">'
+            '<i class="bx bx-power-off bx-xs"></i>'
             '</a>'
             
             # Delete
@@ -96,7 +129,8 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
             'hx-get="{}" '
             'hx-target="#modal_container" '
             'hx-swap="innerHTML" '
-            'class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">'
+            'title="Delete project" '
+            'class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">'
             '<i class="bx bx-trash bx-xs"></i>'
             '</a>'
             "</div>"
@@ -255,4 +289,3 @@ class MembersAjaxDatatableView(AjaxDatatableView):
         #     "</a>"
         #     "</div>"
         # )
-
