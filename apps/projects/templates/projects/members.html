@@ -65,7 +65,7 @@
                             <div class="flex items-start justify-between gap-4">
                                 <div>
                                     <h3 class="text-base font-semibold text-stone-900">Assign Project Members</h3>
-                                    <p class="mt-1 text-sm text-stone-500">Select users from EPI Officials and CHWs. Already assigned users are preselected.</p>
+                                    <p class="mt-1 text-sm text-stone-500">Select users from the available role groups. Already assigned users are preselected.</p>
                                 </div>
                                 <button type="button" @click="assignMembersOpen = false"
                                     class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:bg-stone-100 hover:text-stone-700">
@@ -106,7 +106,6 @@
                                                                     <span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">{{ role_name }}</span>
                                                                 {% endfor %}
                                                             </div>
-                                                            <div class="mt-1 text-xs text-stone-500">@{{ entry.user.username }} · {{ entry.phone }}</div>
                                                             <div class="mt-1 text-xs text-stone-400">{{ entry.email }}</div>
                                                         </div>
                                                     </label>
@@ -121,7 +120,7 @@
                                 </div>
                             {% else %}
                                 <div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
-                                    No eligible users found in the EPI Official or CHW roles.
+                                    No eligible users found for the available member roles.
                                 </div>
                             {% endif %}
                         </div>
@@ -201,7 +200,11 @@
             });
 
             $('.member-role-section').each(function () {
-                const visibleInSection = $(this).find('.assignable-user-row:visible').length > 0;
+                const visibleInSection = $(this)
+                    .find('.assignable-user-row')
+                    .filter(function () {
+                        return $(this).css('display') !== 'none';
+                    }).length > 0;
                 $(this).toggle(visibleInSection);
             });
 
@@ -211,7 +214,7 @@
         $('#assign_members_button').on('click', function () {
             $('#assign_member_search').val('');
             window.dispatchEvent(new CustomEvent('open-assign-members'));
-            filterAssignableUsers();
+            setTimeout(filterAssignableUsers, 0);
         });
 
         $('#assign_member_search').on('input search keyup', filterAssignableUsers);

@@ -44,75 +44,137 @@ from .forms import (
 from apps.ohkr.models import ClinicalSign
 from apps.esb.models import FormPayloadConfig
 
-ASSIGNABLE_MEMBER_ROLE_NAMES = ["epi_official", "chw"]
-ASSIGNABLE_MEMBER_ROLE_LABELS = {
-    "epi_official": "EPI Officials",
-    "chw": "CHWs",
+ASSIGNABLE_MEMBER_ROLE_ALIASES = {
+    "epi_official": [
+        "epi official",
+        "epiofficial",
+        "epi_official",
+        "epi-official",
+        "epi officer",
+        "epi_officer",
+        "surveillance officer",
+        "field officer",
+        "epi",
+    ],
+    "chw": [
+        "chw",
+        "community health worker",
+        "communityhealthworker",
+        "community_health_worker",
+        "community health volunteer",
+        "communityhealthvolunteer",
+        "health worker",
+        "health volunteer",
+    ],
 }
+EXCLUDED_ASSIGNABLE_ROLE_KEYWORDS = ("admin", "superuser", "super user", "manager", "system")
+
+
+def _normalize_role_name(value):
+    return "".join(ch.lower() for ch in (value or "") if ch.isalnum())
+
+
+NORMALIZED_ASSIGNABLE_ROLE_ALIASES = [
+    _normalize_role_name(alias)
+    for aliases in ASSIGNABLE_MEMBER_ROLE_ALIASES.values()
+    for alias in aliases
+]
+NORMALIZED_EXCLUDED_ASSIGNABLE_ROLE_KEYWORDS = [
+    _normalize_role_name(keyword) for keyword in EXCLUDED_ASSIGNABLE_ROLE_KEYWORDS
+]
+
+
+def _looks_like_assignable_role(group_name):
+    normalized_group_name = _normalize_role_name(group_name)
+    return any(alias in normalized_group_name for alias in NORMALIZED_ASSIGNABLE_ROLE_ALIASES)
 
 
 def build_assignable_member_sections(project):
-    role_query = Q()
-    for role_name in ASSIGNABLE_MEMBER_ROLE_NAMES:
-        role_query |= Q(name__iexact=role_name)
+    assigned_member_ids = set(
+        ProjectMember.objects.filter(
+            project=project, active=True, member__isnull=False
+        ).values_list("member_id", flat=True)
+    )
 
-    role_groups = list(Group.objects.filter(role_query))
+    groups_with_users = (
+        Group.objects.filter(user__isnull=False)
+        .distinct()
+        .order_by("name")
+    )
+    role_groups = [group for group in groups_with_users if _looks_like_assignable_role(group.name)]
+
+    if not role_groups:
+        role_groups = [
+            group
+            for group in groups_with_users
+            if not any(
+                excluded in _normalize_role_name(group.name)
+                for excluded in NORMALIZED_EXCLUDED_ASSIGNABLE_ROLE_KEYWORDS
+            )
+        ]
+
+    role_group_ids = {group.id for group in role_groups}
     eligible_users = (
-        User.objects.filter(groups__in=role_groups)
+        User.objects.filter(Q(groups__in=role_groups) | Q(pk__in=assigned_member_ids))
         .distinct()
         .prefetch_related("groups", "profile")
         .order_by("first_name", "last_name", "username")
     )
-    assigned_member_ids = set(
-        ProjectMember.objects.filter(
-            project=project, active=True, member__isnull=False, member__in=eligible_users
-        ).values_list("member_id", flat=True)
-    )
 
-    sections = {
-        role_name: {
-            "key": role_name,
-            "label": ASSIGNABLE_MEMBER_ROLE_LABELS.get(role_name, role_name.replace("_", " ").title()),
+    sections = [
+        {
+            "key": str(group.id),
+            "label": group.name,
+            "group_id": group.id,
             "users": [],
         }
-        for role_name in ASSIGNABLE_MEMBER_ROLE_NAMES
-    }
+        for group in role_groups
+    ]
+    section_by_group_id = {section["group_id"]: section for section in sections}
 
     used_user_ids = set()
     for user in eligible_users:
-        user_group_names = {group.name.lower() for group in user.groups.all()}
-        matching_roles = [
-            role_name for role_name in ASSIGNABLE_MEMBER_ROLE_NAMES if role_name in user_group_names
-        ]
-        if not matching_roles or user.id in used_user_ids:
+        matching_groups = [group for group in user.groups.all() if group.id in role_group_ids]
+        if not matching_groups and user.id in assigned_member_ids:
+            matching_groups = [Group(id=0, name="Assigned Members")]
+        matching_role_names = [group.name for group in matching_groups]
+        if not matching_groups or user.id in used_user_ids:
             continue
 
-        primary_role = matching_roles[0]
-        sections[primary_role]["users"].append(
+        primary_group = matching_groups[0]
+        if primary_group.id not in section_by_group_id:
+            section_by_group_id[primary_group.id] = {
+                "key": str(primary_group.id),
+                "label": primary_group.name,
+                "group_id": primary_group.id,
+                "users": [],
+            }
+            sections.append(section_by_group_id[primary_group.id])
+        section_by_group_id[primary_group.id]["users"].append(
             {
                 "user": user,
                 "full_name": user.get_full_name() or user.username,
                 "phone": getattr(getattr(user, "profile", None), "phone", None) or "No phone",
                 "email": user.email or "No email provided",
-                "roles": [
-                    ASSIGNABLE_MEMBER_ROLE_LABELS.get(role_name, role_name.replace("_", " ").title())
-                    for role_name in matching_roles
-                ],
+                "roles": matching_role_names,
                 "assigned": user.id in assigned_member_ids,
                 "search_text": " ".join(
                     [
                         user.get_full_name() or "",
                         user.username or "",
                         user.email or "",
-                        " ".join(matching_roles),
+                        " ".join(matching_role_names),
                     ]
                 ).strip().lower(),
             }
         )
         used_user_ids.add(user.id)
 
+    populated_sections = [section for section in sections if section["users"]]
+    populated_sections.sort(key=lambda section: (section["label"] != "Assigned Members", section["label"].lower()))
+
     return {
-        "sections": [section for section in sections.values() if section["users"]],
+        "sections": populated_sections,
         "assigned_member_ids": [str(member_id) for member_id in assigned_member_ids],
         "eligible_user_ids": [user.id for user in eligible_users],
     }

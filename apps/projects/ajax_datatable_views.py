@@ -317,7 +317,6 @@ class MembersAjaxDatatableView(AjaxDatatableView):
             row["member_id"] = (
                 f'<div class="min-w-[220px]">'
                 f'<div class="text-sm font-semibold text-slate-800">{full_name}</div>'
-                f'<div class="mt-1 text-[11px] leading-5 text-gray-500">@{member.username} · {phone}</div>'
                 f'<div class="text-[11px] leading-5 text-gray-400">{email}</div>'
                 f'</div>'
             )
