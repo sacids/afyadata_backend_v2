@@ -156,19 +156,19 @@ class FormsAjaxDatatableView(AjaxDatatableView):
             "name": "title",
             "title": "Form Title",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "code",
             "title": "Code",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "version",
             "title": "Version",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "submission_count",
@@ -180,7 +180,7 @@ class FormsAjaxDatatableView(AjaxDatatableView):
             "name": "active",
             "title": "Status",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "created_at",
@@ -210,26 +210,60 @@ class FormsAjaxDatatableView(AjaxDatatableView):
 
     def customize_row(self, row, obj):
         form_data = FormData.objects.filter(form=obj).count()
-        row["submission_count"] = f'<div class="text-right">{form_data}</div>'
+        row["submission_count"] = (
+            f'<span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">{form_data}</span>'
+        )
 
         row["active"] = (
-            '<span class="px-2 py-0.5 text-xs font-medium rounded-full '
+            '<span class="inline-flex px-2.5 py-1 text-[11px] font-medium rounded-full '
             + ("bg-green-100 text-green-600" if obj.active else "bg-red-100 text-red-600")
             + '"> {} </span>'.format("Active" if obj.active else "Inactive")
         )
 
-        row["created_at"] = obj.created_at.strftime("%d-%m-%Y")
-        row["updated_at"] = obj.updated_at.strftime("%d-%m-%Y")
+        description = (
+            obj.short_description or obj.description or "No form description added yet."
+        ).strip()
+        short_description = (
+            description[:96] + "..." if len(description) > 96 else description
+        )
         row["title"] = (
-            f'<a href="{reverse("projects:edit-form", kwargs={"pk": obj.id})}" class="text-blue-600 hover:underline">{obj.title}</a>'
+            f'<div class="min-w-[220px]">'
+            f'<a href="{reverse("projects:edit-form", kwargs={"pk": obj.id})}" class="text-sm font-semibold text-slate-800 hover:text-blue-700 hover:underline">{obj.title}</a>'
+            f'<div class="mt-1 text-[11px] leading-5 text-gray-500">{short_description}</div>'
+            f'</div>'
+        )
+        row["code"] = (
+            f'<span class="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">{obj.code or "N/A"}</span>'
+        )
+        row["version"] = (
+            f'<span class="inline-flex rounded-md bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">{obj.version or "N/A"}</span>'
+        )
+        row["created_at"] = (
+            f'<span class="text-[11px] font-medium text-gray-600">{obj.created_at.strftime("%d-%m-%Y")}</span>'
+        )
+        row["updated_at"] = (
+            f'<span class="text-[11px] font-medium text-gray-600">{obj.updated_at.strftime("%d-%m-%Y")}</span>'
         )
 
         row["actions"] = (
-            '<div class="hstack flex gap-1 text-[.50rem]">'
-                '<a href="#" class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer delete">'
+            '<div class="flex items-center gap-1.5 text-[.50rem]">'
+                '<a href="{}" title="Edit form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
+                '<i class="bx bx-edit-alt bx-xs"></i>'
+                '</a>'
+                '<a href="{}" title="API config" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 cursor-pointer">'
+                '<i class="bx bx-transfer-alt bx-xs"></i>'
+                '</a>'
+                '<a href="{}" title="Attachments" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-teal-100 text-teal-700 hover:bg-teal-200 cursor-pointer">'
+                '<i class="bx bx-paperclip bx-xs"></i>'
+                '</a>'
+                '<a href="#" title="Delete form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer delete">'
                 '<i class="bx bx-trash bx-xs"></i>'
                 '</a>'
             '</div>'
+        ).format(
+            reverse("projects:edit-form", kwargs={"pk": obj.id}),
+            reverse("projects:form-api-config", kwargs={"pk": obj.id}),
+            reverse("projects:form-attachments", kwargs={"pk": obj.id}),
         )
 
 
@@ -246,15 +280,15 @@ class MembersAjaxDatatableView(AjaxDatatableView):
         {
             "name": "member_id",
             "title": "Member",
-            "foreign_field": "member__first_name",
+            "foreign_field": "member__username",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "active",
             "title": "Active",
             "visible": True,
-            "searchable": False,
+            "searchable": True,
         },
         {
             "name": "created_at",
@@ -273,11 +307,37 @@ class MembersAjaxDatatableView(AjaxDatatableView):
 
     def get_initial_queryset(self, request=None):
         project_pk = self.kwargs.get("pk")  # or whatever related FK you're filtering on
-        return ProjectMember.objects.filter(project_id=project_pk)
+        return ProjectMember.objects.filter(project_id=project_pk).select_related("member")
 
     def customize_row(self, row, obj):
-        row["created_at"] = obj.created_at.strftime("%d-%m-%Y")
-        row["updated_at"] = obj.updated_at.strftime("%d-%m-%Y")
+        member = obj.member
+        if member:
+            full_name = f"{member.first_name} {member.last_name}".strip() or member.username
+            email = member.email or "No email provided"
+            phone = getattr(getattr(member, "profile", None), "phone", None) or "No phone"
+            row["member_id"] = (
+                f'<div class="min-w-[220px]">'
+                f'<div class="text-sm font-semibold text-slate-800">{full_name}</div>'
+                f'<div class="mt-1 text-[11px] leading-5 text-gray-500">@{member.username} · {phone}</div>'
+                f'<div class="text-[11px] leading-5 text-gray-400">{email}</div>'
+                f'</div>'
+            )
+        else:
+            row["member_id"] = (
+                '<span class="inline-flex rounded-md bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600">User unavailable</span>'
+            )
+
+        row["active"] = (
+            '<span class="inline-flex px-2.5 py-1 text-[11px] font-medium rounded-full '
+            + ("bg-green-100 text-green-600" if obj.active else "bg-red-100 text-red-600")
+            + '"> {} </span>'.format("Active" if obj.active else "Inactive")
+        )
+        row["created_at"] = (
+            f'<span class="text-[11px] font-medium text-gray-600">{obj.created_at.strftime("%d-%m-%Y")}</span>'
+        )
+        row["updated_at"] = (
+            f'<span class="text-[11px] font-medium text-gray-600">{obj.updated_at.strftime("%d-%m-%Y")}</span>'
+        )
 
         # row["actions"] = (
         #     '<div class="hstack flex gap-1 text-[.50rem]">'

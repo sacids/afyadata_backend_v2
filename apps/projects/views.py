@@ -68,7 +68,7 @@ class ProjectListView(generic.ListView):
 
         # Add links to context
         context["links"] = {
-            "Project Lists": reverse_lazy("projects:lists"),
+            "Project": reverse_lazy("projects:lists"),
             "Create Project": reverse_lazy("projects:create"),
         }
 

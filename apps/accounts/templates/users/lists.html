@@ -4,18 +4,35 @@
 {% block content %}
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-                <div>
-                    <h2 class="text-sm font-semibold text-gray-800">{{ title|default:"Manage Users" }}</h2>
-                    <p class="text-xs text-gray-500">List of all registered users</p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="border-b border-gray-200 bg-gray-50/70 px-5 py-4">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-800">{{ title|default:"Manage Users" }}</h2>
+                        <p class="text-xs text-gray-500">Search users, review roles, and manage account access from one place.</p>
+                    </div>
+
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div class="relative min-w-[260px]">
+                            <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'></i>
+                            <input id="user_search" type="text"
+                                placeholder="Search name, username, email, or role..."
+                                class="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+
+                        <button id="users_export"
+                            class="inline-flex items-center justify-center rounded-md border border-green-700 bg-green-700 px-2 py-2 text-xs font-normal text-white hover:bg-green-800">
+                            <i class='bx bxs-file-export mr-2'></i> Export CSV
+                        </button>
+
+                        {% if perms.auth.add_user %}
+                        <a href="{% url 'auth:create-user' %}"
+                            class="inline-flex items-center rounded-md bg-slate-700 px-2 py-2 text-xs font-normal text-white hover:bg-slate-800">
+                            <i class='bx bx-plus mr-1'></i> Create User
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
-                {% if perms.auth.add_user %}
-                <a href="{% url 'auth:create-user' %}"
-                    class="inline-flex items-center rounded-sm bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
-                    + Create User
-                </a>
-                {% endif %}
             </div>
 
             <div class="p-4">
@@ -30,7 +47,7 @@
                 {% endif %}
 
                 <div class="relative overflow-x-auto">
-                    <table class="w-full text-xs text-left text-gray-700 border-collapse">
+                    <table id="users_table" class="w-full text-xs text-left text-gray-700 border-collapse">
                         <thead class="text-xs bg-gray-50 text-gray-600 border-b border-gray-200">
                             <tr>
                                 <th class="px-4 py-3">Name</th>
@@ -43,41 +60,43 @@
                         </thead>
                         <tbody>
                             {% for user in users %}
-                            <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                <td class="px-4 py-3">{{ user.get_full_name|default:"-" }}</td>
-                                <td class="px-4 py-3">{{ user.username }}</td>
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 user-row"
+                                data-search="{{ user.get_full_name|default:''|lower }} {{ user.username|lower }} {{ user.email|default:''|lower }} {% for role in user.groups.all %}{{ role.name|lower }} {% endfor %} {% if user.is_active %}active{% else %}inactive{% endif %}">
+                                <td class="px-4 py-3">
+                                    <div class="min-w-[220px]">
+                                        <div class="text-sm font-semibold text-slate-800">{{ user.get_full_name|default:user.username }}</div>
+                                        <div class="mt-1 text-[11px] leading-5 text-gray-500">{{ user.email|default:"No email provided" }}</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">{{ user.username }}</span>
+                                </td>
                                 <td class="px-4 py-3">{{ user.email|default:"-" }}</td>
                                 <td class="px-4 py-3">
                                     {% for role in user.groups.all %}
-                                        <span class="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded-sm mr-1 mb-1">{{ role.name }}</span>
+                                        <span class="inline-block rounded-full bg-blue-100 text-blue-700 px-2.5 py-1 text-[11px] font-medium mr-1 mb-1">{{ role.name }}</span>
                                     {% empty %}
                                         <span class="text-gray-400">No role</span>
                                     {% endfor %}
                                 </td>
                                 <td class="px-4 py-3">
                                     {% if user.is_active %}
-                                        <span class="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded-sm">Active</span>
+                                        <span class="inline-flex rounded-full bg-green-100 text-green-700 px-2.5 py-1 text-[11px] font-medium">Active</span>
                                     {% else %}
-                                        <span class="inline-block bg-red-100 text-red-700 px-2 py-0.5 rounded-sm">Inactive</span>
+                                        <span class="inline-flex rounded-full bg-red-100 text-red-700 px-2.5 py-1 text-[11px] font-medium">Inactive</span>
                                     {% endif %}
                                 </td>
                                 <td class="px-4 py-3 text-right whitespace-nowrap">
                                     {% if perms.auth.change_user %}
                                     <a href="{% url 'auth:edit-user' user.pk %}"
-                                        class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">
+                                        class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">
                                         <i class="bx bx-edit-alt bx-xs"></i>
                                     </a>
                                     {% endif %}
-                                    <!-- {% if perms.auth.delete_user %}
-                                    <button type="button" onclick="deleteUser('{{ user.pk }}', '{{ user.username|escapejs }}')"
-                                        class="inline-flex items-center rounded-sm border border-red-300 bg-white px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 ml-1">
-                                        Delete
-                                    </button>
-                                    {% endif %} -->
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr>
+                            <tr id="users_empty_row">
                                 <td colspan="6" class="px-4 py-8 text-center text-gray-500">
                                     No users found.
                                 </td>
@@ -94,6 +113,63 @@
 
 {% block extra-js %}
 <script>
+    function filterUsers() {
+        const query = ($('#user_search').val() || '').trim().toLowerCase();
+        let visibleRows = 0;
+
+        $('#users_table tbody .user-row').each(function () {
+            const haystack = ($(this).data('search') || '').toString();
+            const match = !query || haystack.includes(query);
+            $(this).toggle(match);
+            if (match) visibleRows += 1;
+        });
+
+        if ($('#users_table tbody .user-row').length > 0) {
+            if (visibleRows === 0) {
+                if (!$('#users_filtered_empty_row').length) {
+                    $('#users_table tbody').append(`
+                        <tr id="users_filtered_empty_row">
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No users match your search.</td>
+                        </tr>
+                    `);
+                }
+            } else {
+                $('#users_filtered_empty_row').remove();
+            }
+        }
+    }
+
+    function exportUsersTable() {
+        const rows = [];
+        rows.push(["Name", "Username", "Email", "Roles", "Status"]);
+
+        $('#users_table tbody .user-row:visible').each(function () {
+            const cells = $(this).find('td');
+            rows.push([
+                $(cells[0]).text().trim().replace(/\s+/g, ' '),
+                $(cells[1]).text().trim().replace(/\s+/g, ' '),
+                $(cells[2]).text().trim().replace(/\s+/g, ' '),
+                $(cells[3]).text().trim().replace(/\s+/g, ' '),
+                $(cells[4]).text().trim().replace(/\s+/g, ' '),
+            ]);
+        });
+
+        const csv = rows
+            .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'users.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    $('#user_search').on('keyup', filterUsers);
+    $('#users_export').on('click', exportUsersTable);
+
     function deleteUser(userId, username) {
         const deleteUrl = "{% url 'auth:delete-user' 0 %}".replace("/0", `/${userId}`);
         Swal.fire({
