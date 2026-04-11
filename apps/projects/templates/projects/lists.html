@@ -23,39 +23,10 @@
 
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        {% url 'projects:create' as create_project_url %}
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="border-b border-gray-200 bg-gray-50/70 px-5 py-4">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <h2 class="text-sm font-semibold text-gray-800">
-                            Project Directory
-                        </h2>
-                        <p class="text-xs text-gray-500">
-                            Search, review status, and manage project settings from one place.
-                        </p>
-                    </div>
-
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div class="relative min-w-[260px]">
-                            <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'></i>
-                            <input id="project_search" type="text"
-                                placeholder="Search project title, code..."
-                                class="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500">
-                        </div>
-
-                        <a href="{% url 'projects:create' %}"
-                            class="inline-flex shrink-0 items-center rounded-md bg-slate-700 px-2 py-2 text-xs font-normal text-white hover:bg-slate-800">
-                            <i class='bx bx-plus mr-1'></i> Create Project
-                        </a>
-
-                        <button id="projects_export"
-                            class="inline-flex items-center justify-center rounded-md border border-green-700 bg-green-700 px-2 py-2 text-xs font-normal text-white hover:bg-green-800">
-                            <i class='bx bxs-file-export mr-2'></i> Export CSV
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {% include 'partials/list_header.html' with header_title="Project Directory" header_subtitle="Search, review status, and manage project settings from one place." search_id="project_search" search_placeholder="Search project title, code..." export_button_id="projects_export" primary_action_url=create_project_url primary_action_label="Create Project" primary_action_icon="bx bx-plus" %}
 
             <div class="p-4">
                 <div class="relative overflow-x-auto">

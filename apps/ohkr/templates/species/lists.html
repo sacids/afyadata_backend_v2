@@ -24,33 +24,7 @@
 <main class="bg-white h-full" x-data="initData()">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="border-b border-gray-200 bg-gray-50/70 px-5 py-4">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <h2 class="text-sm font-semibold text-gray-800">Species</h2>
-                        <p class="text-xs text-gray-500">
-                            Search species records, check source identifiers, and sync the latest catalogue.
-                        </p>
-                    </div>
-
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div class="relative min-w-[260px]">
-                            <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'></i>
-                            <input id="species_search" type="text" placeholder="Search species name or source..."
-                                class="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500">
-                        </div>
-
-                        <button id="species_export" type="button"
-                            class="inline-flex items-center justify-center rounded-md border border-green-700 bg-green-700 px-2 py-2 text-xs font-normal text-white hover:bg-green-800">
-                            <i class='bx bxs-file-export mr-2'></i> Export CSV
-                        </button>
-
-                        <button type="button" x-html="btnSync" x-on:click="syncData();"
-                            class="inline-flex items-center rounded-md bg-slate-700 px-2 py-2 text-xs font-normal text-white hover:bg-slate-800">
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {% include 'partials/list_header.html' with header_title="Species" header_subtitle="Search species records, check source identifiers, and sync the latest catalogue." search_id="species_search" search_placeholder="Search species name or source..." export_button_id="species_export" sync_button_binding="btnSync" sync_button_action="syncData();" %}
 
             <div class="p-4">
                 <div class="relative overflow-x-auto">

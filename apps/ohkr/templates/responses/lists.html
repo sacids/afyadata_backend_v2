@@ -24,29 +24,7 @@
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="border-b border-gray-200 bg-gray-50/70 px-5 py-4">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <h2 class="text-sm font-semibold text-gray-800">Response Messages</h2>
-                        <p class="text-xs text-gray-500">
-                            Search reusable response messages and export the current reference list.
-                        </p>
-                    </div>
-
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div class="relative min-w-[260px]">
-                            <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'></i>
-                            <input id="response_search" type="text" placeholder="Search response messages..."
-                                class="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500">
-                        </div>
-
-                        <button id="responses_export"
-                            class="inline-flex items-center justify-center rounded-md border border-green-700 bg-green-700 px-2 py-2 text-xs font-normal text-white hover:bg-green-800">
-                            <i class='bx bxs-file-export mr-2'></i> Export CSV
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {% include 'partials/list_header.html' with header_title="Response Messages" header_subtitle="Search reusable response messages and export the current reference list." search_id="response_search" search_placeholder="Search response messages..." export_button_id="responses_export" %}
 
             <div class="p-4">
                 <div class="relative overflow-x-auto">

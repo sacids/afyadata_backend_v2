@@ -4,36 +4,11 @@
 {% block content %}
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        {% if perms.auth.add_user %}
+            {% url 'auth:create-user' as create_user_url %}
+        {% endif %}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="border-b border-gray-200 bg-gray-50/70 px-5 py-4">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <h2 class="text-sm font-semibold text-gray-800">{{ title|default:"Manage Users" }}</h2>
-                        <p class="text-xs text-gray-500">Search users, review roles, and manage account access from one place.</p>
-                    </div>
-
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div class="relative min-w-[260px]">
-                            <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'></i>
-                            <input id="user_search" type="text"
-                                placeholder="Search name, username, email, or role..."
-                                class="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500">
-                        </div>
-
-                        <button id="users_export"
-                            class="inline-flex items-center justify-center rounded-md border border-green-700 bg-green-700 px-2 py-2 text-xs font-normal text-white hover:bg-green-800">
-                            <i class='bx bxs-file-export mr-2'></i> Export CSV
-                        </button>
-
-                        {% if perms.auth.add_user %}
-                        <a href="{% url 'auth:create-user' %}"
-                            class="inline-flex items-center rounded-md bg-slate-700 px-2 py-2 text-xs font-normal text-white hover:bg-slate-800">
-                            <i class='bx bx-plus mr-1'></i> Create User
-                        </a>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+            {% include 'partials/list_header.html' with header_title=title|default:"Manage Users" header_subtitle="Search users, review roles, and manage account access from one place." search_id="user_search" search_placeholder="Search name, username, email, or role..." export_button_id="users_export" primary_action_url=create_user_url primary_action_label="Create User" primary_action_icon="bx bx-plus" %}
 
             <div class="p-4">
                 {% if messages %}

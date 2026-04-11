@@ -1,236 +1,169 @@
 {% load static %}
-<nav class="bg-white">
+{% with current_namespace=request.resolver_match.namespace current_url_name=request.resolver_match.url_name %}
+<nav x-data="{ mobileMenuOpen: false, userMenuOpen: false }" class="sticky top-0 z-40 border-b border-stone-200 bg-stone-50/95 backdrop-blur">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-12 items-center justify-between">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <a href="{% url 'dashboard:summaries' %}">
-                        <img class="block h-8 w-auto lg:hidden" src="{% static 'images/logo_C.png' %}" alt="Afyadata">
-                    </a>
-
-                    <a href="{% url 'dashboard:summaries' %}">
-                        <img class="hidden h-8 w-auto lg:block" src="{% static 'images/logo_C.png' %}" alt="Afyadata">
-                    </a>
-                </div>
-                <div class="hidden md:block">
-                    <div class="ml-10 flex items-baseline space-x-4">
-                        <!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" -->
-                        <a href="{% url 'projects:lists' %}"
-                            class="text-neutral-800 hover:bg-red-100 hover:rounded-md hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Projects</a>
-
-                        <a href="{% url 'ohkr:diseases' %}"
-                            class="text-neutral-800 hover:bg-red-100 hover:rounded-md hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">OHKR</a>
-
-                        <a href="{% url 'auth:users' %}"
-                            class="text-neutral-800 hover:bg-red-100 hover:rounded-md hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Users</a>
-
-                        <a href="{% url 'projects:create' %}"
-                            class="text-white bg-red-900 hover:bg-red-800 px-2 py-2 rounded-sm text-sm font-normal">
-                            + Create Project
-                        </a>
+        <div class="flex min-h-[64px] items-center justify-between gap-4">
+            <div class="flex items-center gap-8">
+                <a href="{% url 'dashboard:summaries' %}" class="flex flex-col items-start">
+                    <img class="h-8 w-auto" src="{% static 'images/logo_C.png' %}" alt="Afyadata">
+                    <div class="hidden sm:block mt-1">
+                        <div class="text-[11px] text-stone-500">Community Surveillance Platform</div>
                     </div>
+                </a>
+
+                <div class="hidden md:flex md:items-center md:gap-6">
+                    <a href="{% url 'projects:lists' %}"
+                        class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'projects' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                        Projects
+                        <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'projects' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
+                    </a>
+
+                    <a href="{% url 'ohkr:diseases' %}"
+                        class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'ohkr' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                        OHKR
+                        <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'ohkr' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
+                    </a>
+
+                    <a href="{% url 'auth:users' %}"
+                        class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                        Users
+                        <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
+                    </a>
                 </div>
             </div>
 
-            <div class="hidden md:block">
-                <div class="ml-4 flex items-center md:ml-6">
-                    <button type="button"
-                        class="rounded-full bg-white p-1 text-gray-600 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-800 focus:ring-offset-2 focus:ring-offset-gray-800">
-                        <span class="sr-only">View notifications</span>
-                        <!-- Heroicon name: outline/bell -->
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                        </svg>
+            <div class="hidden md:flex md:items-center md:gap-3">
+                <div class="relative">
+                    <button @click="userMenuOpen = !userMenuOpen" type="button"
+                        class="flex items-center gap-3 rounded-full border border-stone-200 bg-white pl-2 pr-3 py-1.5 shadow-sm transition hover:border-stone-300 hover:bg-stone-100">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-sm font-semibold text-red-900">
+                            {{ request.user.first_name|default:request.user.username|slice:":1"|upper }}
+                        </div>
+                        <div class="min-w-0 text-left">
+                            <div class="max-w-[180px] truncate text-sm font-medium text-stone-800">
+                                {{ request.user.first_name }} {{ request.user.last_name }}
+                            </div>
+                            <div class="max-w-[180px] truncate text-xs text-stone-500">
+                                {{ request.user.username }}
+                            </div>
+                        </div>
+                        <i class='bx bx-chevron-down text-stone-500'></i>
                     </button>
 
-                    <!-- Profile dropdown -->
-                    <div x-data="{dropdownMenu: false}" class="relative ml-3">
-                        <div>
-                            <button @click="dropdownMenu = ! dropdownMenu" type="button"
-                                class="flex items-center focus:outline-none mr-3" id="user-menu-button"
-                                aria-expanded="false" aria-haspopup="true">
-                                <!-- <img class="w-8 h-8 rounded-full mr-4" src="{% static 'images/programmer.png' %}"
-                                    alt="{{request.user.first_name}} {{request.user.last_name}}">  -->
-                                    <span class="hidden md:inline-block text-sm">
-                                        Hi, {{request.user.first_name}} {{request.user.last_name}}
-                                    </span>
-                                <svg class="pl-2 h-2" version="1.1" xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 129 129" xmlns:xlink="http://www.w3.org/1999/xlink"
-                                    enable-background="new 0 0 129 129">
-                                    <g>
-                                        <path
-                                            d="m121.3,34.6c-1.6-1.6-4.2-1.6-5.8,0l-51,51.1-51.1-51.1c-1.6-1.6-4.2-1.6-5.8,0-1.6,1.6-1.6,4.2 0,5.8l53.9,53.9c0.8,0.8 1.8,1.2 2.9,1.2 1,0 2.1-0.4 2.9-1.2l53.9-53.9c1.7-1.6 1.7-4.2 0.1-5.8z" />
-                                    </g>
-                                </svg>
-                            </button>
+                    <div x-show="userMenuOpen" x-transition.origin.top.right @click.outside="userMenuOpen = false"
+                        class="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl"
+                        style="display: none;">
+                        <div class="border-b border-stone-100 bg-stone-50 px-4 py-3">
+                            <div class="text-sm font-medium text-stone-800">{{ request.user.first_name }} {{ request.user.last_name }}</div>
+                            <div class="text-xs text-stone-500">{{ request.user.email|default:request.user.username }}</div>
                         </div>
-
-                        <!--
-                      Dropdown menu, show/hide based on menu state.
-      
-                      Entering: "transition ease-out duration-100"
-                        From: "transform opacity-0 scale-95"
-                        To: "transform opacity-100 scale-100"
-                      Leaving: "transition ease-in duration-75"
-                        From: "transform opacity-100 scale-100"
-                        To: "transform opacity-0 scale-95"
-                    -->
-                        <div x-show="dropdownMenu" @click.outside="dropdownMenu = false"
-                            class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                            role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-                            <!-- Active: "bg-gray-100", Not Active: "" -->
-                            <a href="#" class="block px-4 py-2 text-xs text-gray-700" role="menuitem" tabindex="-1"
-                                id="user-menu-item-0">MyProfile</a>
-
-                            <a href="#" class="block px-4 py-2 text-xs text-gray-700" role="menuitem" tabindex="-1"
-                                id="user-menu-item-1">Change Password</a>
-
-                            <a href="{% url 'auth:logout' %}" class="block px-4 py-2 text-xs text-gray-700" role="menuitem" tabindex="-1"
-                                id="user-menu-item-2">Logout</a>
+                        <div class="py-1.5">
+                            <a href="{% url 'auth:profile' %}" class="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">My Profile</a>
+                            <a href="{% url 'auth:change-password' %}" class="block px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">Change Password</a>
+                            <div class="my-1 border-t border-stone-100"></div>
+                            <a href="{% url 'auth:logout' %}" class="block px-4 py-2.5 text-sm text-red-700 hover:bg-red-50">Logout</a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="-mr-2 flex md:hidden">
-                <!-- Mobile menu button -->
-                <button type="button"
-                    class="inline-flex items-center justify-center rounded-md bg-gray-800 p-2 text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800"
-                    aria-controls="mobile-menu" aria-expanded="false">
-                    <span class="sr-only">Open main menu</span>
-                    <!--
-                    Heroicon name: outline/bars-3
-      
-                    Menu open: "hidden", Menu closed: "block"
-                  -->
-                    <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                    </svg>
-                    <!--
-                    Heroicon name: outline/x-mark
-      
-                    Menu open: "block", Menu closed: "hidden"
-                  -->
-                    <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+            <button @click="mobileMenuOpen = !mobileMenuOpen" type="button"
+                class="inline-flex items-center justify-center rounded-xl border border-stone-200 bg-white p-2 text-stone-600 shadow-sm transition hover:bg-stone-100 hover:text-stone-800 md:hidden"
+                :aria-expanded="mobileMenuOpen.toString()" aria-controls="mobile-menu">
+                <span class="sr-only">Open main menu</span>
+                <i x-show="!mobileMenuOpen" class='bx bx-menu text-2xl'></i>
+                <i x-show="mobileMenuOpen" class='bx bx-x text-2xl'></i>
+            </button>
         </div>
     </div>
 
-    <!-- Mobile menu, show/hide based on menu state. -->
-    <div class="md:hidden" id="mobile-menu">
-        <div class="space-y-1 px-2 pt-2 pb-3 sm:px-3">
-            <!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" -->
+    <div x-show="mobileMenuOpen" x-transition class="border-t border-stone-200 bg-white md:hidden" id="mobile-menu" style="display: none;">
+        <div class="space-y-1 px-4 py-4">
             <a href="{% url 'dashboard:summaries' %}"
-                class="text-neutral-900 hover:bg-red-100 hover:rounded-md hover:text-slate-900 block px-3 py-2 rounded-md text-sm"
-                aria-current="page">Dashboard</a>
-
+                class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'dashboard' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                Dashboard
+            </a>
             <a href="{% url 'projects:lists' %}"
-                class="text-neutral-900 hover:bg-red-100 hover:rounded-md hover:text-slate-900 block px-3 py-2 rounded-md text-sm">Projects</a>
-
-            <a href="#"
-                class="text-neutral-900 hover:bg-red-100 hover:rounded-md hover:text-slate-900 block px-3 py-2 rounded-md text-sm">OHKR</a>
-
+                class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'projects' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                Projects
+            </a>
+            <a href="{% url 'ohkr:diseases' %}"
+                class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'ohkr' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                OHKR
+            </a>
+            <a href="{% url 'auth:users' %}"
+                class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                Users
+            </a>
             <a href="{% url 'projects:create' %}"
-                class="text-neutral-900 hover:bg-red-100 hover:rounded-md hover:text-slate-900 block px-3 py-2 rounded-md text-sm">Create
-                Project</a>
+                class="mt-2 block rounded-xl bg-red-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-red-800">
+                Create Project
+            </a>
         </div>
-        <div class="border-t border-gray-100 pt-4 pb-3">
-            <div class="flex items-center px-5">
-                <div class="flex-shrink-0">
-                    <img class="h-10 w-10 rounded-full"
-                        src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                        alt="">
+
+        <div class="border-t border-stone-100 px-4 py-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-sm font-semibold text-red-900">
+                    {{ request.user.first_name|default:request.user.username|slice:":1"|upper }}
                 </div>
-                <div class="ml-3">
-                    <div class="text-sm font-medium leading-none text-gray-800">Tom Cook</div>
-                    <div class="text-sm font-medium leading-none pt-2 text-gray-400">tom@example.com</div>
+                <div class="min-w-0">
+                    <div class="truncate text-sm font-medium text-stone-800">{{ request.user.first_name }} {{ request.user.last_name }}</div>
+                    <div class="truncate text-xs text-stone-500">{{ request.user.email|default:request.user.username }}</div>
                 </div>
-                <button type="button"
-                    class="ml-auto flex-shrink-0 rounded-full bg-gray-800 p-1 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800">
-                    <span class="sr-only">View notifications</span>
-                    <!-- Heroicon name: outline/bell -->
-                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                    </svg>
-                </button>
             </div>
-            <div class="mt-3 space-y-1 px-2">
-                <a href="#" class="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-700 hover:text-white">
-                    My Profile
-                </a>
 
-                <a href="#" class="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-700 hover:text-white">
-                    Change Password
-                </a>
-
-                <a href="#" class="block rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-700 hover:text-white">
-                    Logout
-                </a>
+            <div class="mt-4 space-y-1">
+                <a href="{% url 'auth:profile' %}" class="block rounded-xl px-3 py-2.5 text-sm text-stone-700 hover:bg-stone-100">My Profile</a>
+                <a href="{% url 'auth:change-password' %}" class="block rounded-xl px-3 py-2.5 text-sm text-stone-700 hover:bg-stone-100">Change Password</a>
+                <a href="{% url 'auth:logout' %}" class="block rounded-xl px-3 py-2.5 text-sm text-red-700 hover:bg-red-50">Logout</a>
             </div>
         </div>
     </div>
 </nav>
 
-<header class="bg-slate-800">
-    <div class="mx-auto max-w-7xl py-3 px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between">
-            <!-- Title on the left -->
-            <h1 class="text-xl font-medium tracking-tight text-white">
-                {{ title|default:'Dashboard' }}
-            </h1>
+<header class="border-b border-stone-200 bg-gradient-to-b from-white to-stone-50/70">
+    <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div class="min-w-0">
+                {% if breadcrumbs %}
+                <nav class="mb-1 text-sm">
+                    <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-stone-500">
+                        {% for crumb in breadcrumbs %}
+                            <li class="flex items-center gap-2">
+                                {% if crumb.url %}
+                                    <a href="{{ crumb.url }}" class="text-xs font-medium hover:text-stone-800">{{ crumb.name }}</a>
+                                {% else %}
+                                    <span class="text-xs font-medium text-stone-700">{{ crumb.name }}</span>
+                                {% endif %}
+                                {% if not forloop.last %}
+                                    <span class="text-stone-300">/</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </nav>
+                {% endif %}
 
-            <!-- Breadcrumb on the right -->
-            <nav class="text-sm text-white">
-                <!-- Example breadcrumb -->
-                <ol class="flex space-x-1">
-                    {% for crumb in breadcrumbs %}
-                        <li>
-                            {% if crumb.url %}
-                                <a href="{{ crumb.url }}" class="font-normal text-xs hover:text-blue-500">{{ crumb.name }}</a>
-                            {% else %}
-                                <span class="font-normal text-xs text-gray-200">{{ crumb.name }}</span>
-                            {% endif %}
-                        </li>
-                        {% if not forloop.last %}
-                            <li>/</li>
-                        {% endif %}
+                <h1 class="text-xl font-semibold tracking-tight text-stone-900 sm:text-[1.36rem]">
+                    {{ title|default:'Dashboard' }}
+                </h1>
+            </div>
+
+            {% if links %}
+            <div class="overflow-x-auto">
+                <ul class="flex min-w-max gap-2 rounded-full border border-stone-200 bg-white/80 p-1 shadow-sm">
+                    {% for name, url in links.items %}
+                    <li>
+                        <a href="{{ url }}"
+                           class="inline-flex rounded-full px-3.5 py-2 text-sm font-medium transition {% if request.path == url %}bg-slate-900 text-white shadow-sm{% else %}text-stone-600 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                            {{ name }}
+                        </a>
+                    </li>
                     {% endfor %}
-                </ol>
-            </nav>
+                </ul>
+            </div>
+            {% endif %}
         </div>
     </div>
 </header>
-
-{% if links %}
-<header class="bg-gray-700">
-    <div class="mx-auto max-w-7xl py-0 px-4 sm:px-6">
-        <div class="text-sm text-center text-white">
-            <ul class="flex flex-wrap">
-                {% for name, url in links.items %}
-                <li>
-                    <a href="{{ url }}"
-                       class="inline-block py-2 px-3 font-normal text-sm border-b-2
-                       {% if request.path == url %}
-                           border-transparent text-orange-400 font-medium
-                       {% else %}
-                           border-transparent hover:text-orange-400
-                       {% endif %}">
-                        {{ name }}
-                    </a>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
-</header>
-{% endif %}
+{% endwith %}

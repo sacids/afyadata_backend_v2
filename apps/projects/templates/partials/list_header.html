@@ -1,0 +1,42 @@
+<div class="border-b border-stone-200 bg-stone-50/80 px-5 py-5">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <h2 class="text-base font-semibold tracking-tight text-stone-900">{{ header_title }}</h2>
+            <p class="mt-1 text-sm text-stone-500">{{ header_subtitle }}</p>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {% if search_id %}
+            <div class="relative min-w-[260px]">
+                <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-stone-400'></i>
+                <input id="{{ search_id }}" type="text" placeholder="{{ search_placeholder }}"
+                    class="w-full rounded-full border border-stone-300 bg-white pl-10 pr-4 py-2.5 text-sm text-stone-700 shadow-sm placeholder:text-stone-400 focus:border-red-300 focus:ring-red-200">
+            </div>
+            {% endif %}
+
+            {% if export_button_id %}
+            <button id="{{ export_button_id }}" type="button"
+                class="inline-flex items-center justify-center rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-400 hover:bg-stone-100 hover:text-stone-900">
+                <i class='bx bxs-file-export mr-2 text-base'></i> Export CSV
+            </button>
+            {% endif %}
+
+            {% if primary_action_url %}
+            <a href="{{ primary_action_url }}"
+                class="inline-flex shrink-0 items-center rounded-full bg-red-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-red-800">
+                {% if primary_action_icon %}<i class='{{ primary_action_icon }} mr-1 text-base'></i>{% endif %} {{ primary_action_label }}
+            </a>
+            {% endif %}
+
+            {% if sync_button_binding %}
+            <button
+                {% if sync_button_id %}id="{{ sync_button_id }}"{% endif %}
+                type="button"
+                x-html="{{ sync_button_binding }}"
+                x-on:click="{{ sync_button_action|default:'syncData()' }}"
+                class="inline-flex items-center rounded-full bg-red-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-red-800">
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
