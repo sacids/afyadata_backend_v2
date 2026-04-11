@@ -72,10 +72,41 @@ class SurveyAddForm(forms.ModelForm):
     """
 
     def __init__(self, *args, **kwargs):
+        project = kwargs.pop("project", None)
         super(SurveyAddForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_show_labels = True
         self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
+        self.fields["children"] = forms.MultipleChoiceField(
+            required=False,
+            label="Children Forms",
+            choices=[],
+            widget=forms.SelectMultiple(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "children",
+                    "data-placeholder": "Select child forms...",
+                }
+            ),
+        )
+
+        if project:
+            child_choices = [
+                (
+                    str(form.code),
+                    f"{form.code} - {form.title}",
+                )
+                for form in FormDefinition.objects.filter(project=project)
+                .exclude(code__isnull=True)
+                .order_by("code", "title")
+            ]
+            self.fields["children"].choices = child_choices
+
+        current_children = getattr(self.instance, "children", None)
+        if current_children and not self.is_bound:
+            self.initial["children"] = [
+                child.strip() for child in current_children.split(",") if child.strip()
+            ]
 
     class Meta:
         model = FormDefinition
@@ -125,13 +156,6 @@ class SurveyAddForm(forms.ModelForm):
             "is_root": forms.CheckboxInput(
                 attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
             ),
-            "children": forms.TextInput(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "children",
-                    "placeholder": "Write children...",
-                }
-            ),
             "xlsform": forms.FileInput(
                 attrs={
                     "class": "block w-full border border-gray-200 focus:ring-gray-200 focus:ring-2 focus:outline-none focus:ring-offset-2 dark:focus:ring-offset-gray-800 dark:focus:ring-white dark:focus:ring-2 rounded-md text-sm px-3 py-1",
@@ -149,6 +173,10 @@ class SurveyAddForm(forms.ModelForm):
             ),
         }
 
+    def clean_children(self):
+        children = self.cleaned_data.get("children") or []
+        return ",".join(children)
+
 
 class SurveyUpdateForm(forms.ModelForm):
     """
@@ -156,10 +184,40 @@ class SurveyUpdateForm(forms.ModelForm):
     """
 
     def __init__(self, *args, **kwargs):
+        project = kwargs.pop("project", None)
         super(SurveyUpdateForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_show_labels = True
         self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
+        self.fields["children"] = forms.MultipleChoiceField(
+            required=False,
+            label="Children Forms",
+            choices=[],
+            widget=forms.SelectMultiple(
+                attrs={
+                    "class": "font-normal text-sm rounded-md",
+                    "id": "children",
+                    "data-placeholder": "Select child forms...",
+                }
+            ),
+        )
+
+        if project:
+            child_queryset = FormDefinition.objects.filter(project=project).exclude(
+                code__isnull=True
+            )
+            if self.instance.pk:
+                child_queryset = child_queryset.exclude(pk=self.instance.pk)
+            self.fields["children"].choices = [
+                (str(form.code), f"{form.code} - {form.title}")
+                for form in child_queryset.order_by("code", "title")
+            ]
+
+        current_children = getattr(self.instance, "children", None)
+        if current_children and not self.is_bound:
+            self.initial["children"] = [
+                child.strip() for child in current_children.split(",") if child.strip()
+            ]
 
     class Meta:
         model = FormDefinition
@@ -202,13 +260,6 @@ class SurveyUpdateForm(forms.ModelForm):
             "is_root": forms.CheckboxInput(
                 attrs={"class": "font-normal text-sm rounded-md", "id": "is_root"}
             ),
-            "children": forms.TextInput(
-                attrs={
-                    "class": "font-normal text-sm rounded-md",
-                    "id": "children",
-                    "placeholder": "Write children...",
-                }
-            ),
             "sort_order": forms.NumberInput(
                 attrs={
                     "class": "font-normal text-sm rounded-md",
@@ -247,6 +298,10 @@ class SurveyUpdateForm(forms.ModelForm):
                 }
             ),
         }
+
+    def clean_children(self):
+        children = self.cleaned_data.get("children") or []
+        return ",".join(children)
 
 
 class SurveyAttachmentForm(forms.ModelForm):

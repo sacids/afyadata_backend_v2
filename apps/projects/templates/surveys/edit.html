@@ -3,69 +3,161 @@
 {% load crispy_forms_tags %}
 {% load humanize %}
 
+{% block extra-css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+
+    .htmx-request .htmx-indicator,
+    .htmx-request.htmx-indicator {
+        display: inline-flex;
+    }
+
+    .htmx-request .htmx-hide-on-request {
+        display: none;
+    }
+
+    .select2-container--default .select2-selection--multiple {
+        min-height: 42px;
+        border: 1px solid rgb(209 213 219);
+        border-radius: 0.375rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: rgb(248 113 113);
+        box-shadow: 0 0 0 1px rgb(248 113 113 / 0.2);
+    }
+
+    .select2-container .select2-search--inline .select2-search__field {
+        margin-top: 0.25rem;
+        font-size: 0.875rem;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        border: 0;
+        background: rgb(241 245 249);
+        color: rgb(51 65 85);
+        border-radius: 9999px;
+        padding: 0.2rem 0.5rem;
+    }
+</style>
+{% endblock extra-css %}
+
 {% block content %}
 
 <main class="bg-white h-full" id="create-form">
     <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
-        <!-- Card -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 
-            w-full md:max-w-3xl lg:max-w-4xl mx-auto">
-
-            <!-- Card Header -->
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 w-full md:max-w-5xl mx-auto overflow-hidden">
+            <div class="border-b border-gray-200 bg-stone-50/80 px-6 py-5">
                 <div>
-                    <h2 class="text-sm font-semibold text-gray-800">
-                        {{ title|default:'Upload Form' }}
+                    <h2 class="text-base font-semibold tracking-tight text-stone-900">
+                        {{ title|default:'Edit Form' }}
                     </h2>
+                    <p class="mt-1 text-sm text-stone-500">Update form details, adjust child form relationships, and replace the XLSForm file when needed.</p>
                 </div>
             </div>
 
-            <!-- Card Body -->
-            <div class="p-4">
+            <div class="p-6">
                 <div class="relative overflow-x-auto">
+                    <div id="message_wrp" class="mb-2"></div>
 
-                    <div id="message_wrp"></div>
-
-                      <form method="post" hx-encoding='multipart/form-data' hx-post="{% url 'projects:edit-form' survey.pk %}"
-                        hx-target="#message_wrp" enctype="multipart/form-data">
-                        <!-- Security token -->
+                    <form method="post" hx-encoding='multipart/form-data'
+                        hx-post="{% url 'projects:edit-form' survey.pk %}" hx-target="#message_wrp"
+                        enctype="multipart/form-data">
                         {% csrf_token %}
 
-                        <!-- Form -->
-                       {% for field in form.visible_fields %}
-                        <div class="mb-3">
-                            {{ field|as_crispy_field }}
+                        <div class="grid gap-6 lg:grid-cols-3">
+                            <div class="lg:col-span-2">
+                                <div class="grid gap-4 md:grid-cols-2">
+                                    <div class="md:col-span-2">
+                                        {{ form.title|as_crispy_field }}
+                                    </div>
+                                    <div>
+                                        {{ form.short_title|as_crispy_field }}
+                                    </div>
+                                    <div>
+                                        {{ form.icon_type|as_crispy_field }}
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        {{ form.children|as_crispy_field }}
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        {{ form.response|as_crispy_field }}
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        {{ form.xlsform|as_crispy_field }}
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        {{ form.description|as_crispy_field }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-5">
+                                <label class="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50/70 px-4 py-3">
+                                    <span class="pt-0.5">{{ form.is_root }}</span>
+                                    <span>
+                                        <span class="block text-sm font-medium text-stone-800">{{ form.is_root.label }}</span>
+                                        <span class="mt-1 block text-xs text-stone-500">Use this when the form should remain a root form in the project tree.</span>
+                                    </span>
+                                </label>
+                                {% if form.is_root.errors %}
+                                    <p class="text-xs text-red-600">{{ form.is_root.errors|striptags }}</p>
+                                {% endif %}
+
+                                <div class="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-4">
+                                    <div class="text-sm font-medium text-stone-800">Edit Notes</div>
+                                    <ul class="mt-3 space-y-2 text-xs leading-5 text-stone-500">
+                                        <li>Use child forms to define follow-up forms within this project.</li>
+                                        <li>Replace the XLSForm file only when the structure changes.</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                        {% endfor %}
 
                         <div class="flex justify-end space-x-2 pt-2">
                             <div class="space-x-1 px-1">
-                                <button type="button" hx-get="{% url 'projects:lists' %}" hx-target="body"
-                                    hx-swap="outerHTML"
-                                    class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm font-normal py-2 px-3 rounded-sm">Cancel</button>
+                                <a href="{% url 'projects:forms' survey.project.pk %}"
+                                    class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-4 rounded-md">
+                                    Cancel
+                                </a>
 
                                 <button hx-post="{% url 'projects:edit-form' survey.pk %}" hx-target="#message_wrp"
                                     type="button"
-                                    class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-sm text-sm w-full sm:w-auto px-3 py-2 text-center">Update</button>
+                                    class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-md text-sm w-full sm:w-auto px-4 py-2 text-center inline-flex items-center justify-center min-w-[145px]">
+                                    <span class="htmx-hide-on-request">Update</span>
+                                    <span class="htmx-indicator items-center gap-2">
+                                        <i class='bx bx-loader-alt animate-spin text-base'></i>
+                                        Updating form...
+                                    </span>
+                                </button>
                             </div>
                         </div>
                     </form>
-
                 </div>
             </div>
         </div>
-        <!-- End Card -->
     </div>
 </main>
-
 
 {% endblock %}
 
 {% block extra-js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    // Add any extra JavaScript needed for this template
     $(document).ready(function () {
         htmx.process("#create-form");
+        if ($.fn.select2) {
+            $('#children').select2({
+                width: '100%',
+                placeholder: $('#children').data('placeholder') || 'Select child forms...',
+                allowClear: true,
+            });
+        }
     });
 </script>
 {% endblock extra-js %}

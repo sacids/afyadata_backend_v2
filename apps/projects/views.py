@@ -550,8 +550,8 @@ class SurveyListView(generic.TemplateView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": "Forms", "url": ""},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+            {"name": "Project Forms", "url": ""},
         ]
 
         # Add links to context
@@ -579,13 +579,13 @@ class SurveyCreateView(generic.CreateView):
         context = {
             "title": "Upload Form",
             "project": project,
-            "form": SurveyAddForm(),
+            "form": SurveyAddForm(project=project),
         }
 
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": "Upload Form", "url": ""},
         ]
 
@@ -607,7 +607,7 @@ class SurveyCreateView(generic.CreateView):
         project = Project.objects.get(pk=kwargs["pk"])
 
         # survey form
-        form = SurveyAddForm(request.POST, request.FILES)
+        form = SurveyAddForm(request.POST, request.FILES, project=project)
 
         if form.is_valid():
             # process form
@@ -653,23 +653,20 @@ class SurveyUpdateView(generic.UpdateView):
         context = {
             "title": survey.title,
             "survey": survey,
-            "form": SurveyUpdateForm(instance=survey),
+            "form": SurveyUpdateForm(instance=survey, project=survey.project),
         }
 
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
         ]
 
         # Add links to context
         context["links"] = {
-            "Edit Form": "#",
+            "Update Form": "#",
             "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
-            "Actions": "#",
-            "Rules": "#",
-            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
         # render view
@@ -680,7 +677,9 @@ class SurveyUpdateView(generic.UpdateView):
         survey = FormDefinition.objects.get(pk=kwargs["pk"])
 
         # survey form
-        survey_form = SurveyUpdateForm(request.POST, request.FILES, instance=survey)
+        survey_form = SurveyUpdateForm(
+            request.POST, request.FILES, instance=survey, project=survey.project
+        )
 
         if survey_form.is_valid():
             survey = survey_form.save(commit=False)
@@ -768,7 +767,7 @@ class SurveyAPIConfig(generic.TemplateView):
 
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {
                 "name": survey.title,
                 "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),
@@ -777,10 +776,8 @@ class SurveyAPIConfig(generic.TemplateView):
         ]
 
         context["links"] = {
-            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk}),
+            "Update Form": reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk}),
             "API Config": "#",
-            "Rules": reverse_lazy("projects:form-rules", kwargs={"pk": survey.pk}),
-            "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": survey.pk}),
         }
         return context
 
@@ -847,16 +844,14 @@ class SurveyRuleView(generic.TemplateView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
         ]
 
         # Add links to context
         context["links"] = {
-            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "Update Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
-            "Actions": "#",
-            "Rules": "#",
             "Attachments": reverse_lazy("projects:form-attachments", kwargs={"pk": kwargs["pk"]})
         }
 
@@ -890,16 +885,14 @@ class SurveyAttachmentView(generic.TemplateView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
         ]
 
         # Add links to context
         context["links"] = {
-            "Edit Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
+            "Update Form": reverse_lazy("projects:edit-form", kwargs={"pk": kwargs["pk"]}),
             "API Config": reverse_lazy("projects:form-api-config", kwargs={"pk": kwargs["pk"]}),
-            "Actions": "#",
-            "Rules": "#",
             "Attachments": '#'
         }
 

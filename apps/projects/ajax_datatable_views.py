@@ -252,9 +252,9 @@ class FormsAjaxDatatableView(AjaxDatatableView):
                 '<a href="{}" title="API config" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 cursor-pointer">'
                 '<i class="bx bx-transfer-alt bx-xs"></i>'
                 '</a>'
-                '<a href="{}" title="Attachments" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-teal-100 text-teal-700 hover:bg-teal-200 cursor-pointer">'
-                '<i class="bx bx-paperclip bx-xs"></i>'
-                '</a>'
+                # '<a href="{}" title="Attachments" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-teal-100 text-teal-700 hover:bg-teal-200 cursor-pointer">'
+                # '<i class="bx bx-paperclip bx-xs"></i>'
+                # '</a>'
                 '<a href="#" title="Delete form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer delete">'
                 '<i class="bx bx-trash bx-xs"></i>'
                 '</a>'
@@ -262,7 +262,7 @@ class FormsAjaxDatatableView(AjaxDatatableView):
         ).format(
             reverse("projects:edit-form", kwargs={"pk": obj.id}),
             reverse("projects:form-api-config", kwargs={"pk": obj.id}),
-            reverse("projects:form-attachments", kwargs={"pk": obj.id}),
+            # reverse("projects:form-attachments", kwargs={"pk": obj.id}),
         )
 
 
