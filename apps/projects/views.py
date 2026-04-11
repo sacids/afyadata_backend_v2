@@ -18,6 +18,8 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.utils.safestring import mark_safe
 from django.db import transaction
+from django.contrib.auth.models import User, Group
+from django.db.models import Q
 
 from django.db.models import Count, Sum, Avg, Max, Min
 from django.db.models.functions import Cast, TruncMonth, TruncYear
@@ -29,7 +31,7 @@ from django.http import JsonResponse, HttpResponse
 from . import x2jform
 from . import utils
 
-from .models import Project, FormDefinition, FormData
+from .models import Project, ProjectMember, FormDefinition, FormData
 from .forms import (
     ProjectForm,
     SurveyAddForm,
@@ -41,6 +43,79 @@ from .forms import (
 )
 from apps.ohkr.models import ClinicalSign
 from apps.esb.models import FormPayloadConfig
+
+ASSIGNABLE_MEMBER_ROLE_NAMES = ["epi_official", "chw"]
+ASSIGNABLE_MEMBER_ROLE_LABELS = {
+    "epi_official": "EPI Officials",
+    "chw": "CHWs",
+}
+
+
+def build_assignable_member_sections(project):
+    role_query = Q()
+    for role_name in ASSIGNABLE_MEMBER_ROLE_NAMES:
+        role_query |= Q(name__iexact=role_name)
+
+    role_groups = list(Group.objects.filter(role_query))
+    eligible_users = (
+        User.objects.filter(groups__in=role_groups)
+        .distinct()
+        .prefetch_related("groups", "profile")
+        .order_by("first_name", "last_name", "username")
+    )
+    assigned_member_ids = set(
+        ProjectMember.objects.filter(
+            project=project, active=True, member__isnull=False, member__in=eligible_users
+        ).values_list("member_id", flat=True)
+    )
+
+    sections = {
+        role_name: {
+            "key": role_name,
+            "label": ASSIGNABLE_MEMBER_ROLE_LABELS.get(role_name, role_name.replace("_", " ").title()),
+            "users": [],
+        }
+        for role_name in ASSIGNABLE_MEMBER_ROLE_NAMES
+    }
+
+    used_user_ids = set()
+    for user in eligible_users:
+        user_group_names = {group.name.lower() for group in user.groups.all()}
+        matching_roles = [
+            role_name for role_name in ASSIGNABLE_MEMBER_ROLE_NAMES if role_name in user_group_names
+        ]
+        if not matching_roles or user.id in used_user_ids:
+            continue
+
+        primary_role = matching_roles[0]
+        sections[primary_role]["users"].append(
+            {
+                "user": user,
+                "full_name": user.get_full_name() or user.username,
+                "phone": getattr(getattr(user, "profile", None), "phone", None) or "No phone",
+                "email": user.email or "No email provided",
+                "roles": [
+                    ASSIGNABLE_MEMBER_ROLE_LABELS.get(role_name, role_name.replace("_", " ").title())
+                    for role_name in matching_roles
+                ],
+                "assigned": user.id in assigned_member_ids,
+                "search_text": " ".join(
+                    [
+                        user.get_full_name() or "",
+                        user.username or "",
+                        user.email or "",
+                        " ".join(matching_roles),
+                    ]
+                ).strip().lower(),
+            }
+        )
+        used_user_ids.add(user.id)
+
+    return {
+        "sections": [section for section in sections.values() if section["users"]],
+        "assigned_member_ids": [str(member_id) for member_id in assigned_member_ids],
+        "eligible_user_ids": [user.id for user in eligible_users],
+    }
 
 class ProjectListView(generic.ListView):
     # permission_required = ''
@@ -279,10 +354,13 @@ class ProjectMembersListView(generic.TemplateView):
     def get(self, request, *args, **kwargs):
         # get project
         project = Project.objects.get(pk=kwargs["pk"])
+        assignable_context = build_assignable_member_sections(project)
 
         context = {
             "title": "Project Members",
             "project": project,
+            "assignable_sections": assignable_context["sections"],
+            "assigned_member_ids": assignable_context["assigned_member_ids"],
         }
 
         # breadcrumbs
@@ -304,6 +382,50 @@ class ProjectMembersListView(generic.TemplateView):
 
         # render view
         return render(request, "projects/members.html", context=context)
+
+
+class ProjectAssignMembersView(generic.View):
+    """Assign project members from eligible user roles."""
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectAssignMembersView, self).dispatch(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        project = get_object_or_404(Project, pk=kwargs["pk"])
+        assignable_context = build_assignable_member_sections(project)
+        eligible_user_ids = set(assignable_context["eligible_user_ids"])
+        selected_user_ids = {
+            int(user_id)
+            for user_id in request.POST.getlist("member_ids")
+            if user_id.isdigit() and int(user_id) in eligible_user_ids
+        }
+
+        with transaction.atomic():
+            existing_members = {
+                member.member_id: member
+                for member in ProjectMember.objects.filter(
+                    project=project, member_id__in=eligible_user_ids
+                )
+            }
+
+            for user_id in eligible_user_ids:
+                should_be_active = user_id in selected_user_ids
+                member = existing_members.get(user_id)
+
+                if member:
+                    if member.active != should_be_active:
+                        member.active = should_be_active
+                        member.save(update_fields=["active", "updated_at"])
+                elif should_be_active:
+                    ProjectMember.objects.create(
+                        project=project,
+                        member_id=user_id,
+                        active=True,
+                    )
+
+        messages.success(request, "Project members updated.")
+        return HttpResponseRedirect(reverse_lazy("projects:members", kwargs={"pk": project.pk}))
 
 
 class ProjectDataView(generic.TemplateView):

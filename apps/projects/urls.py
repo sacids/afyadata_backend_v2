@@ -16,6 +16,7 @@ urlpatterns = [
 
     # project members
     path('<str:pk>/members', views.ProjectMembersListView.as_view(), name='members'),
+    path('<str:pk>/members/assign', views.ProjectAssignMembersView.as_view(), name='assign-members'),
 
     # form management
     path('forms/<str:pk>', views.SurveyListView.as_view(), name='forms'),

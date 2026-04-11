@@ -4,6 +4,10 @@
 
 {% block extra-css %}
 <style>
+    [x-cloak] {
+        display: none !important;
+    }
+
     #datatable_members_wrapper .dataTables_filter {
         display: none !important;
     }
@@ -22,17 +26,117 @@
 {% block content %}
 
 <main class="bg-white h-full">
-    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8" x-data="{ assignMembersOpen: false }"
+        x-init="$watch('assignMembersOpen', value => document.body.classList.toggle('overflow-hidden', value))"
+        x-on:open-assign-members.window="assignMembersOpen = true"
+        @keydown.escape.window="assignMembersOpen = false">
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            {% include 'partials/list_header.html' with header_title="Project Members" header_subtitle="Review member access and activity from a single project roster." search_id="member_search" search_placeholder="Search member username or status..." export_button_id="members_export" %}
+            {% include 'partials/list_header.html' with header_title="Project Members" header_subtitle="Review member access and activity from a single project roster." search_id="member_search" search_placeholder="Search project member..." export_button_id="members_export" secondary_button_id="assign_members_button" secondary_button_label="Assign Members" secondary_button_icon="bx bx-user-plus" %}
 
             <div class="p-4">
+                {% if messages %}
+                    <div class="mb-3 space-y-2">
+                        {% for message in messages %}
+                            <div class="rounded-xl border px-4 py-3 text-sm {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
                 <div class="relative overflow-x-auto">
                     <div id="message_wrp" class="mb-3" hx-preserve></div>
 
                     <table id="datatable_members" class="w-full text-xs text-left text-gray-700 border-collapse">
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="assignMembersOpen" x-cloak class="fixed inset-0 z-40">
+            <div class="absolute inset-0 bg-stone-950/30 backdrop-blur-sm" @click="assignMembersOpen = false"></div>
+
+            <div class="relative z-10 flex min-h-full items-center justify-center p-4">
+                <div class="w-full max-w-4xl overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl">
+                    <form method="post" action="{% url 'projects:assign-members' project.pk %}">
+                        {% csrf_token %}
+                        <div class="border-b border-stone-200 bg-stone-50/80 px-6 py-5">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 class="text-base font-semibold text-stone-900">Assign Project Members</h3>
+                                    <p class="mt-1 text-sm text-stone-500">Select users from EPI Officials and CHWs. Already assigned users are preselected.</p>
+                                </div>
+                                <button type="button" @click="assignMembersOpen = false"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:bg-stone-100 hover:text-stone-700">
+                                    <i class='bx bx-x text-lg'></i>
+                                </button>
+                            </div>
+
+                            <div class="mt-4 relative">
+                                <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-stone-400'></i>
+                                <input id="assign_member_search" type="text" placeholder="Search by name, username, or email..."
+                                    class="w-full rounded-full border border-stone-300 bg-white pl-10 pr-4 py-3 text-sm text-stone-700 shadow-sm placeholder:text-stone-400 focus:border-red-300 focus:ring-red-200">
+                            </div>
+                        </div>
+
+                        <div class="max-h-[65vh] overflow-y-auto px-6 py-5">
+                            {% if assignable_sections %}
+                                <div class="space-y-6">
+                                    {% for section in assignable_sections %}
+                                        <section class="rounded-2xl border border-stone-200 bg-stone-50/40 p-4 member-role-section">
+                                            <div class="mb-4 flex items-center justify-between gap-3">
+                                                <div>
+                                                    <h4 class="text-sm font-semibold text-stone-900">{{ section.label }}</h4>
+                                                    <p class="mt-1 text-xs text-stone-500">{{ section.users|length }} eligible users</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="grid gap-3 md:grid-cols-2">
+                                                {% for entry in section.users %}
+                                                    <label class="assignable-user-row flex cursor-pointer items-start gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 transition hover:border-red-200 hover:bg-red-50/30"
+                                                        data-search="{{ entry.search_text }}">
+                                                        <input type="checkbox" name="member_ids" value="{{ entry.user.id }}"
+                                                            class="mt-1 rounded border-stone-300 text-red-800 focus:ring-red-500"
+                                                            {% if entry.assigned %}checked{% endif %}>
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-sm font-semibold text-stone-900">{{ entry.full_name }}</span>
+                                                                {% for role_name in entry.roles %}
+                                                                    <span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">{{ role_name }}</span>
+                                                                {% endfor %}
+                                                            </div>
+                                                            <div class="mt-1 text-xs text-stone-500">@{{ entry.user.username }} · {{ entry.phone }}</div>
+                                                            <div class="mt-1 text-xs text-stone-400">{{ entry.email }}</div>
+                                                        </div>
+                                                    </label>
+                                                {% endfor %}
+                                            </div>
+                                        </section>
+                                    {% endfor %}
+                                </div>
+
+                                <div id="assign_members_empty_state" class="hidden rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
+                                    No users match your search.
+                                </div>
+                            {% else %}
+                                <div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
+                                    No eligible users found in the EPI Official or CHW roles.
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 border-t border-stone-200 bg-white px-6 py-4">
+                            <button type="button" @click="assignMembersOpen = false"
+                                class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-4 rounded-md">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="text-white bg-slate-700 hover:bg-red-800 text-sm px-3 py-2 rounded-md">
+                                Save Members
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -84,6 +188,33 @@
         $('#members_export').on('click', function () {
             $('#datatable_members').DataTable().button('.buttons-csv').trigger();
         });
+
+        function filterAssignableUsers() {
+            const query = ($('#assign_member_search').val() || '').trim().toLowerCase();
+            let visibleRows = 0;
+
+            $('.assignable-user-row').each(function () {
+                const haystack = ($(this).data('search') || '').toString();
+                const match = !query || haystack.includes(query);
+                $(this).css('display', match ? 'flex' : 'none');
+                if (match) visibleRows += 1;
+            });
+
+            $('.member-role-section').each(function () {
+                const visibleInSection = $(this).find('.assignable-user-row:visible').length > 0;
+                $(this).toggle(visibleInSection);
+            });
+
+            $('#assign_members_empty_state').toggle(visibleRows === 0);
+        }
+
+        $('#assign_members_button').on('click', function () {
+            $('#assign_member_search').val('');
+            window.dispatchEvent(new CustomEvent('open-assign-members'));
+            filterAssignableUsers();
+        });
+
+        $('#assign_member_search').on('input search keyup', filterAssignableUsers);
     });
 
 </script>
