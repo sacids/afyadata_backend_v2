@@ -6,9 +6,14 @@ __pycache__/
 *.sqlite3
 *.log
 .env
+.env.*
+!.env.docker.example
 env/
 venv/
 media/
 static/
 .mypy_cache/
 .pytest_cache/
+.coverage
+htmlcov/
+node_modules/
