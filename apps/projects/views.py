@@ -49,7 +49,6 @@ class ProjectListView(generic.ListView):
     model = Project
     context_object_name = "projects"
     template_name = "projects/lists.html"
-    # paginate_by = 50
 
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
@@ -57,18 +56,18 @@ class ProjectListView(generic.ListView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(ProjectListView, self).get_context_data(**kwargs)
-        context["title"] = "Projects"
-        context["page_title"] = "Projects"
+        context["title"] = "Projects Directory"
+        # context["page_title"] = "Projects Directory"
 
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": "#"},
+            {"name": "Projects Directory", "url": "#"},
         ]
 
         # Add links to context
         context["links"] = {
-            "Project Lists": reverse_lazy("projects:lists"),
+            "Project Directory": reverse_lazy("projects:lists"),
             "Create Project": reverse_lazy("projects:create"),
         }
 
@@ -90,21 +89,19 @@ class ProjectDetailView(generic.DetailView):
     def get_context_data(self, *args, **kwargs):
         context = super(ProjectDetailView, self).get_context_data(**kwargs)
         context["title"] = "Project Information"
-        context["page_title"] = "Project Information"
 
         return context
 
     def get(self, request, *args, **kwargs):
         # get project
         project = Project.objects.get(pk=kwargs["pk"])
-
         context = {"project": project}
 
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": project.title, "url": ""},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+            {"name": project.title, "url": "#"},
         ]
 
         # Add links to context
@@ -132,13 +129,13 @@ class ProjectCreateView(generic.CreateView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": "Create Project", "url": "#"},
         ]
 
         # Add links to context
         context["links"] = {
-            "Project Lists": reverse_lazy("projects:lists"),
+            "Project Directory": reverse_lazy("projects:lists"),
             "Create Project": reverse_lazy("projects:create"),
         }
 
@@ -183,18 +180,19 @@ class ProjectUpdateView(generic.UpdateView):
         project = Project.objects.get(pk=kwargs["pk"])
         form = ProjectForm(instance=project)
 
+        # create directory
         context = {"title": project.title, "project": project, "form": form}
 
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": project.title, "url": "#"},
         ]
 
         # Add links to context
         context["links"] = {
-            "Project Lists": reverse_lazy("projects:lists"),
+            "Project Directory": reverse_lazy("projects:lists"),
             "Create New": reverse_lazy("projects:create"),
         }
 
@@ -210,9 +208,7 @@ class ProjectUpdateView(generic.UpdateView):
             form.save()
 
             # success response
-            return HttpResponse(
-                '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project updated.</div>'
-            )
+            return HttpResponse('<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">Project updated.</div>')
         else:
             # error response
             errors = []
@@ -290,8 +286,8 @@ class ProjectMembersListView(generic.TemplateView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
-            {"name": project.title, "url": ""},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+            {"name": project.title, "url": "#"},
         ]
 
         context["links"] = {
@@ -316,9 +312,7 @@ class ProjectDataView(generic.TemplateView):
         project = Project.objects.get(pk=kwargs["pk"])
 
         # get root forms
-        root_forms = FormDefinition.objects.filter(
-            project=project, is_root=True
-        ).order_by("code")
+        root_forms = FormDefinition.objects.filter(project=project, is_root=True).order_by("code")
 
         root_forms_json = list(
             root_forms.values(
@@ -326,6 +320,7 @@ class ProjectDataView(generic.TemplateView):
             )
         )
 
+        # create context
         context = {
             "title": project.title,
             "project": project,
@@ -335,7 +330,7 @@ class ProjectDataView(generic.TemplateView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": project.title, "url": ""},
         ]
 

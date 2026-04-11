@@ -8,7 +8,7 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
     model = Project
     title = "Projects"
     initial_order = [
-        ["title", "desc"],
+        ["title", "asc"],
     ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
     search_values_separator = "+"
