@@ -2,6 +2,7 @@ import json
 from ajax_datatable.views import AjaxDatatableView
 from django.urls import reverse
 from .models import *
+from apps.accounts.utils import is_admin_user
 
 
 class ProjectAjaxDatatableView(AjaxDatatableView):
@@ -61,7 +62,10 @@ class ProjectAjaxDatatableView(AjaxDatatableView):
     ]
 
     def get_initial_queryset(self, request=None):
-        return Project.objects.filter(deleted=False)
+        queryset = Project.objects.filter(deleted=False)
+        if request is not None and not is_admin_user(request.user):
+            queryset = queryset.filter(members__member=request.user, members__active=True).distinct()
+        return queryset
 
     def customize_row(self, row, obj):
         # absoluteURL

@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.contrib.auth.models import User, Group
 from apps.accounts.models import Profile
-from .forms import UserForm, UserUpdateForm, UserProfileForm
+from .forms import UserForm, UserUpdateForm, UserProfileForm, UserPasswordForm
 
 
 class UserListView(PermissionRequiredMixin, generic.ListView):
@@ -222,6 +222,58 @@ class UserDeleteView(PermissionRequiredMixin, generic.DeleteView):
     def get_success_url(self):
         messages.success(self.request, "User deleted successfully")
         return reverse_lazy('auth:users') 
+
+
+class UserChangePasswordView(PermissionRequiredMixin, generic.TemplateView):
+    permission_required = "auth.change_user"
+    template_name = "users/change_password.html"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(UserChangePasswordView, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        user = User.objects.get(pk=kwargs["pk"])
+        context = {
+            "title": f"Change Password: {user.username}",
+            "target_user": user,
+            "form": UserPasswordForm(user),
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Users", "url": reverse_lazy("auth:users")},
+                {"name": "Change Password", "url": "#"},
+            ],
+            "links": {
+                "Users": reverse_lazy("auth:users"),
+                "Roles": reverse_lazy("auth:roles"),
+            },
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        user = User.objects.get(pk=kwargs["pk"])
+        form = UserPasswordForm(user, request.POST)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Password updated for {user.username}.")
+            return HttpResponseRedirect(reverse_lazy("auth:users"))
+
+        context = {
+            "title": f"Change Password: {user.username}",
+            "target_user": user,
+            "form": form,
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Users", "url": reverse_lazy("auth:users")},
+                {"name": "Change Password", "url": "#"},
+            ],
+            "links": {
+                "Users": reverse_lazy("auth:users"),
+                "Roles": reverse_lazy("auth:roles"),
+            },
+        }
+        return render(request, self.template_name, context)
     
 
 def delete_user(request, *args, **kwargs):

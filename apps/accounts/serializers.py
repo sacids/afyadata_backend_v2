@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from .models import *
+from .utils import resolve_group_by_aliases, CHW_ROLE_ALIASES
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -103,6 +104,10 @@ class RegisterSerializer(serializers.Serializer):
         profile = Profile.objects.get(user=user)
         profile.phone = phone_number
         profile.save()
+
+        chw_group = resolve_group_by_aliases(CHW_ROLE_ALIASES, create_name="CHW")
+        if chw_group:
+            user.groups.add(chw_group)
 
         return user
 

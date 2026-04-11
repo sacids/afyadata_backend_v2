@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.views import generic
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
@@ -43,6 +43,7 @@ from .forms import (
 )
 from apps.ohkr.models import ClinicalSign
 from apps.esb.models import FormPayloadConfig
+from apps.accounts.utils import is_admin_user
 
 ASSIGNABLE_MEMBER_ROLE_ALIASES = {
     "epi_official": [
@@ -179,6 +180,16 @@ def build_assignable_member_sections(project):
         "eligible_user_ids": [user.id for user in eligible_users],
     }
 
+
+def get_accessible_project_or_404(user, pk):
+    project = get_object_or_404(Project, pk=pk)
+    if is_admin_user(user):
+        return project
+    if ProjectMember.objects.filter(project=project, member=user, active=True).exists():
+        return project
+    raise Http404("Project not found")
+
+
 class ProjectListView(generic.ListView):
     # permission_required = ''
 
@@ -194,7 +205,6 @@ class ProjectListView(generic.ListView):
     def get_context_data(self, *args, **kwargs):
         context = super(ProjectListView, self).get_context_data(**kwargs)
         context["title"] = "Projects Directory"
-        # context["page_title"] = "Projects Directory"
 
         # breadcrumbs
         context["breadcrumbs"] = [
@@ -231,7 +241,7 @@ class ProjectDetailView(generic.DetailView):
 
     def get(self, request, *args, **kwargs):
         # get project
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
         context = {"project": project}
 
         # breadcrumbs
@@ -314,7 +324,7 @@ class ProjectUpdateView(generic.UpdateView):
 
     def get(self, request, *args, **kwargs):
         # get project
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
         form = ProjectForm(instance=project)
 
         # create directory
@@ -336,7 +346,7 @@ class ProjectUpdateView(generic.UpdateView):
         return render(request, "projects/edit.html", context)
 
     def post(self, request, *args, **kwargs):
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
         form = ProjectForm(request.POST, instance=project)
 
         if form.is_valid():
@@ -415,7 +425,7 @@ class ProjectMembersListView(generic.TemplateView):
 
     def get(self, request, *args, **kwargs):
         # get project
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
         assignable_context = build_assignable_member_sections(project)
 
         context = {
@@ -454,7 +464,7 @@ class ProjectAssignMembersView(generic.View):
         return super(ProjectAssignMembersView, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        project = get_object_or_404(Project, pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
         assignable_context = build_assignable_member_sections(project)
         eligible_user_ids = set(assignable_context["eligible_user_ids"])
         selected_user_ids = {
@@ -495,7 +505,7 @@ class ProjectDataView(generic.TemplateView):
 
     def get(self, request, *args, **kwargs):
         # get project
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
 
         # get root forms
         root_forms = FormDefinition.objects.filter(project=project, is_root=True).order_by("code")
@@ -540,7 +550,7 @@ class SurveyListView(generic.TemplateView):
 
     def get(self, request, *args, **kwargs):
         # get project
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
         # context
         context = {
             "title": "Project Forms",
@@ -574,7 +584,7 @@ class SurveyCreateView(generic.CreateView):
 
     def get(self, request, *args, **kwargs):
         # get project
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
 
         context = {
             "title": "Upload Form",
@@ -604,7 +614,7 @@ class SurveyCreateView(generic.CreateView):
 
     def post(self, request, *args, **kwargs):
         # get project
-        project = Project.objects.get(pk=kwargs["pk"])
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
 
         # survey form
         form = SurveyAddForm(request.POST, request.FILES, project=project)

@@ -25,6 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from .forms import *
+from .utils import is_chw_user, is_admin_user
 
 class LoginView(View):
     """Login to the platform"""
@@ -50,6 +51,13 @@ class LoginView(View):
             user = authenticate(request, username=username, password=password)
 
             if user is not None:
+                if is_chw_user(user) and not is_admin_user(user):
+                    messages.error(
+                        request,
+                        "CHW accounts are restricted to the mobile application. Please use the mobile app to sign in.",
+                    )
+                    return render(request, self.template_name, {'form': form})
+
                 login(request, user)
 
                 remember_me = request.POST.get("remember_me")
@@ -183,6 +191,7 @@ class ProfileView(View):
 
     def get(self, request):
         user = User.objects.get(pk=request.user.id)
+        profile, _ = Profile.objects.get_or_create(user=user)
 
         """form"""
         profile_form = ProfileForm(initial={
@@ -190,35 +199,45 @@ class ProfileView(View):
             'last_name': user.last_name,
             'username': user.username,
             'email': user.email,
-            'phone': user.profile.phone,
-            'staff_id': user.profile.staff_id,
+            'phone': profile.phone,
             })
 
         """context"""
-        context = {'form': profile_form}
+        context = {
+            'form': profile_form,
+            'title': 'My Profile',
+            'breadcrumbs': [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "My Profile", "url": "#"},
+            ],
+        }
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
         user = User.objects.get(pk=request.user.id)
-        user.first_name = request.POST.get("first_name")
-        user.last_name  = request.POST.get("last_name")
-        user.email      = request.POST.get("email")
-        user.username   = request.POST.get("username")
+        profile, _ = Profile.objects.get_or_create(user=user)
+        form = ProfileForm(request.POST)
 
-        """create or update profile"""
-        profile, created = Profile.objects.update_or_create(user_id=user.id,  
-            defaults={
-                'phone': request.POST.get("phone"), 
-            },)
+        if form.is_valid():
+            user.first_name = form.cleaned_data.get("first_name")
+            user.last_name = form.cleaned_data.get("last_name")
+            user.email = form.cleaned_data.get("email")
+            profile.phone = form.cleaned_data.get("phone")
+            user.save()
+            profile.save()
 
-        """save user"""
-        user.save()
+            messages.success(request, 'Profile updated!')
+            return HttpResponseRedirect(reverse_lazy('auth:profile'))
 
-        """message"""
-        messages.success(request, 'Profile updated!')
-
-        """redirect page"""
-        return HttpResponseRedirect(reverse_lazy('profile'))  
+        context = {
+            'form': form,
+            'title': 'My Profile',
+            'breadcrumbs': [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "My Profile", "url": "#"},
+            ],
+        }
+        return render(request, self.template_name, context)
 
     
 class ChangePasswordView(View):
@@ -231,7 +250,14 @@ class ChangePasswordView(View):
 
     def get(self, request):
         form = ChangePasswordForm(request.user)
-        context = {"form": form}
+        context = {
+            "form": form,
+            "title": "Change Password",
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Change Password", "url": "#"},
+            ],
+        }
 
         """render view"""
         return render(request, self.template_name, context)
@@ -243,12 +269,18 @@ class ChangePasswordView(View):
             user = form.save()
             update_session_auth_hash(request, user) 
             messages.success(request, 'Password was successfully updated!')
-            return redirect('change-password')
-        else:
-            form = ChangePasswordForm(request.user)
+            return redirect('auth:change-password')
 
         """render same form"""
-        return render(request, self.template_name, {'form': form})
+        messages.error(request, "Please correct the password errors below.")
+        return render(request, self.template_name, {
+            'form': form,
+            'title': 'Change Password',
+            'breadcrumbs': [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Change Password", "url": "#"},
+            ],
+        })
 
 
 class LogoutView(View):
