@@ -58,7 +58,7 @@
                                     <label for="language-select"
                                         class="text-xs font-medium text-gray-600">Language</label>
                                     <select id="language-select" x-model="selectedLanguage" @change="changeLanguage()"
-                                        class="rounded-sm border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 focus:border-orange-400 focus:outline-none focus:ring-0">
+                                        class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 focus:border-orange-400 focus:outline-none focus:ring-0">
                                         <template x-for="lang in availableLanguages" :key="lang">
                                             <option :value="lang" x-text="lang"></option>
                                         </template>
@@ -70,19 +70,19 @@
                                 <div class="flex items-center space-x-2">
                                     <button type="button"
                                         :class="{'bg-orange-50 border-orange-400': tabId === 'information', 'bg-white border-gray-200 hover:bg-gray-50': tabId !== 'information'}"
-                                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bxs-info-square px-1'></i> Information
                                     </button>
 
                                     <button type="button"
-                                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bxs-chat px-1'></i> Message
                                     </button>
 
-                                    <button type="button"
-                                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <!-- <button type="button"
+                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bx-sitemap px-1'></i> Sitemap
-                                    </button>
+                                    </button> -->
                                 </div>
                             </template>
 
@@ -90,24 +90,24 @@
                                 <div class="flex items-center space-x-2">
                                     <button type="button" @click="loadTable(activeFormId)"
                                         :class="{'bg-orange-50 border-orange-400': viewMode === 'table', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'table'}"
-                                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bxs-data px-1'></i> Data View
                                     </button>
 
                                     <button type="button" @click="showChart(activeFormId)"
                                         :class="{'bg-orange-50 border-orange-400': viewMode === 'chart', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'chart'}"
-                                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bxs-bar-chart-alt-2 px-1'></i> Charts
                                     </button>
 
                                     <button type="button" @click="showMap(activeFormId)"
                                         :class="{'bg-orange-50 border-orange-400': viewMode === 'map', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'map'}"
-                                        class="inline-flex items-center rounded-sm border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bx-map px-1'></i> Maps
                                     </button>
 
                                     <button type="button" @click="exportData(activeFormId)"
-                                        class="inline-flex items-center rounded-sm border border-green-700 bg-white px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-700 hover:text-white">
+                                        class="inline-flex items-center rounded-md border border-green-700 bg-white px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-700 hover:text-white">
                                         <i class='bx bxs-file-export px-1'></i> Export
                                     </button>
                                 </div>

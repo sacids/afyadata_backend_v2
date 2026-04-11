@@ -1154,7 +1154,7 @@ class SurveyDataInstanceView(generic.TemplateView):
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
-            {"name": "Projects", "url": reverse_lazy("projects:lists")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {
                 "name": cur_form.project.title,
                 "url": reverse_lazy(
