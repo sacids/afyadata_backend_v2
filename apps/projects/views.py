@@ -651,7 +651,7 @@ class SurveyUpdateView(generic.UpdateView):
 
         # context
         context = {
-            "title": survey.title,
+            "title": f"{survey.title} - Update Form",
             "survey": survey,
             "form": SurveyUpdateForm(instance=survey, project=survey.project),
         }
@@ -756,13 +756,17 @@ class SurveyAPIConfig(generic.TemplateView):
             value_mapping_formset = FormValueMappingFormSet(instance=payload_config)
 
         context = {
-            "title": f"{survey.title} API Config",
+            "title": f"{survey.title} - API Config",
             "survey": survey,
             "payload_config": payload_config,
             "config_form": config_form,
             "field_map_formset": field_map_formset,
             "value_mapping_formset": value_mapping_formset,
+            "has_saved_config": bool(payload_config.pk),
+            "open_field_map_modal": field_map_formset.total_error_count() > 0,
             "open_value_mapping_modal": value_mapping_formset.total_error_count() > 0,
+            "field_map_count": payload_config.field_maps.count() if payload_config.pk else 0,
+            "value_mapping_count": payload_config.value_mappings.count() if payload_config.pk else 0,
         }
 
         context["breadcrumbs"] = [
@@ -794,6 +798,79 @@ class SurveyAPIConfig(generic.TemplateView):
         config_form = FormPayloadConfigForm(request.POST, instance=payload_config)
         field_map_formset = FormPayloadFieldMapFormSet(request.POST, instance=payload_config)
         value_mapping_formset = FormValueMappingFormSet(request.POST, instance=payload_config)
+
+        if action == "save-api-config":
+            if config_form.is_valid():
+                try:
+                    with transaction.atomic():
+                        payload_config = config_form.save(commit=False)
+                        payload_config.form = survey
+                        payload_config.save()
+                    messages.success(request, "API configuration saved. You can now add field maps and value mappings.")
+                except Exception as error:
+                    messages.error(request, f"Failed to save API configuration: {error}")
+            else:
+                messages.error(request, "Please correct the configuration errors below.")
+
+            context = self.get_context(
+                survey,
+                config_form=config_form,
+                field_map_formset=FormPayloadFieldMapFormSet(instance=self.get_payload_config(survey)),
+                value_mapping_formset=FormValueMappingFormSet(instance=self.get_payload_config(survey)),
+            )
+            return render(request, self.template_name, context)
+
+        if not payload_config.pk:
+            messages.error(request, "Save the API configuration first before adding mappings.")
+            context = self.get_context(
+                survey,
+                config_form=config_form,
+                field_map_formset=field_map_formset,
+                value_mapping_formset=value_mapping_formset,
+            )
+            return render(request, self.template_name, context)
+
+        if action == "save-field-maps":
+            field_map_formset = FormPayloadFieldMapFormSet(request.POST, instance=payload_config)
+            if field_map_formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        field_map_formset.save()
+                    messages.success(request, "Field maps saved.")
+                except Exception as error:
+                    messages.error(request, f"Failed to save field maps: {error}")
+            else:
+                messages.error(request, "Please correct the field map errors below.")
+
+            context = self.get_context(
+                survey,
+                config_form=FormPayloadConfigForm(instance=payload_config),
+                field_map_formset=field_map_formset,
+                value_mapping_formset=FormValueMappingFormSet(instance=payload_config),
+            )
+            context["open_field_map_modal"] = True
+            return render(request, self.template_name, context)
+
+        if action == "save-value-mappings":
+            value_mapping_formset = FormValueMappingFormSet(request.POST, instance=payload_config)
+            if value_mapping_formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        value_mapping_formset.save()
+                    messages.success(request, "Value mappings saved.")
+                except Exception as error:
+                    messages.error(request, f"Failed to save value mappings: {error}")
+            else:
+                messages.error(request, "Please correct the value mapping errors below.")
+
+            context = self.get_context(
+                survey,
+                config_form=FormPayloadConfigForm(instance=payload_config),
+                field_map_formset=FormPayloadFieldMapFormSet(instance=payload_config),
+                value_mapping_formset=value_mapping_formset,
+            )
+            context["open_value_mapping_modal"] = True
+            return render(request, self.template_name, context)
 
         if (
             config_form.is_valid()

@@ -345,7 +345,7 @@ class FormPayloadConfigForm(forms.ModelForm):
         super(FormPayloadConfigForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_show_labels = True
-        self.helper.label_class = "text-gray-700 text-xs font-medium mb-2"
+        self.helper.label_class = "text-gray-700 text-xs font-medium"
 
     class Meta:
         model = FormPayloadConfig
@@ -364,7 +364,7 @@ class FormPayloadConfigForm(forms.ModelForm):
             "headers": forms.Textarea(
                 attrs={
                     "class": "w-full font-normal text-sm rounded-md",
-                    "rows": 4,
+                    "rows": 2,
                     "placeholder": '{"Authorization": "Bearer ..."}',
                 }
             ),

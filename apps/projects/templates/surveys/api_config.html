@@ -2,125 +2,261 @@
 {% load crispy_forms_tags %}
 {% load humanize %}
 
+{% block extra-css %}
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .formset-empty {
+        display: none !important;
+    }
+</style>
+{% endblock extra-css %}
+
 {% block content %}
 <main class="bg-white h-full" id="survey-api-config">
     <div class="mx-auto max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 w-full md:max-w-4xl lg:max-w-5xl mx-auto">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-                <div>
-                    <h2 class="text-sm font-semibold text-gray-800">{{ title }}</h2>
-                    <p class="text-xs text-gray-500">Configure the outbound ESB payload and field mappings for this form.</p>
-                </div>
+        <div class="mx-auto w-full md:max-w-5xl rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden"
+            x-data="apiConfigWorkflow(
+                {% if open_field_map_modal %}true{% else %}false{% endif %},
+                {% if open_value_mapping_modal %}true{% else %}false{% endif %},
+                '{{ field_map_formset.prefix }}',
+                '{{ value_mapping_formset.prefix }}'
+            )"
+            x-init="init()">
+
+            <div class="border-b border-gray-200 px-5 py-4">
+                <h2 class="text-sm font-semibold text-gray-800">{{ title }}</h2>
+                <p class="mt-1 text-xs text-gray-500">Save the connection first, then configure field maps and value mappings in separate modals.</p>
             </div>
 
-            <div class="p-4"
-                x-data="{ valueMappingOpen: {% if open_value_mapping_modal %}true{% else %}false{% endif %} }"
-                x-effect="document.body.classList.toggle('overflow-hidden', valueMappingOpen)">
-            {% if messages %}
-                <div class="space-y-2 mb-4">
-                    {% for message in messages %}
-                        <div class="rounded-sm px-4 py-3 text-sm {% if message.tags == 'success' %}bg-teal-100 text-teal-900 border border-teal-200{% else %}bg-red-100 text-red-900 border border-red-200{% endif %}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-            <form method="post" class="space-y-6">
-                {% csrf_token %}
-
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <div class="md:col-span-9">
-                        {{ config_form.endpoint|as_crispy_field }}
-                    </div>
-
-                    <div class="md:col-span-3">
-                        {{ config_form.method|as_crispy_field }}
-                    </div>
-
-                    <div class="md:col-span-12">
-                        {{ config_form.headers|as_crispy_field }}
-                    </div>
-
-                    <div class="md:col-span-12 flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                        {{ config_form.is_active }}
-                        <label class="text-xs font-medium text-gray-700" for="{{ config_form.is_active.id_for_label }}">Active</label>
-                    </div>
-                </div>
-
-                {{ field_map_formset.management_form }}
-                <div class="border border-gray-200 rounded-lg overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-800">Field Maps</h3>
-                                <p class="text-xs text-gray-500">Map outbound payload fields to `form_data.*` or `model.*` paths.</p>
+            <div class="p-5 space-y-5">
+                {% if messages %}
+                    <div class="space-y-2">
+                        {% for message in messages %}
+                            <div class="rounded-md border px-4 py-3 text-sm {% if message.tags == 'success' %}border-emerald-100 bg-emerald-100 text-emerald-800{% else %}border-red-100 bg-red-100 text-red-800{% endif %}">
+                                {{ message }}
                             </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-                            <button type="button"
-                                @click="valueMappingOpen = true"
-                                class="inline-flex items-center rounded-sm border border-slate-700 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-700 hover:text-white">
-                                + Value Mappings
+                <form method="post" class="space-y-5">
+                    {% csrf_token %}
+
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-12">
+                        <div class="md:col-span-8">
+                            {{ config_form.endpoint|as_crispy_field }}
+                        </div>
+
+                        <div class="md:col-span-4">
+                            {{ config_form.method|as_crispy_field }}
+                        </div>
+
+                        <div class="md:col-span-12">
+                            {{ config_form.headers|as_crispy_field }}
+                        </div>
+
+                        <div class="md:col-span-12">
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                {{ config_form.is_active }}
+                                <span>Active configuration</span>
+                            </label>
+                            {% for error in config_form.is_active.errors %}
+                                <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <div class="space-x-1 px-1">
+                            <a href="{% url 'projects:forms' survey.project.pk %}"
+                                class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-4 rounded-md">
+                                Cancel
+                            </a>
+
+                            <button type="submit"
+                                name="action"
+                                value="save-api-config"
+                                class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-md text-sm w-full sm:w-auto px-4 py-2 text-center inline-flex items-center justify-center min-w-[120px]">
+                                Save
                             </button>
                         </div>
                     </div>
+                </form>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                            <thead class="bg-gray-50 text-gray-600">
-                                <tr>
-                                    <th class="px-3 py-2 text-left">Payload Field</th>
-                                    <th class="px-3 py-2 text-left">Form Data Path</th>
-                                    <th class="px-3 py-2 text-left">Default</th>
-                                    <th class="px-3 py-2 text-left">Transform</th>
-                                    <!-- <th class="px-3 py-2 text-center">Required</th> -->
-                                    <th class="px-3 py-2 text-center">Delete</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                {% for form in field_map_formset %}
-                                    <tr>
-                                        <td class="px-3 py-2">
-                                            {{ form.id }}
-                                            {{ form.payload_field }}
-                                            {% for error in form.payload_field.errors %}
-                                                <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-4">
+                    {% if has_saved_config %}
+                        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <div class="text-sm font-medium text-gray-800">Mapping Workflow</div>
+                                <p class="mt-1 text-xs text-gray-500">Your API configuration is saved. You can now manage field maps and value mappings separately.</p>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button"
+                                    @click="fieldMapOpen = true"
+                                    {% if not has_saved_config %}disabled{% endif %}
+                                    class="inline-flex items-center rounded-md border px-3 py-2 text-xs font-medium transition {% if has_saved_config %}border-gray-300 bg-white text-gray-700 hover:bg-gray-100{% else %}border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed{% endif %}">
+                                    <i class='bx bx-list-plus mr-1 text-base'></i> Add Field Maps
+                                </button>
+
+                                <button type="button"
+                                    @click="valueMappingOpen = true"
+                                    {% if not has_saved_config %}disabled{% endif %}
+                                    class="inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition {% if has_saved_config %}bg-slate-700 text-white hover:bg-red-800{% else %}bg-gray-200 text-gray-400 cursor-not-allowed{% endif %}">
+                                    <i class='bx bx-transfer-alt mr-1 text-base'></i> Add Value Mappings
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-md border border-gray-200 bg-white px-4 py-3">
+                                <div class="text-[11px] uppercase tracking-[0.14em] text-gray-500">Field Maps</div>
+                                <div class="mt-1 text-sm font-semibold text-gray-800">{{ field_map_count }}</div>
+                            </div>
+                            <div class="rounded-md border border-gray-200 bg-white px-4 py-3">
+                                <div class="text-[11px] uppercase tracking-[0.14em] text-gray-500">Value Mappings</div>
+                                <div class="mt-1 text-sm font-semibold text-gray-800">{{ value_mapping_count }}</div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-sm font-medium text-gray-800">Next step locked</div>
+                        <p class="mt-1 text-xs text-gray-500">Save the API configuration first. The buttons for Field Maps and Value Mappings will appear here after that.</p>
+                    {% endif %}
+                </div>
+
+                <div
+                    x-show="fieldMapOpen"
+                    x-cloak
+                    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+                    @keydown.escape.window="fieldMapOpen = false"
+                    aria-modal="true"
+                    role="dialog">
+                    <div class="absolute inset-0 bg-black/25 backdrop-blur-sm" @click="fieldMapOpen = false"></div>
+
+                    <div class="relative z-10 w-full max-w-6xl rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+                        <div class="flex flex-col gap-3 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-800">Field Maps</h3>
+                                <p class="text-xs text-gray-500">Add as many payload field mappings as needed, then save them into this API configuration.</p>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button"
+                                    @click="addFieldMapRow()"
+                                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bx-plus mr-1 text-base'></i> Add Row
+                                </button>
+                                <!-- <button type="button"
+                                    @click="fieldMapOpen = false"
+                                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    Close
+                                </button> -->
+                            </div>
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            {{ field_map_formset.management_form }}
+
+                            <div class="max-h-[70vh] overflow-y-auto">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-sm">
+                                        <thead class="bg-gray-50 text-gray-600">
+                                            <tr>
+                                                <th class="px-3 py-2 text-left">Payload Field</th>
+                                                <th class="px-3 py-2 text-left">Form Data Path</th>
+                                                <th class="px-3 py-2 text-left">Default Value</th>
+                                                <th class="px-3 py-2 text-left">Transform</th>
+                                                <th class="px-3 py-2 text-center">Remove</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="field-map-rows" class="divide-y divide-gray-200">
+                                            {% for form in field_map_formset %}
+                                                <tr class="field-map-row">
+                                                    <td class="px-3 py-3 align-top">
+                                                        {{ form.id }}
+                                                        {{ form.payload_field }}
+                                                        {% for error in form.payload_field.errors %}
+                                                            <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="px-3 py-3 align-top">
+                                                        {{ form.form_data_path }}
+                                                        {% for error in form.form_data_path.errors %}
+                                                            <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="px-3 py-3 align-top">
+                                                        {{ form.default_value }}
+                                                        {% for error in form.default_value.errors %}
+                                                            <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="px-3 py-3 align-top">
+                                                        {{ form.transform }}
+                                                        {% for error in form.transform.errors %}
+                                                            <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="px-3 py-3 text-center align-top">
+                                                        {{ form.DELETE }}
+                                                    </td>
+                                                </tr>
+                                                {% if form.non_field_errors %}
+                                                    <tr>
+                                                        <td colspan="5" class="px-3 pb-3 text-xs text-red-600">
+                                                            {{ form.non_field_errors }}
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
                                             {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <template id="field-map-empty-form">
+                                    <tr class="field-map-row">
+                                        <td class="px-3 py-3 align-top">
+                                            {{ field_map_formset.empty_form.id }}
+                                            {{ field_map_formset.empty_form.payload_field }}
                                         </td>
-                                        <td class="px-3 py-2">
-                                            {{ form.form_data_path }}
-                                            {% for error in form.form_data_path.errors %}
-                                                <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                                            {% endfor %}
+                                        <td class="px-3 py-3 align-top">
+                                            {{ field_map_formset.empty_form.form_data_path }}
                                         </td>
-                                        <td class="px-3 py-2">
-                                            {{ form.default_value }}
-                                            {% for error in form.default_value.errors %}
-                                                <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                                            {% endfor %}
+                                        <td class="px-3 py-3 align-top">
+                                            {{ field_map_formset.empty_form.default_value }}
                                         </td>
-                                        <td class="px-3 py-2">
-                                            {{ form.transform }}
-                                            {% for error in form.transform.errors %}
-                                                <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                                            {% endfor %}
+                                        <td class="px-3 py-3 align-top">
+                                            {{ field_map_formset.empty_form.transform }}
                                         </td>
-                                        <!-- <td class="px-3 py-2 text-center">{{ form.required }}</td> -->
-                                        <td class="px-3 py-2 text-center">{{ form.DELETE }}</td>
+                                        <td class="px-3 py-3 text-center align-top">
+                                            {{ field_map_formset.empty_form.DELETE }}
+                                        </td>
                                     </tr>
-                                    {% if form.non_field_errors %}
-                                        <tr>
-                                            <td colspan="6" class="px-3 pb-2 text-xs text-red-600">
-                                                {{ form.non_field_errors }}
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                </template>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-4">
+                                <button type="button"
+                                    @click="fieldMapOpen = false"
+                                    class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-4 rounded-md">
+                                    Close
+                                </button>
+
+                                <button type="submit"
+                                    name="action"
+                                    value="save-field-maps"
+                                    class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-md text-sm w-full sm:w-auto px-4 py-2 text-center inline-flex items-center justify-center min-w-[145px]">
+                                    Save Field Maps
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
-                {{ value_mapping_formset.management_form }}
                 <div
                     x-show="valueMappingOpen"
                     x-cloak
@@ -128,102 +264,160 @@
                     @keydown.escape.window="valueMappingOpen = false"
                     aria-modal="true"
                     role="dialog">
-                    <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="valueMappingOpen = false"></div>
+                    <div class="absolute inset-0 bg-black/25 backdrop-blur-sm" @click="valueMappingOpen = false"></div>
 
-                    <div class="relative z-10 w-full max-w-4xl rounded-lg border border-gray-200 bg-white shadow-xl">
-                        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+                    <div class="relative z-10 w-full max-w-5xl rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+                        <div class="flex flex-col gap-3 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-800">Form Value Mappings</h3>
-                                <p class="text-xs text-gray-500">Translate stored form values into external API values.</p>
+                                <h3 class="text-sm font-semibold text-gray-800">Value Mappings</h3>
+                                <p class="text-xs text-gray-500">Add as many value mappings as needed and save them into this API configuration.</p>
                             </div>
 
-                            <button type="button"
-                                @click="valueMappingOpen = false"
-                                class="rounded-sm border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100">
-                                Close
-                            </button>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button"
+                                    @click="addValueMappingRow()"
+                                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    <i class='bx bx-plus mr-1 text-base'></i> Add Row
+                                </button>
+
+                                <!-- <button type="button"
+                                    @click="valueMappingOpen = false"
+                                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                    Close
+                                </button> -->
+                            </div>
                         </div>
 
-                        <div class="max-h-[70vh] overflow-auto p-5">
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
-                                    <thead class="bg-gray-50 text-gray-600">
-                                        <tr>
-                                            <th class="px-3 py-2 text-left">Entity Type</th>
-                                            <th class="px-3 py-2 text-left">Source Value</th>
-                                            <th class="px-3 py-2 text-left">Target Value</th>
-                                            <th class="px-3 py-2 text-center">Delete</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-200">
-                                        {% for form in value_mapping_formset %}
+                        <form method="post">
+                            {% csrf_token %}
+                            {{ value_mapping_formset.management_form }}
+
+                            <div class="max-h-[70vh] overflow-y-auto">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-sm">
+                                        <thead class="bg-gray-50 text-gray-600">
                                             <tr>
-                                                <td class="px-3 py-2">
-                                                    {{ form.id }}
-                                                    {{ form.entity_type }}
-                                                    {% for error in form.entity_type.errors %}
-                                                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                                                    {% endfor %}
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    {{ form.source_value }}
-                                                    {% for error in form.source_value.errors %}
-                                                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                                                    {% endfor %}
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    {{ form.target_value }}
-                                                    {% for error in form.target_value.errors %}
-                                                        <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-                                                    {% endfor %}
-                                                </td>
-                                                <td class="px-3 py-2 text-center">
-                                                    {{ form.DELETE }}
-                                                </td>
+                                                <th class="px-3 py-2 text-left">Entity Type</th>
+                                                <th class="px-3 py-2 text-left">Source Value</th>
+                                                <th class="px-3 py-2 text-left">Target Value</th>
+                                                <th class="px-3 py-2 text-center">Remove</th>
                                             </tr>
-                                            {% if form.non_field_errors %}
-                                                <tr>
-                                                    <td colspan="4" class="px-3 pb-2 text-xs text-red-600">
-                                                        {{ form.non_field_errors }}
+                                        </thead>
+                                        <tbody id="value-mapping-rows" class="divide-y divide-gray-200">
+                                            {% for form in value_mapping_formset %}
+                                                <tr class="value-mapping-row">
+                                                    <td class="px-3 py-3 align-top">
+                                                        {{ form.id }}
+                                                        {{ form.entity_type }}
+                                                        {% for error in form.entity_type.errors %}
+                                                            <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="px-3 py-3 align-top">
+                                                        {{ form.source_value }}
+                                                        {% for error in form.source_value.errors %}
+                                                            <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="px-3 py-3 align-top">
+                                                        {{ form.target_value }}
+                                                        {% for error in form.target_value.errors %}
+                                                            <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="px-3 py-3 text-center align-top">
+                                                        {{ form.DELETE }}
                                                     </td>
                                                 </tr>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                                                {% if form.non_field_errors %}
+                                                    <tr>
+                                                        <td colspan="4" class="px-3 pb-3 text-xs text-red-600">
+                                                            {{ form.non_field_errors }}
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <template id="value-mapping-empty-form">
+                                    <tr class="value-mapping-row">
+                                        <td class="px-3 py-3 align-top">
+                                            {{ value_mapping_formset.empty_form.id }}
+                                            {{ value_mapping_formset.empty_form.entity_type }}
+                                        </td>
+                                        <td class="px-3 py-3 align-top">
+                                            {{ value_mapping_formset.empty_form.source_value }}
+                                        </td>
+                                        <td class="px-3 py-3 align-top">
+                                            {{ value_mapping_formset.empty_form.target_value }}
+                                        </td>
+                                        <td class="px-3 py-3 text-center align-top">
+                                            {{ value_mapping_formset.empty_form.DELETE }}
+                                        </td>
+                                    </tr>
+                                </template>
                             </div>
-                        </div>
 
-                        <div class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-4">
-                            <button type="button"
-                                @click="valueMappingOpen = false"
-                                class="rounded-sm border border-gray-300 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100">
-                                Close
-                            </button>
+                            <div class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-4">
+                                <button type="button"
+                                    @click="valueMappingOpen = false"
+                                    class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-4 rounded-md">
+                                    Close
+                                </button>
 
-                            <button type="submit"
-                                name="action"
-                                value="save-value-mappings"
-                                class="rounded-sm bg-slate-700 px-3 py-2 text-xs font-medium text-white hover:bg-red-800">
-                                Save Value Mappings
-                            </button>
-                        </div>
+                                <button type="submit"
+                                    name="action"
+                                    value="save-value-mappings"
+                                    class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-md text-sm w-full sm:w-auto px-4 py-2 text-center inline-flex items-center justify-center min-w-[145px]">
+                                    Save Value Mappings
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-
-                <div class="flex justify-end space-x-2 pt-2">
-                    <div class="space-x-1 px-1">
-                        <button type="submit"
-                            name="action"
-                            value="save-api-config"
-                            class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-sm text-sm w-full sm:w-auto px-3 py-2 text-center">
-                            Save API Config
-                        </button>
-                    </div>
-                </div>
-            </form>
             </div>
         </div>
     </div>
 </main>
 {% endblock %}
+
+{% block extra-js %}
+<script>
+    function apiConfigWorkflow(openFieldMapModal, openValueMappingModal, fieldMapPrefix, valueMappingPrefix) {
+        return {
+            fieldMapOpen: openFieldMapModal,
+            valueMappingOpen: openValueMappingModal,
+            fieldMapPrefix,
+            valueMappingPrefix,
+            init() {
+                const syncScroll = () => {
+                    document.body.classList.toggle('overflow-hidden', this.fieldMapOpen || this.valueMappingOpen);
+                };
+                this.$watch('fieldMapOpen', syncScroll);
+                this.$watch('valueMappingOpen', syncScroll);
+                syncScroll();
+            },
+            addFieldMapRow() {
+                this.addFormsetRow(`id_${this.fieldMapPrefix}-TOTAL_FORMS`, 'field-map-empty-form', 'field-map-rows');
+            },
+            addValueMappingRow() {
+                this.addFormsetRow(`id_${this.valueMappingPrefix}-TOTAL_FORMS`, 'value-mapping-empty-form', 'value-mapping-rows');
+            },
+            addFormsetRow(totalFormsId, templateId, containerId) {
+                const totalFormsInput = document.getElementById(totalFormsId);
+                const template = document.getElementById(templateId);
+                const container = document.getElementById(containerId);
+
+                if (!totalFormsInput || !template || !container) return;
+
+                const formIndex = parseInt(totalFormsInput.value, 10);
+                const html = template.innerHTML.replace(/__prefix__/g, formIndex);
+                container.insertAdjacentHTML('beforeend', html);
+                totalFormsInput.value = formIndex + 1;
+            },
+        };
+    }
+</script>
+{% endblock extra-js %}
