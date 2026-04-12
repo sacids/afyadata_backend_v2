@@ -1,0 +1,68 @@
+[
+  
+  
+  { "model": "ohkr.reactionaction", "pk": 1, "fields": { "action_name": "Vet Morogoro", "action_type": "chat_response", "message": "Contact Morogoro DVO: +255 784 111 001" }},
+  { "model": "ohkr.reactionaction", "pk": 2, "fields": { "action_name": "Vet Pwani", "action_type": "chat_response", "message": "Contact Pwani RVO: +255 784 111 002" }},
+  { "model": "ohkr.reactionaction", "pk": 3, "fields": { "action_name": "Vet Dodoma", "action_type": "chat_response", "message": "Contact Dodoma DVO: +255 784 111 003" }},
+  { "model": "ohkr.reactionaction", "pk": 4, "fields": { "action_name": "Vet Arusha", "action_type": "chat_response", "message": "Contact Arusha DVO: +255 784 111 004" }},
+  { "model": "ohkr.reactionaction", "pk": 5, "fields": { "action_name": "Vet Mwanza", "action_type": "chat_response", "message": "Contact Mwanza DVO: +255 784 111 005" }},
+  { "model": "ohkr.reactionaction", "pk": 6, "fields": { "action_name": "Vet Tanga", "action_type": "chat_response", "message": "Contact Tanga DVO: +255 784 111 006" }},
+  { "model": "ohkr.reactionaction", "pk": 7, "fields": { "action_name": "Vet Kilimanjaro", "action_type": "chat_response", "message": "Contact Kilimanjaro DVO: +255 784 111 007" }},
+  { "model": "ohkr.reactionaction", "pk": 8, "fields": { "action_name": "Vet Iringa", "action_type": "chat_response", "message": "Contact Iringa DVO: +255 784 111 008" }},
+  { "model": "ohkr.reactionaction", "pk": 9, "fields": { "action_name": "Vet Mbeya", "action_type": "chat_response", "message": "Contact Mbeya DVO: +255 784 111 009" }},
+  { "model": "ohkr.reactionaction", "pk": 10, "fields": { "action_name": "Vet Mara", "action_type": "chat_response", "message": "Contact Mara DVO: +255 784 111 010" }},
+
+
+
+  { "model": "ohkr.reactionaction", "pk": 11, "fields": { "action_name": "Isolation", "action_type": "chat_response", "message": "Safety: Isolate the sick animal immediately." }},
+  { "model": "ohkr.reactionaction", "pk": 12, "fields": { "action_name": "Disinfection", "action_type": "chat_response", "message": "Action: Clean all equipment with disinfectant." }},
+  { "model": "ohkr.reactionaction", "pk": 13, "fields": { "action_name": "Hydration", "action_type": "chat_response", "message": "Advice: Ensure the animal has access to clean, cool water." }},
+  { "model": "ohkr.reactionaction", "pk": 14, "fields": { "action_name": "Carcass Disposal", "action_type": "chat_response", "message": "Warning: Bury carcasses deep (2m) and cover with lime." }},
+  { "model": "ohkr.reactionaction", "pk": 15, "fields": { "action_name": "Milk Warning", "action_type": "chat_response", "message": "Health: Do not consume or sell milk from this animal." }},
+  { "model": "ohkr.reactionaction", "pk": 16, "fields": { "action_name": "Zoonotic Alert", "action_type": "chat_response", "message": "Caution: This disease may affect humans. Wear gloves." }},
+  { "model": "ohkr.reactionaction", "pk": 17, "fields": { "action_name": "Movement Ban", "action_type": "chat_response", "message": "Notice: Stop all livestock movement from this boma." }},
+  { "model": "ohkr.reactionaction", "pk": 18, "fields": { "action_name": "Wound Care", "action_type": "chat_response", "message": "Tip: Apply antiseptic or fly repellent to open wounds." }},
+  { "model": "ohkr.reactionaction", "pk": 19, "fields": { "action_name": "Shade Advice", "action_type": "chat_response", "message": "Advice: Keep the animal in a shaded, well-ventilated area." }},
+  { "model": "ohkr.reactionaction", "pk": 20, "fields": { "action_name": "Sample Request", "action_type": "chat_response", "message": "Request: Keep blood/tissue samples for the lab." }},
+
+  
+
+  { "model": "ohkr.reactionaction", "pk": 21, "fields": { "action_name": "Nav: FMD Guide", "action_type": "navigation", "message": "Opening FMD Guide...", "metadata": {"screen": "DocView", "id": "fmd_101"} }},
+  { "model": "ohkr.reactionaction", "pk": 22, "fields": { "action_name": "Nav: Anthrax Guide", "action_type": "navigation", "message": "Opening Anthrax Guide...", "metadata": {"screen": "DocView", "id": "anthrax_102"} }},
+  { "model": "ohkr.reactionaction", "pk": 23, "fields": { "action_name": "Nav: PPR Guide", "action_type": "navigation", "message": "Opening PPR Guide...", "metadata": {"screen": "DocView", "id": "ppr_103"} }},
+  { "model": "ohkr.reactionaction", "pk": 24, "fields": { "action_name": "Nav: ASF Guide", "action_type": "navigation", "message": "Opening Pig Fever Guide...", "metadata": {"screen": "DocView", "id": "asf_104"} }},
+  { "model": "ohkr.reactionaction", "pk": 25, "fields": { "action_name": "Alert: High Priority", "action_type": "alert", "message": "REPORT SENT TO NATIONAL EOC" }},
+  { "model": "ohkr.reactionaction", "pk": 26, "fields": { "action_name": "Nav: Map Nearby Vets", "action_type": "navigation", "message": "Finding nearby veterinarians...", "metadata": {"screen": "MapScreen", "layer": "vets"} }},
+  { "model": "ohkr.reactionaction", "pk": 27, "fields": { "action_name": "Nav: Feedback Form", "action_type": "navigation", "message": "Help us improve first aid responses.", "metadata": {"screen": "FeedbackScreen"} }},
+  { "model": "ohkr.reactionaction", "pk": 28, "fields": { "action_name": "Instruction: Photos", "action_type": "chat_response", "message": "Please take photos of the lesions if possible." }},
+  { "model": "ohkr.reactionaction", "pk": 29, "fields": { "action_name": "Instruction: GPS", "action_type": "chat_response", "message": "Ensure your GPS is on to mark the exact location." }},
+  { "model": "ohkr.reactionaction", "pk": 30, "fields": { "action_name": "Action: SMS Sent", "action_type": "alert", "message": "Notification SMS sent to District Admin." }},
+
+  
+
+
+
+  { "model": "ohkr.formreaction", "pk": 1, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Cattle FMD Cluster", "condition": "${species}='cattle' and (selected(${signs}, 'wounds_mouth') or selected(${signs}, 'salivation'))", "priority": 1, "actions": [11, 17, 21] }},
+  { "model": "ohkr.formreaction", "pk": 2, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Pig ASF Alert", "condition": "${species}='pig' and selected(${signs}, 'fever') and selected(${signs}, 'death')", "priority": 1, "actions": [11, 14, 24] }},
+  { "model": "ohkr.formreaction", "pk": 3, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Small Ruminant PPR", "condition": "(${species}='goat' or ${species}='sheep') and selected(${signs}, 'nasal_discharge') and selected(${signs}, 'diarrhea')", "priority": 2, "actions": [11, 13, 23] }},
+  { "model": "ohkr.formreaction", "pk": 4, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Anthrax Suspicion", "condition": "selected(${signs}, 'sudden_death') and selected(${signs}, 'bleeding_orifices')", "priority": 0, "actions": [14, 16, 22, 25] }},
+
+
+
+  { "model": "ohkr.formreaction", "pk": 5, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Morogoro Mortality", "condition": "${region}='morogoro' and ${number_dead} > 0", "priority": 5, "actions": [1, 14] }},
+  { "model": "ohkr.formreaction", "pk": 6, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Pwani Mortality", "condition": "${region}='pwani' and ${number_dead} > 0", "priority": 5, "actions": [2, 14] }},
+  { "model": "ohkr.formreaction", "pk": 7, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Dodoma Mortality", "condition": "${region}='dodoma' and ${number_dead} > 0", "priority": 5, "actions": [3, 14] }},
+
+
+
+  { "model": "ohkr.formreaction", "pk": 8, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Young Animal Crisis", "condition": "${age} < 0.5 and ${number_dead} > 2", "priority": 3, "actions": [11, 13, 30] }},
+  { "model": "ohkr.formreaction", "pk": 9, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "High Mortality Alert", "condition": "${number_dead} > 10", "priority": 1, "actions": [25, 30, 17] }},
+
+  
+
+  { "model": "ohkr.formreaction", "pk": 10, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "Brucellosis Risk", "condition": "selected(${signs}, 'abortion') and ${species}='cattle'", "priority": 4, "actions": [15, 16, 20] }},
+
+ 
+  { "model": "ohkr.formreaction", "pk": 11, "fields": { "form_id": "79d4d3ad-2db3-48f0-9b65-12f4aa490ad1", "rule_name": "General Fever Advice", "condition": "selected(${signs}, 'fever')", "priority": 10, "actions": [19, 13] }}
+  
+]

@@ -8,6 +8,7 @@ from .v1.projects import *
 from .v1.surveys import *
 from .v1.form_data import *
 from .v1.chat import *
+from .v1.form_reactions import *
 from .v1.language import LanguageViewSet, LanguageVersionViewSet, language_export, bulk_upload
 
 
@@ -36,6 +37,14 @@ urlpatterns = [
     path('v1/project/request-access', ProjectView.as_view({'post': 'request_access'})),
     path('v1/project/unsubscribe', ProjectView.as_view({'post': 'unsubscribe'})),
     path('v1/project/create', ProjectView.as_view({'post': 'create'})),
+    
+    
+    
+    # Form Reactions (Decision Tree Logic)
+    path('v1/form-reactions', FormReactionView.as_view({'get': 'list'})),
+    path('v1/form-reactions/sync', FormReactionView.as_view({'post': 'sync'})),
+    path('v1/form-reactions/<str:pk>', FormReactionView.as_view({'get': 'retrieve'})),
+    
 
     # Form definition
     path("v1/all-form-definition/<str:project_id>",FormDefinitionView.as_view({"get": "lists", "post": "create"})),
@@ -60,6 +69,8 @@ urlpatterns = [
     # Mobile app endpoints (compatible with LanguageManager)
     path('v1/languages/', LanguageViewSet.as_view({'get': 'available'}), name='available-languages'),
     path('v1/translations/<str:code>/', LanguageViewSet.as_view({'get': 'translations'}), name='language-translations'),
+    
+    
 
   
 ]

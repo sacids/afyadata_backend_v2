@@ -44,3 +44,17 @@ class ScoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClinicalSignScore
         fields = '__all__'
+
+
+class ReactionActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReactionAction
+        fields = ['id', 'action_type', 'message', 'metadata']
+
+class FormReactionSerializer(serializers.ModelSerializer):
+    # This will now serialize the Many-to-Many list of actions
+    actions = ReactionActionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = FormReaction
+        fields = ['id', 'form', 'rule_name', 'condition', 'priority', 'actions']
