@@ -31,14 +31,10 @@ SECRET_KEY = config(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config(
-    "DEBUG",
-    default=True,
-    cast=lambda v: str(v).strip().lower() in ("1", "true", "yes", "on"),
-)
+DEBUG = True
 
-ALLOWED_HOSTS = config("ALLOWED_HOST", default="*", cast=lambda v: [s.strip() for s in v.split(",") if s.strip()])
-
+# ALLOWED_HOSTS = config("ALLOWED_HOST", default="*", cast=lambda v: [s.strip() for s in v.split(",") if s.strip()])
+ALLOWED_HOSTS = ["*"]
 # Login URL
 LOGIN_URL = "/auth/login"
 LOGIN_REDIRECT_URL = "/projects/lists"
@@ -211,6 +207,7 @@ SIMPLE_JWT = {
 }
 HAS_WHITENOISE = importlib.util.find_spec("whitenoise") is not None
 
+
 # CELERY Configuration
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
@@ -219,13 +216,14 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Africa/Dar_es_Salaam"
 
+
 ##### Logging errors in django #####
 import logging
 
 logging.basicConfig(
-    level = logging.INFO,
-    format = '%(asctime)s %(levelname)s %(message)s',
-    filename = 'info.log',
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    filename="info.log",
 )
 
 logging.basicConfig(
@@ -238,3 +236,13 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     filename="error.log",
 )
+
+
+import sys
+
+# Check if we're in development and Redis is not needed
+if "runserver" in sys.argv or "migrate" in sys.argv or "makemigrations" in sys.argv:
+    # Use in-memory backend for development
+    CELERY_BROKER_URL = "memory://"
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True

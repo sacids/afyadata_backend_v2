@@ -31,6 +31,8 @@ class ConversationView(viewsets.ViewSet):
         """
         if request.data:
             data = request.data
+            print("in instance")
+            print(data["instance"])
 
             from apps.projects.models import FormData
 
