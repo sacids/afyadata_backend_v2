@@ -29,6 +29,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Case, Value, When, CharField
 
 
+import requests
+
+
 class FormDataAjaxDatatableView(AjaxDatatableView):
     model = FormData
 
@@ -233,16 +236,6 @@ def get_table_header_name(jform):
                 tb_name = v.get("name")
                 names[k] = tb_name
     return names
-
-
-def get_table_config1(jForm):
-    config = {}
-    # print(jForm["pages"])
-    for item in jForm["pages"]:
-        if item["type"] == "group":
-            for k, v in item["fields"][0].items():
-                config[k] = v
-    return config
 
 
 def get_table_config(jForm):
@@ -559,3 +552,49 @@ def normalize_select_multiple(val):
 def map_codes_to_labels(val, option_map: dict):
     codes = normalize_select_multiple(val)
     return [option_map.get(code, code) for code in codes]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def push_project_to_hub(project):
+    """
+    Sends project details to the Central Hub.
+    """
+    headers = {
+        "X-Api-Key": settings.AFYADATA_HUB_API_KEY,
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "name": project.title,
+        "description": f"Project code: {project.code}", # Or use a description field if available
+        "instance_url": settings.CURRENT_INSTANCE_EXTERNAL_URL,
+        "remote_project_id": str(project.id)
+    }
+
+    try:
+        response = requests.post(settings.AFYADATA_HUB_URL, json=payload, headers=headers, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        # Log error but don't crash the user's save process
+        print(f"Failed to sync with Hub: {e}")
+        return None

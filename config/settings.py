@@ -246,3 +246,10 @@ if "runserver" in sys.argv or "migrate" in sys.argv or "makemigrations" in sys.a
     CELERY_BROKER_URL = "memory://"
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
+
+
+# settings.py
+AFYADATA_HUB_URL = "https://hub.afyadata.sacids.org/api/v1/projects/register/"
+# AFYADATA_HUB_API_KEY = "afyadata_your_unique_instance_key_here"
+AFYADATA_HUB_API_KEY = "afyadata_Zsm1jjcSbSDCt289e8h-Ioj8QratlLC5AIbbQGSEW6w"
+CURRENT_INSTANCE_EXTERNAL_URL = "https://127.0.0.1:8040"
