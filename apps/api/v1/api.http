@@ -114,3 +114,24 @@ Authorization: Bearer {{accesstoken}}
 Content-Type: application/json
 
 {"external_id": "daff4474-376f-4ed9-b880-4c09cf0c7bd5", "text": "Moja moja"}
+
+
+
+
+### Register a Project on the Central Hub
+POST http://hub.afyadata.sacids.org:8000/api/v1/projects/register/
+Content-Type: application/json
+X-Api-Key: afyadata_Zsm1jjcSbSDCt289e8h-Ioj8QratlLC5AIbbQGSEW6w
+
+{
+    "name": "Zanzibar Malaria Surveillance",
+    "description": "Testing the hub registration via VS Code",
+    "instance_url": "http://127.0.0.1:8040",
+    "remote_project_id": "999"
+}
+
+###
+
+### Search for Projects (Discovery)
+GET http://hub.afyadata.sacids.org:8000/api/v1/projects/discover/?search=Zanzibar
+Accept: application/json

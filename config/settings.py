@@ -249,7 +249,6 @@ if "runserver" in sys.argv or "migrate" in sys.argv or "makemigrations" in sys.a
 
 
 # settings.py
-AFYADATA_HUB_URL = "https://hub.afyadata.sacids.org/api/v1/projects/register/"
-# AFYADATA_HUB_API_KEY = "afyadata_your_unique_instance_key_here"
-AFYADATA_HUB_API_KEY = "afyadata_Zsm1jjcSbSDCt289e8h-Ioj8QratlLC5AIbbQGSEW6w"
-CURRENT_INSTANCE_EXTERNAL_URL = "https://127.0.0.1:8040"
+AFYADATA_HUB_URL = config("AFYADATA_HUB_URL")
+AFYADATA_HUB_API_KEY = config("AFYADATA_HUB_API_KEY")
+CURRENT_INSTANCE_EXTERNAL_URL = config("CURRENT_INSTANCE_EXTERNAL_URL")

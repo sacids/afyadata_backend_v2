@@ -55,7 +55,7 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
         aDefn = FormDefinition.objects.get(id=pk)
         cols = get_table_config(aDefn.form_defn)
 
-        #form definition
+        # form definition
         jForm = json.loads(aDefn.form_defn)
         dalili_fields = ["dalili", "dalil_mfugo"]
         dalili_map = {}
@@ -160,9 +160,13 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
                     related_obj = getattr(record, field_name)
                     row.append(str(related_obj) if related_obj else "")
                 elif field_name == "dalili" or field_name == "dalil_mfugo":
-                    # Handle dalili field          
-                    codes = normalize_select_multiple(form_data.get("dalili") or form_data.get("dalil_mfugo", []))
-                    labels = [dalili_map.get(code, code) for code in codes]  # fallback to code if missing
+                    # Handle dalili field
+                    codes = normalize_select_multiple(
+                        form_data.get("dalili") or form_data.get("dalil_mfugo", [])
+                    )
+                    labels = [
+                        dalili_map.get(code, code) for code in codes
+                    ]  # fallback to code if missing
                     row.append(", ".join(labels))
                     # row.append("Label" if form_data.get("dalili", "") == "1" else "")
                 elif hasattr(record, field_name):
@@ -468,7 +472,9 @@ def save_uploaded_file_snapshots(file_snapshots, upload_subdir):
             temp_path = item["temp_path"]
             try:
                 with open(temp_path, "rb") as tmp_file:
-                    path = default_storage.save(full_path, File(tmp_file, name=unique_name))
+                    path = default_storage.save(
+                        full_path, File(tmp_file, name=unique_name)
+                    )
             finally:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
@@ -508,13 +514,13 @@ def generate_code(length=5):
     return "".join(random.choices(chars, k=length))
 
 
-def generate_unique_code(model, field='code', length=5):
+def generate_unique_code(model, field="code", length=5):
     while True:
         code = generate_code(length)
         if not model.objects.filter(**{field: code}).exists():
             return code
-    
-        
+
+
 def build_option_map(jform: dict, field_name: str, lang="Swahili (sw)"):
     label_key = f"label::{lang}"
     for page in jform.get("pages", []):
@@ -523,7 +529,11 @@ def build_option_map(jform: dict, field_name: str, lang="Swahili (sw)"):
                 field = field_group[field_name]
                 options = field.get("options", [])
                 return {
-                    opt["name"]: (opt.get(label_key) or opt.get("label::English (en)") or opt["name"])
+                    opt["name"]: (
+                        opt.get(label_key)
+                        or opt.get("label::English (en)")
+                        or opt["name"]
+                    )
                     for opt in options
                 }
     return {}
@@ -554,44 +564,28 @@ def map_codes_to_labels(val, option_map: dict):
     return [option_map.get(code, code) for code in codes]
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def push_project_to_hub(project):
     """
     Sends project details to the Central Hub.
     """
     headers = {
         "X-Api-Key": settings.AFYADATA_HUB_API_KEY,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
-    
+
     payload = {
         "name": project.title,
-        "description": f"Project code: {project.code}", # Or use a description field if available
+        "description": f"Project code: {project.code}",  # Or use a description field if available
         "instance_url": settings.CURRENT_INSTANCE_EXTERNAL_URL,
-        "remote_project_id": str(project.id)
+        "remote_project_id": str(project.id),
     }
 
     try:
-        response = requests.post(settings.AFYADATA_HUB_URL, json=payload, headers=headers, timeout=10)
+        response = requests.post(
+            settings.AFYADATA_HUB_URL, json=payload, headers=headers, timeout=10
+        )
+        print(settings.AFYADATA_HUB_URL)
+        print(headers)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
