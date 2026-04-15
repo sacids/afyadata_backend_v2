@@ -574,8 +574,8 @@ def push_project_to_hub(project):
     }
 
     payload = {
-        "name": project.title,
-        "description": f"Project code: {project.code}",  # Or use a description field if available
+        "title": project.title,
+        "description": project.description,
         "instance_url": settings.CURRENT_INSTANCE_EXTERNAL_URL,
         "remote_project_id": str(project.id),
     }

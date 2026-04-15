@@ -162,6 +162,90 @@ class ProjectView(viewsets.ViewSet):
                 status=status.HTTP_200_OK,
             )
 
+    def join(self, request, pk=None):
+        """Request access to project"""
+        if not pk:
+            return Response(
+                {"error": True, "message": "Missing project id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            project = Project.objects.get(id=pk)
+
+            # check if user is already a member
+            if ProjectMember.objects.filter(
+                project=project, member=request.user, active=True
+            ).exists():
+
+                # Return project details
+                project_data = ProjectSerializer(project).data
+
+                # response
+                return Response(
+                    {
+                        "error": False,
+                        "message": "You are already a member of this project",
+                        "project": project_data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                # first check if is private
+                if project.access == "private":
+                    ProjectMember.objects.create(
+                        project=project, member=request.user, active=True
+                    )
+
+                    # response
+                    return Response(
+                        {"error": False, "message": "Your request has approved"},
+                        status=status.HTTP_200_OK,
+                    )
+
+                else:
+                    # check if project is auto_join is true
+                    if project.auto_join:
+                        ProjectMember.objects.create(
+                            project=project, member=request.user, active=True
+                        )
+                        # return Response(
+                        #     {"error": False, "message": "Your request has approved"},
+                        #     status=status.HTTP_200_OK,
+                        # )
+
+                        project_data = ProjectSerializer(project).data
+
+                        # response
+                        return Response(
+                            {
+                                "error": False,
+                                "message": "Your request has approved",
+                                "project": project_data,
+                            },
+                            status=status.HTTP_200_OK,
+                        )
+                    else:
+                        ProjectMember.objects.create(
+                            project=project, member=request.user, active=False
+                        )
+
+                        # TODO: send notification to project owner
+
+                        # response
+                        return Response(
+                            {
+                                "error": False,
+                                "message": "Your request received, awaiting approval",
+                            },
+                            status=status.HTTP_200_OK,
+                        )
+        except:
+            return Response(
+                {"error": True, "message": "Project does not exist"},
+                status=status.HTTP_200_OK,
+            )
+
     def unsubscribe(self, request, pk=None):
         """Unsubscribe from project"""
         code = request.data.get("code")

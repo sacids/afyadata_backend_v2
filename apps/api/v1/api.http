@@ -1,6 +1,6 @@
 @hostname = https://fao.afyadata.sacids.org/api/v1/
 @hostname = https://fao.afyadata.sacids.org/api/v1/
-//@hostname = http://127.0.0.1:8000/api/v1/
+@hostname = http://127.0.0.1:80/api/v1/
 @login_url = {{hostname}}token/
 @form_definition_url = {{hostname}}/api/v2/form-defn/
 
@@ -135,3 +135,36 @@ X-Api-Key: afyadata_Zsm1jjcSbSDCt289e8h-Ioj8QratlLC5AIbbQGSEW6w
 ### Search for Projects (Discovery)
 GET http://hub.afyadata.sacids.org:8000/api/v1/projects/discover/?search=Zanzibar
 Accept: application/json
+
+
+
+### Register a Project on the Central Hub
+# @name register
+POST http://hub.afyadata.sacids.org:8040/api/v1/register
+Content-Type: application/json
+
+{
+     "username": "0787878787_BP2A.250a",
+     "fullName": "Eric Beda",
+     "phoneNumber": "0978787878",
+     "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
+     "password": "Kitimoto",
+     "passwordConfirm": "Kitimoto"
+}
+
+
+
+
+### Register a Project on the Central Hub
+POST http://hub.afyadata.sacids.org:8040/api/v1/register
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.access}}
+
+{
+     "username": "0787878787_BP2A.250a",
+     "fullName": "Eric Beda",
+     "phoneNumber": "0978787878",
+     "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
+     "password": "Kitimoto",
+     "passwordConfirm": "Kitimoto"
+}
