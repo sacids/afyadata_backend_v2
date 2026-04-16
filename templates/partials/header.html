@@ -12,6 +12,12 @@
                 </a>
 
                 <div class="hidden md:flex md:items-center md:gap-6">
+                    <a href="{% url 'dashboard:summaries' %}"
+                        class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'dashboard' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                        Dashboard
+                        <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'dashboard' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
+                    </a>
+
                     {% if perms.projects.view_project %}
                         <a href="{% url 'projects:lists' %}"
                             class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'projects' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
@@ -20,13 +26,13 @@
                         </a>
                     {% endif %}
 
-                    {% if perms.ohkr.view_location or perms.ohkr.view_disease or perms.ohkr.view_specie or perms.ohkr.view_clinicalsign or perms.ohkr.view_response %}
+                    <!-- {% if perms.ohkr.view_location or perms.ohkr.view_disease or perms.ohkr.view_specie or perms.ohkr.view_clinicalsign or perms.ohkr.view_response %}
                         <a href="{% url 'ohkr:diseases' %}"
                             class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'ohkr' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
                             OHKR
                             <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'ohkr' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
                         </a>
-                    {% endif %}
+                    {% endif %} -->
 
                     {% if perms.auth.view_user or perms.auth.view_group %}
                         <a href="{% if perms.auth.view_user %}{% url 'auth:users' %}{% else %}{% url 'auth:roles' %}{% endif %}"
@@ -89,18 +95,24 @@
                 class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'dashboard' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
                 Dashboard
             </a>
+
+            <a href="{% url 'dashboard:summaries' %}"
+                class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'dashboard' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                Dashboard
+            </a>
+
             {% if perms.projects.view_project %}
                 <a href="{% url 'projects:lists' %}"
                     class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'projects' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
                     Projects
                 </a>
             {% endif %}
-            {% if perms.ohkr.view_location or perms.ohkr.view_disease or perms.ohkr.view_specie or perms.ohkr.view_clinicalsign or perms.ohkr.view_response %}
+            <!-- {% if perms.ohkr.view_location or perms.ohkr.view_disease or perms.ohkr.view_specie or perms.ohkr.view_clinicalsign or perms.ohkr.view_response %}
                 <a href="{% url 'ohkr:diseases' %}"
                     class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'ohkr' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
                     OHKR
                 </a>
-            {% endif %}
+            {% endif %} -->
             {% if perms.auth.view_user or perms.auth.view_group %}
                 <a href="{% if perms.auth.view_user %}{% url 'auth:users' %}{% else %}{% url 'auth:roles' %}{% endif %}"
                     class="block rounded-xl px-3 py-2.5 text-sm font-medium {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' or current_namespace == 'auth' and current_url_name == 'roles' or current_namespace == 'auth' and current_url_name == 'create-role' or current_namespace == 'auth' and current_url_name == 'edit-role' %}bg-red-100 text-red-900{% else %}text-stone-700 hover:bg-stone-100 hover:text-stone-900{% endif %}">
