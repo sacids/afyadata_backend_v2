@@ -222,7 +222,8 @@ def build_form_management_links(user, survey):
     if user.has_perm("projects.change_formdefinition"):
         links["Update Form"] = reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk})
         links["API Config"] = reverse_lazy("projects:form-api-config", kwargs={"pk": survey.pk})
-        links["Attachments"] = reverse_lazy("projects:form-attachments", kwargs={"pk": survey.pk})
+        links["Reference Data"] = reverse_lazy("projects:form-reference-data", kwargs={"pk": survey.pk})
+        links["Form Reactions"] = ""
     return links
 
 
@@ -800,17 +801,14 @@ class SurveyAPIConfig(PermissionRequiredMixin, generic.TemplateView):
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
-            {
-                "name": survey.title,
-                "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),
-            },
+            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),},
             {"name": "API Config", "url": "#"},
         ]
 
-        context["links"] = {
-            "Update Form": reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk}),
-            "API Config": "#",
-        }
+        # Add links to context
+        context["links"] = build_form_management_links(self.request.user, survey)
+
+        # render view
         return context
 
     def get(self, request, *args, **kwargs):
@@ -933,8 +931,8 @@ class SurveyAPIConfig(PermissionRequiredMixin, generic.TemplateView):
         return render(request, self.template_name, context)
 
 
-class SurveyRuleView(PermissionRequiredMixin, generic.TemplateView):
-    """Survey Attachment"""
+class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
+    """Survey Reference Data"""
     permission_required = "projects.change_formdefinition"
     def get(self, request, *args, **kwargs):
         # survey
@@ -944,21 +942,21 @@ class SurveyRuleView(PermissionRequiredMixin, generic.TemplateView):
         context = {
             "title": survey.title,
             "survey": survey,
-            "clinical_signs" : ClinicalSign.objects.order_by('name').all()
         }
 
         # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
-            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
+            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),},
+            {"name": "Reference Data", "url": "#"},
         ]
 
         # Add links to context
         context["links"] = build_form_management_links(request.user, survey)
 
         # render view
-        return render(request, "surveys/rules.html", context=context)
+        return render(request, "surveys/reference_data.html", context=context)
     
     def post(self, request, *args, **kwargs):
         # survey

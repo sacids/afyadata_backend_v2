@@ -26,9 +26,8 @@ urlpatterns = [
     path('forms/<str:pk>/delete', views.SurveyDeleteView.as_view(), name='delete-form'),
     path("forms/<str:pk>/definition", views.form_definition, name="form-definition"),
 
-    # rules + OHKR
-    path('forms/<str:pk>/attachments', views.SurveyAttachmentView.as_view(), name='form-attachments'),
-    path('forms/<str:pk>/rules', views.SurveyRuleView.as_view(), name='form-rules'),
+    # OHKR {Reference Data + Form Reactions}
+    path('forms/<str:pk>/reference-data', views.SurveyReferenceDataView.as_view(), name='form-reference-data'),
 
     # form data
     path('forms/<str:pk>/data', views.SurveyDataView.as_view(), name='form-data'),
@@ -43,4 +42,5 @@ urlpatterns = [
     path('projects-datatable', ajax_datatable_views.ProjectAjaxDatatableView.as_view(), name="dt-projects"),
     path('members-datatable/<str:pk>', ajax_datatable_views.MembersAjaxDatatableView.as_view(), name="dt-members"),
     path('forms-datatable/<str:pk>', ajax_datatable_views.FormsAjaxDatatableView.as_view(), name="dt-forms"),
+    path('reference-data-datatable/<str:pk>', ajax_datatable_views.FormReferenceDataAjaxDatatableView.as_view(), name="dt-form-reference-data"),
 ]

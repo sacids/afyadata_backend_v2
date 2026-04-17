@@ -180,6 +180,41 @@ class ClinicalSignScore(models.Model):
         verbose_name_plural = "7. Scores"
 
 
+class ReferenceData(models.Model):
+    RD_TYPE_CHOICES = (
+        ("administrative_level_0", "Country"),
+        ("administrative_level_1", "Region"),
+        ("administrative_level_2", "District"),
+        ("specie", "Specie"),
+        ("clinical_sign", "Clinical Sign"),
+    )
+        
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    form = models.ForeignKey(FormDefinition, on_delete=models.CASCADE)
+    name = models.CharField(max_length=150)
+    code = models.CharField(max_length=10, null=True, blank=True)
+    external_id = models.CharField(max_length=150, null=True, blank=True)
+    rd_type = models.CharField(max_length=50, choices=RD_TYPE_CHOICES, default="Clinical Sign")
+    language_code = models.CharField(max_length=10, null=True, blank=True)
+    source = models.CharField(max_length=20, null=True, blank=True, default="OHKR")
+    active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    @property
+    def last_updated(self):
+        return self.updated_at.strftime("%Y%m%d%H%M%S")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = "ohkr_reference_data"
+        managed = True
+        verbose_name = "Reference Data"
+        verbose_name_plural = "1. Reference Data"
+
+
 class ReactionAction(models.Model):
     ACTION_TYPES = [
         ("chat_response", "Chat Response"),

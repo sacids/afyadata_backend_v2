@@ -18,14 +18,25 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from django.db import transaction
 from .models import *
-from .utils import sync_locations
+from .utils import sync_locations, sync_reference_values
 from apps.esb.services import get_auth_headers
+from apps.projects.models import FormDefinition
 
 
 class OHKRPermissionMixin(PermissionRequiredMixin):
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super(OHKRPermissionMixin, self).dispatch(*args, **kwargs)
+
+
+def get_reference_form(request):
+    form_id = request.GET.get("form_id")
+    if not form_id:
+        return None
+    try:
+        return FormDefinition.objects.get(pk=form_id)
+    except (FormDefinition.DoesNotExist, ValueError):
+        raise FormDefinition.DoesNotExist
 
 
 # Create your views here.
@@ -79,24 +90,37 @@ class LocationSyncView(OHKRPermissionMixin, generic.CreateView):
             headers.update(get_auth_headers())
 
         try:
+            target_form = get_reference_form(self.request)
+
             # Fetch data from remote service
             response = requests.get(api_url, headers=headers, timeout=30)
             response.raise_for_status()
             remote_data = response.json()
 
             # result
-            result = sync_locations(remote_data, source="RDS", active=True)
+            result = sync_locations(
+                remote_data,
+                source="RDS",
+                active=True,
+                form=target_form,
+            )
 
             # return response
             return JsonResponse(
                 {
                     "success": True,
-                    "success_msg": "Location synced",
+                    "success_msg": "Location reference data synced"
+                    if target_form
+                    else "Location synced",
                     "created": result['created'],
                     "updated": result['updated']
                 }
             )
 
+        except FormDefinition.DoesNotExist:
+            return JsonResponse(
+                {"success": False, "error_msg": "Reference form not found."}, status=404
+            )
         except requests.RequestException as e:
             return JsonResponse(
                 {"success": False, "error_msg": f"Failed to sync location: {str(e)}"}
@@ -238,36 +262,54 @@ class SpecieSyncView(OHKRPermissionMixin, generic.CreateView):
             headers.update(get_auth_headers())
 
         try:
+            target_form = get_reference_form(self.request)
+
             # Fetch data from remote service
             response = requests.get(api_url, headers=headers, timeout=30)
             response.raise_for_status()
             remote_data = response.json()
 
-            created, updated = 0, 0
-            with transaction.atomic():
-                for item in remote_data["values"]:
-                    obj, was_created = Specie.objects.update_or_create(
-                        external_id=item["id"],
-                        defaults={
-                            "name": item["name"],
-                            "source": "RDS",
-                            "language_code": item["language_code"],
-                        },
-                    )
-                    # increment created and updated
-                    created += was_created
-                    updated += not was_created
+            if target_form:
+                result = sync_reference_values(
+                    remote_data.get("values", []),
+                    form=target_form,
+                    rd_type="specie",
+                    source="RDS",
+                    active=True,
+                )
+                created = result["created"]
+                updated = result["updated"]
+            else:
+                created, updated = 0, 0
+                with transaction.atomic():
+                    for item in remote_data["values"]:
+                        _, was_created = Specie.objects.update_or_create(
+                            external_id=item["id"],
+                            defaults={
+                                "name": item["name"],
+                                "source": "RDS",
+                                "language_code": item["language_code"],
+                            },
+                        )
+                        created += was_created
+                        updated += not was_created
 
             # return response
             return JsonResponse(
                 {
                     "success": True,
-                    "success_msg": "Species synced",
+                    "success_msg": "Species reference data synced"
+                    if target_form
+                    else "Species synced",
                     "created": created,
                     "updated": updated,
                 }
             )
 
+        except FormDefinition.DoesNotExist:
+            return JsonResponse(
+                {"success": False, "error_msg": "Reference form not found."}, status=404
+            )
         except requests.RequestException as e:
             return JsonResponse(
                 {"success": False, "error_msg": f"Failed to sync species: {str(e)}"}
@@ -325,36 +367,55 @@ class ClinicalSignSyncView(OHKRPermissionMixin, generic.CreateView):
             headers.update(get_auth_headers())
 
         try:
+            target_form = get_reference_form(self.request)
+
             # Fetch data from remote service
             response = requests.get(api_url, headers=headers, timeout=30)
             response.raise_for_status()
             remote_data = response.json()
 
-            created, updated = 0, 0
-            with transaction.atomic():
-                for item in remote_data["values"]:
-                    obj, was_created = ClinicalSign.objects.update_or_create(
-                        external_id=item["id"],
-                        defaults={
-                            "name": item["name"],
-                            "source": "RDS",
-                            "language_code": item["language_code"],
-                        },
-                    )
-                    # increment created and updated
-                    created += was_created
-                    updated += not was_created
+            if target_form:
+                result = sync_reference_values(
+                    remote_data.get("values", []),
+                    form=target_form,
+                    rd_type="clinical_sign",
+                    source="RDS",
+                    active=True,
+                    code_key="code",
+                )
+                created = result["created"]
+                updated = result["updated"]
+            else:
+                created, updated = 0, 0
+                with transaction.atomic():
+                    for item in remote_data["values"]:
+                        _, was_created = ClinicalSign.objects.update_or_create(
+                            external_id=item["id"],
+                            defaults={
+                                "name": item["name"],
+                                "source": "RDS",
+                                "language_code": item["language_code"],
+                            },
+                        )
+                        created += was_created
+                        updated += not was_created
 
             # return response
             return JsonResponse(
                 {
                     "success": True,
-                    "success_msg": "Clinical signs synced",
+                    "success_msg": "Clinical sign reference data synced"
+                    if target_form
+                    else "Clinical signs synced",
                     "created": created,
                     "updated": updated,
                 }
             )
 
+        except FormDefinition.DoesNotExist:
+            return JsonResponse(
+                {"success": False, "error_msg": "Reference form not found."}, status=404
+            )
         except requests.RequestException as e:
             return JsonResponse(
                 {"success": False, "error_msg": f"Failed to sync clinical signs: {str(e)}"}

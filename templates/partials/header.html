@@ -13,14 +13,14 @@
 
                 <div class="hidden md:flex md:items-center md:gap-6">
                     <a href="{% url 'dashboard:summaries' %}"
-                        class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'dashboard' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                        class="relative px-1 py-2 text-sm font-semibold transition {% if current_namespace == 'dashboard' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
                         Dashboard
                         <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'dashboard' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
                     </a>
 
                     {% if perms.projects.view_project %}
                         <a href="{% url 'projects:lists' %}"
-                            class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'projects' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                            class="relative px-1 py-2 text-sm font-semibold transition {% if current_namespace == 'projects' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
                             Projects
                             <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'projects' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
                         </a>
@@ -36,7 +36,7 @@
 
                     {% if perms.auth.view_user or perms.auth.view_group %}
                         <a href="{% if perms.auth.view_user %}{% url 'auth:users' %}{% else %}{% url 'auth:roles' %}{% endif %}"
-                            class="relative px-1 py-2 text-sm font-semibold tracking-[0.02em] transition {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' or current_namespace == 'auth' and current_url_name == 'roles' or current_namespace == 'auth' and current_url_name == 'create-role' or current_namespace == 'auth' and current_url_name == 'edit-role' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
+                            class="relative px-1 py-2 text-sm font-semibold transition {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' or current_namespace == 'auth' and current_url_name == 'roles' or current_namespace == 'auth' and current_url_name == 'create-role' or current_namespace == 'auth' and current_url_name == 'edit-role' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
                             Users
                             <span class="absolute inset-x-0 -bottom-[14px] h-0.5 rounded-full {% if current_namespace == 'auth' and current_url_name == 'users' or current_namespace == 'auth' and current_url_name == 'create-user' or current_namespace == 'auth' and current_url_name == 'edit-user' or current_namespace == 'auth' and current_url_name == 'roles' or current_namespace == 'auth' and current_url_name == 'create-role' or current_namespace == 'auth' and current_url_name == 'edit-role' %}bg-red-900{% else %}bg-transparent{% endif %}"></span>
                         </a>
@@ -170,7 +170,7 @@
                 </nav>
                 {% endif %}
 
-                <h1 class="text-xl font-semibold tracking-tight text-stone-900 sm:text-[1.36rem]">
+                <h1 class="py-1 text-sm font-semibold tracking-tight text-stone-900 sm:text-[1.2rem]">
                     {{ title|default:'Dashboard' }}
                 </h1>
             </div>
@@ -181,7 +181,7 @@
                     {% for name, url in links.items %}
                     <li>
                         <a href="{{ url }}"
-                           class="inline-flex rounded-full px-3.5 py-2 text-sm font-medium transition {% if request.path == url %}bg-slate-900 text-white shadow-sm{% else %}text-stone-600 hover:bg-stone-100 hover:text-stone-900{% endif %}">
+                           class="inline-flex rounded-full px-3 py-2 text-xs font-medium transition {% if request.path == url %}bg-slate-900 text-white shadow-sm{% else %}text-stone-600 hover:bg-stone-100 hover:text-stone-900{% endif %}">
                             {{ name }}
                         </a>
                     </li>

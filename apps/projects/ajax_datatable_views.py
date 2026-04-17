@@ -2,6 +2,7 @@ import json
 from ajax_datatable.views import AjaxDatatableView
 from django.urls import reverse
 from .models import *
+from apps.ohkr.models import ReferenceData
 from apps.accounts.utils import is_admin_user
 
 
@@ -308,6 +309,70 @@ class FormsAjaxDatatableView(ProjectDatatablePermissionMixin, AjaxDatatableView)
             else ""
         )
 
+
+class FormReferenceDataAjaxDatatableView(AjaxDatatableView):
+    model = ReferenceData
+    title = "Reference Data"
+    initial_order = [
+        ["rd_type", "asc"],
+    ]
+    length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
+    search_values_separator = "+"
+
+    column_defs = [
+        {
+            "name": "name",
+            "title": "Reference Data",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "rd_type",
+            "title": "RD Type",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "external_id",
+            "title": "External Id",
+            "visible": True,
+            "searchable": False,
+        },
+        {
+            "name": "source",
+            "title": "Data Source",
+            "visible": True,
+            "searchable": False,
+        },
+        # {'name': 'actions', 'title': 'Action', 'visible': True, 'className': 'w-12 text-left', 'placeholder': 'True', 'searchable': False, },
+    ]
+
+    def get_initial_queryset(self, request=None):
+        form_pk = self.kwargs.get("pk")
+        if request is not None and not request.user.has_perm("projects.change_formdefinition"):
+            return ReferenceData.objects.none()
+
+        form_queryset = FormDefinition.objects.filter(pk=form_pk)
+        if request is not None and not is_admin_user(request.user):
+            form_queryset = form_queryset.filter(
+                project__members__member=request.user,
+                project__members__active=True,
+            )
+        if not form_queryset.exists():
+            return ReferenceData.objects.none()
+
+        return ReferenceData.objects.filter(form_id=form_pk)
+
+    def customize_row(self, row, obj):
+        row["rd_type"] = (
+            f'<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">{obj.get_rd_type_display()}</span>'
+        )
+        row["external_id"] = (
+            f'<span class="inline-flex rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">{obj.external_id or "N/A"}</span>'
+        )
+        row["source"] = (
+            f'<span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">{obj.source or "N/A"}</span>'
+        )
 
 class MembersAjaxDatatableView(AjaxDatatableView):
     model = ProjectMember

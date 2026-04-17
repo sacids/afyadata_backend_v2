@@ -1,0 +1,154 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block extra-css %}
+<style>
+    #datatable_form_reference_wrapper .dataTables_filter {
+        display: none !important;
+    }
+
+    #datatable_form_reference thead tr:nth-child(2) {
+        display: none !important;
+    }
+
+    #datatable_form_reference thead input,
+    #datatable_form_reference thead select {
+        display: none !important;
+    }
+</style>
+{% endblock extra-css %}
+
+{% block content %}
+
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {% include 'partials/list_header.html' with header_title="Reference Data" header_subtitle="Search and sync administrative locations, species, and clinical signs for this form." search_id="form_search" search_placeholder="Search reference data..." export_button_id="forms_export" %}
+
+            <div class="p-4">
+                <div class="relative overflow-x-auto">
+                    <div id="message_wrp" class="mb-3" hx-preserve></div>
+
+                    <!-- <div class="mb-4 flex flex-wrap items-center gap-2">
+                        {% if perms.ohkr.change_location %}
+                            <button type="button"
+                                class="reference-sync-btn inline-flex items-center rounded-full bg-slate-700 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800"
+                                data-url="{% url 'ohkr:locations.sync' %}?form_id={{ survey.pk }}"
+                                data-label="locations">
+                                <i class='bx bx-map-alt mr-2 text-base'></i> Sync Locations
+                            </button>
+                        {% endif %}
+                        {% if perms.ohkr.change_specie %}
+                            <button type="button"
+                                class="reference-sync-btn inline-flex items-center rounded-full bg-slate-700 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800"
+                                data-url="{% url 'ohkr:species.sync' %}?form_id={{ survey.pk }}"
+                                data-label="species">
+                                <i class='bx bx-layer mr-2 text-base'></i> Sync Species
+                            </button>
+                        {% endif %}
+                        {% if perms.ohkr.change_clinicalsign %}
+                            <button type="button"
+                                class="reference-sync-btn inline-flex items-center rounded-full bg-slate-700 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800"
+                                data-url="{% url 'ohkr:clinical-signs.sync' %}?form_id={{ survey.pk }}"
+                                data-label="clinical signs">
+                                <i class='bx bx-pulse mr-2 text-base'></i> Sync Clinical Signs
+                            </button>
+                        {% endif %}
+                    </div> -->
+
+                    <table id="datatable_form_reference" class="w-full text-xs text-left text-gray-700 border-collapse">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+{% endblock %}
+
+{% block extra-js %}
+
+<script language="javascript">
+    $(document).on('draw.dt', function () {
+        if (window.htmx) {
+            htmx.process(document.body);
+        }
+    });
+
+    $(document).ready(function () {
+        AjaxDatatableViewUtils.initialize_table(
+            $('#datatable_form_reference'),
+            "{% url 'projects:dt-form-reference-data' survey.pk %}",
+            {
+                processing: false,
+                autoWidth: false,
+                scrollX: false,
+                dom: `
+                    <"flex justify-between items-center py-3 text-sm"
+                        <"flex gap-2 items-center">
+                        <"flex items-center"p>
+                    >
+                    t
+                `,
+                buttons: [
+                    {
+                        extend: 'csvHtml5',
+                        text: 'Export',
+                        filename: 'Form-reference-data-csv',
+                        className: 'buttons-csv hidden'
+                    },
+                ],
+                pageLength: 13,
+                responsive: false,
+                language: {
+                    search: "",
+                    info: "_PAGE_ of _PAGES_",
+                    emptyTable: "No reference data found for this form.",
+                },
+            }, {
+        },);
+
+        $('#form_search').on('keyup', function () {
+            $('#datatable_form_reference').DataTable().search(this.value).draw();
+        });
+
+        $('#forms_export').on('click', function () {
+            $('#datatable_form_reference').DataTable().button('.buttons-csv').trigger();
+        });
+
+        $(document).on('click', '.reference-sync-btn', function () {
+            const url = $(this).data('url');
+            const label = $(this).data('label');
+            const $button = $(this);
+            const originalHtml = $button.html();
+
+            $button.prop('disabled', true).html(`<i class='bx bx-loader-alt bx-spin mr-2 text-base'></i> Syncing ${label}...`);
+
+            fetch(url)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        $('#message_wrp').html(
+                            `<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">${data.success_msg} Created: ${data.created}, Updated: ${data.updated}</div>`
+                        );
+                        $('#datatable_form_reference').DataTable().ajax.reload(null, false);
+                    } else {
+                        $('#message_wrp').html(
+                            `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">${data.error_msg || 'Sync failed.'}</div>`
+                        );
+                    }
+                })
+                .catch(() => {
+                    $('#message_wrp').html(
+                        `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Failed to sync ${label}.</div>`
+                    );
+                })
+                .finally(() => {
+                    $button.prop('disabled', false).html(originalHtml);
+                });
+        });
+    });
+
+</script>
+{% endblock extra-js %}
