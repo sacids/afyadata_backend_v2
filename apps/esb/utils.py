@@ -399,6 +399,9 @@ def push_payload(cfg, payload, formdata=None):
     if not headers.get("Authorization"):
         headers.update(get_auth_headers())
 
+    logging.info("== headers ==")
+    logging.info(headers)
+
     try:
         resp = requests.request(
             method=method,
@@ -414,6 +417,7 @@ def push_payload(cfg, payload, formdata=None):
 
         logging.info("== API Data Response ==")
         logging.info(resp.status_code)
+        logging.info(response_body)
         
         ok = 200 <= resp.status_code < 300
         info = {
