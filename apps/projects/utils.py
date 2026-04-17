@@ -14,7 +14,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile, File
 from django.conf import settings
 
-from .models import FormDefinition, FormData
+from .models import FormDefinition, FormData, MatchingConfiguration, ProjectQRCode
 from django.utils.dateformat import DateFormat
 
 from django.db.models import Q, F
@@ -27,6 +27,13 @@ from ajax_datatable.views import AjaxDatatableView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Case, Value, When, CharField
+
+import hashlib
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from django.contrib.gis.measure import D
+from django.utils import timezone
+from datetime import timedelta
 
 
 import requests
@@ -592,3 +599,67 @@ def push_project_to_hub(project):
         # Log error but don't crash the user's save process
         print(f"Failed to sync with Hub: {e}")
         return None
+    
+    
+    
+    
+
+
+# QR LOGIC
+
+
+
+
+
+
+# MATCHING LOGIC
+
+def calculate_jaccard(list1, list2):
+    if not list1 or not list2: return 0
+    set1, set2 = set(list1), set(list2)
+    intersection = len(set1.intersection(set2))
+    union = len(set1.union(set2))
+    return intersection / union if union > 0 else 0
+
+def find_incident_match(new_instance):
+    """
+    Finds a matching incident using PostGIS spatial lookups.
+    """
+    try:
+        config = new_instance.form.matching_config
+    except Exception: # If no config exists, skip matching
+        return None
+
+    if not new_instance.gps:
+        return None
+
+    # Define time and distance constraints
+    time_limit = timezone.now() - timedelta(hours=config.time_window_hours)
+    
+    # 1. Candidate Selection (Blocking)
+    # This query uses the PostGIS spatial index on the 'gps' field
+    candidates = FormData.objects.filter(
+        form=new_instance.form,
+        submitted_at__gte=time_limit,
+        parent_match__isnull=True,  # Match against 'root' reports
+        gps__distance_lte=(new_instance.gps, D(m=config.candidate_distance))
+    ).exclude(uuid=new_instance.uuid)
+
+    # 2. Refine by Dynamic Candidate Fields (e.g., species)
+    for field in config.candidate_selection_fields:
+        val = new_instance.form_data.get(field)
+        if val:
+            candidates = candidates.filter(**{f'form_data__{field}': val})
+
+    # 3. Similarity Check
+    for candidate in candidates:
+        scores = []
+        for sim_field in config.similarity_fields:
+            new_vals = new_instance.form_data.get(sim_field, [])
+            old_vals = candidate.form_data.get(sim_field, [])
+            scores.append(calculate_jaccard(new_vals, old_vals))
+        
+        if scores and (sum(scores) / len(scores)) >= config.similarity_threshold:
+            return candidate.uuid # Return the original_uuid to link them
+            
+    return None

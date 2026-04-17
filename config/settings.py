@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "ajax_datatable",
     "crispy_forms",
     "crispy_tailwind",
+    'qr_code',
 ]
 
 MIDDLEWARE = [
@@ -252,3 +253,4 @@ if "runserver" in sys.argv or "migrate" in sys.argv or "makemigrations" in sys.a
 AFYADATA_HUB_URL = config("AFYADATA_HUB_URL")
 AFYADATA_HUB_API_KEY = config("AFYADATA_HUB_API_KEY")
 CURRENT_INSTANCE_EXTERNAL_URL = config("CURRENT_INSTANCE_EXTERNAL_URL")
+AFYADATA_GLOBAL_KEY = config("AFYADATA_GLOBAL_KEY")

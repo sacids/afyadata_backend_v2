@@ -26,3 +26,19 @@ def sync_public_project_with_hub(sender, instance, created, **kwargs):
     if instance.access == 'public' and instance.active:
         # For production, consider wrapping this in a Celery task 
         push_project_to_hub(instance)
+        
+        
+        
+
+
+# signals.py
+# from .utils import find_incident_match
+
+# # MATCHING LOGIC
+# @receiver(post_save, sender=FormData)
+# def auto_match_incident(sender, instance, created, **kwargs):
+#     if created and not instance.parent_match:
+#         match_uuid = find_incident_match(instance)
+#         if match_uuid:
+#             # Use .update() to avoid triggering post_save again (recursion)
+#             FormData.objects.filter(pk=instance.pk).update(parent_match=match_uuid)

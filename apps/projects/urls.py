@@ -8,6 +8,7 @@ urlpatterns = [
     path('lists', views.ProjectListView.as_view(), name='lists'),
     path('show/<str:pk>', views.ProjectDetailView.as_view(), name='show'),
     path('create', views.ProjectCreateView.as_view(), name='create'),
+    
     path('<str:pk>/edit', views.ProjectUpdateView.as_view(), name='edit'),
     path("<str:pk>/delete-confirm/", views.ProjectDeleteConfirmView.as_view(), name="delete-confirm"),
     path('<str:pk>/delete', views.ProjectDeleteView.as_view(), name='delete'),
@@ -43,4 +44,21 @@ urlpatterns = [
     path('projects-datatable', ajax_datatable_views.ProjectAjaxDatatableView.as_view(), name="dt-projects"),
     path('members-datatable/<str:pk>', ajax_datatable_views.MembersAjaxDatatableView.as_view(), name="dt-members"),
     path('forms-datatable/<str:pk>', ajax_datatable_views.FormsAjaxDatatableView.as_view(), name="dt-forms"),
+    
+    
+    
+     # QR Manager
+    path('<str:pk>/qr-manager/', views.ProjectQRManagerView.as_view(), name='qrmanager'),
+    path('<str:pk>/qr-manager/<str:qr_code_id>/', views.ProjectQRManagerView.as_view(), name='qrmanager-detail'),
+    
+    # QR Code CRUD operations
+    path('<str:pk>/qr-codes/create/', views.ProjectQRCodeCreateView.as_view(), name='qr-create'),
+    path('<str:pk>/qr-codes/<str:qr_code_id>/update/', views.ProjectQRCodeUpdateView.as_view(), name='qr-update'),
+    path('<str:pk>/qr-codes/<str:qr_code_id>/delete/', views.ProjectQRCodeDeleteView.as_view(), name='qr-delete'),
+    
+    # QR Code scan tracking
+    path('<str:pk>/qr-codes/<str:qr_code_id>/scan/', views.ProjectQRCodeScanView.as_view(), name='qr-scan'),
+    
+    
+
 ]

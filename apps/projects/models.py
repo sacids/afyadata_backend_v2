@@ -1,9 +1,15 @@
 import uuid
 from django.db import models
+
+# from django.contrib.gis.db import models  # Use GIS models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls import reverse
+from django.utils import timezone
+from django.conf import settings
+
+from .qr_utils import generate_qr_string
 
 
 # Create your models here.
@@ -35,24 +41,39 @@ class Project(models.Model):
         ("public", "Public"),
     )
 
-    id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title           = models.CharField(max_length=50, error_messages={"required": "Title is required"})
-    code            = models.CharField(max_length=10, blank=True, null=True, unique=True)
-    tags            = models.ManyToManyField(Tag, null=True, blank=True)
-    access          = models.CharField(max_length=20, choices=ACCESS_CHOICES, default='private')
-    auto_join       = models.BooleanField(default=False) # auto join the project
-    accept_member   = models.BooleanField(default=True) # accept member
-    accept_data     = models.BooleanField(default=True) # accept data or not
-    active          = models.BooleanField(default=True) # active or not
-    description     = models.TextField(null=True, blank=True)
-    created_at      = models.DateTimeField(auto_now_add=True)
-    updated_at      = models.DateTimeField(auto_now=True) 
-    created_by      = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='p_created_by', blank=True, null=True)
-    updated_by      = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='p_updated_by', blank=True, null=True)
-    deleted         = models.BooleanField(default=False)
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(
+        max_length=50, error_messages={"required": "Title is required"}
+    )
+    code = models.CharField(max_length=10, blank=True, null=True, unique=True)
+    tags = models.ManyToManyField(Tag, null=True, blank=True)
+    access = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="private")
+    auto_join = models.BooleanField(default=False)  # auto join the project
+    accept_member = models.BooleanField(default=True)  # accept member
+    accept_data = models.BooleanField(default=True)  # accept data or not
+    active = models.BooleanField(default=True)  # active or not
+    description = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name="p_created_by",
+        blank=True,
+        null=True,
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name="p_updated_by",
+        blank=True,
+        null=True,
+    )
+    deleted = models.BooleanField(default=False)
+
     class Meta:
         """Meta definition for form definition."""
+
         indexes = [models.Index(fields=["title", "code"])]
         db_table = "ad_projects"
         managed = True
@@ -68,7 +89,9 @@ class ProjectMember(models.Model):
     """Model definition for project members"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(Project, related_name="members", on_delete=models.CASCADE)
+    project = models.ForeignKey(
+        Project, related_name="members", on_delete=models.CASCADE
+    )
     member = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -90,21 +113,37 @@ class ProjectMember(models.Model):
 
 class FormDefinition(models.Model):
     """Model definition for form_definition"""
-    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project       = models.ForeignKey(Project, related_name='forms', on_delete=models.CASCADE)
-    form_id       = models.TextField(null=True, blank=True)
-    depends_on    = models.IntegerField(default=0)
-    title         = models.CharField(max_length=100, error_messages={"required": "Title is required"})
-    version       = models.CharField(max_length=20, null=True, blank=True)
-    short_title   = models.CharField(max_length=10, null=True, blank=True)
-    code          = models.IntegerField(unique=True, null=True, error_messages={"required": "Code is required", "unique": "Code must be unique"})
-    form_type     = models.TextField(null=True, blank=True)
-    icon_type     = models.CharField(max_length=50, null=True, blank=True, default="entypo:clipboard")
-    is_root       = models.BooleanField(default=False)
-    form_actions  = models.CharField(max_length=255, blank=True, null=True)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, related_name="forms", on_delete=models.CASCADE)
+    form_id = models.TextField(null=True, blank=True)
+    depends_on = models.IntegerField(default=0)
+    title = models.CharField(
+        max_length=100, error_messages={"required": "Title is required"}
+    )
+    version = models.CharField(max_length=20, null=True, blank=True)
+    short_title = models.CharField(max_length=10, null=True, blank=True)
+    code = models.IntegerField(
+        unique=True,
+        null=True,
+        error_messages={
+            "required": "Code is required",
+            "unique": "Code must be unique",
+        },
+    )
+    form_type = models.TextField(null=True, blank=True)
+    icon_type = models.CharField(
+        max_length=50, null=True, blank=True, default="entypo:clipboard"
+    )
+    is_root = models.BooleanField(default=False)
+    form_actions = models.CharField(max_length=255, blank=True, null=True)
     form_category = models.TextField(null=True, blank=True)
     xlsform = models.FileField(
-        upload_to="jform/defn/", max_length=100, null=True, blank=True, error_messages={"required": "Xform is required"}
+        upload_to="jform/defn/",
+        max_length=100,
+        null=True,
+        blank=True,
+        error_messages={"required": "Xform is required"},
     )
     form_defn = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -160,9 +199,11 @@ class FormAttachment(models.Model):
         ("pdf", "pdf"),
     )
 
-    form = models.ForeignKey(FormDefinition, related_name="attachments", on_delete=models.CASCADE)
+    form = models.ForeignKey(
+        FormDefinition, related_name="attachments", on_delete=models.CASCADE
+    )
     title = models.CharField(max_length=150, blank=True, null=True)
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='json')
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="json")
     attachment = models.FileField(
         upload_to="uploads/form_attachments/", max_length=200, null=True, blank=True
     )
@@ -171,6 +212,7 @@ class FormAttachment(models.Model):
 
     class Meta:
         """Meta definition for form attachment."""
+
         indexes = [models.Index(fields=["title"])]
         verbose_name = "Form attachment"
         verbose_name_plural = "4. Form Attachments"
@@ -182,16 +224,26 @@ class FormAttachment(models.Model):
 
 class FormData(models.Model):
     """Model definition for form_data"""
+
     uuid = models.TextField(max_length=100, blank=True, null=True)
     original_uuid = models.TextField(max_length=100, blank=True, null=True)
+
     parent_id = models.TextField(max_length=100, blank=True, null=True)
     form = models.ForeignKey(
         FormDefinition, related_name="form_data", on_delete=models.CASCADE
     )
     title = models.CharField(max_length=150, blank=True, null=True)
+
     gps = models.CharField(max_length=150, blank=True, null=True)
+    # gps = models.PointField(srid=4326, null=True, blank=True)
     path = models.TextField(blank=True, null=True)
     form_data = models.JSONField(null=False)
+
+    parent_match = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    score = models.IntegerField(default=1)
+
     photo = models.FileField(
         upload_to="uploads/", max_length=200, null=True, blank=True
     )
@@ -219,6 +271,7 @@ class FormData(models.Model):
         null=True,
     )
     synced = models.IntegerField(default=0)
+
     push_status = models.BooleanField(default=False)
     response_id = models.TextField(max_length=200, blank=True, null=True)
     response_json = models.JSONField(null=True, blank=True)
@@ -284,3 +337,62 @@ class FormDataFile(models.Model):
 
     def __str__(self):
         return self.original_name or str(self.id)
+
+
+class ProjectQRCode(models.Model):
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        "Project", on_delete=models.CASCADE, related_name="qr_codes"
+    )
+    issued_to = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    scan_count = models.IntegerField(default=0)  # Track scans
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def is_valid(self):
+        if not self.is_active:
+            return False
+        if self.expires_at and timezone.now() > self.expires_at:
+            return False
+        return True
+
+    def get_qr_string(self, request, user=None):
+        """Generate encrypted QR string for this code"""
+        join_url = (
+            settings.CURRENT_INSTANCE_EXTERNAL_URL
+            + "/api/v1/project/"
+            + str(self.project.id)
+            + "/join/"
+        )
+
+        expires_iso = self.expires_at.isoformat() if self.expires_at else ""
+        return generate_qr_string(join_url, str(self.id), expires_iso)
+
+
+class MatchingConfiguration(models.Model):
+    """Stores the specific matching logic for a FormDefinition"""
+
+    form_definition = models.OneToOneField(
+        FormDefinition, on_delete=models.CASCADE, related_name="matching_config"
+    )
+    # Fields that MUST match exactly (e.g., ["species"])
+    candidate_selection_fields = models.JSONField(default=list)
+    # Max radius for candidate search in meters
+    candidate_distance = models.FloatField(default=3000.0)
+    # Time window for matching in hours
+    time_window_hours = models.IntegerField(default=72)
+    # Fields to calculate Jaccard similarity on (e.g., ["symptoms"])
+    similarity_fields = models.JSONField(default=list)
+    # Threshold to consider it the same incident (0.0 to 1.0)
+    similarity_threshold = models.FloatField(default=0.7)
+
+    def __str__(self):
+        return f"Logic for {self.form_definition.title}"

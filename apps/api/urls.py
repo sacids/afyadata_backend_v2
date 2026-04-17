@@ -11,6 +11,8 @@ from .v1.chat import *
 from .v1.form_reactions import *
 from .v1.language import LanguageViewSet, LanguageVersionViewSet, language_export, bulk_upload
 
+app_name = 'api'
+
 
 urlpatterns = [
     # Accounts
@@ -35,7 +37,7 @@ urlpatterns = [
     path('v1/project/detail/<str:pk>', ProjectView.as_view({'get': 'details'})),
     path('v1/project/information', ProjectView.as_view({'post': 'information'})),
     path('v1/project/request-access', ProjectView.as_view({'post': 'request_access'})),
-    path('v1/project/<str:pk>/join/', ProjectView.as_view({'post': 'join'})),
+    path('v1/project/<str:pk>/join/', ProjectView.as_view({'post': 'join'}), name='project-join'),
     path('v1/project/unsubscribe', ProjectView.as_view({'post': 'unsubscribe'})),
     path('v1/project/create', ProjectView.as_view({'post': 'create'})),
     

@@ -119,14 +119,14 @@ Content-Type: application/json
 
 
 ### Register a Project on the Central Hub
-POST http://hub.afyadata.sacids.org:8000/api/v1/projects/register/
+POST https://hub.afyadata.sacids.org/api/v1/projects/register/
 Content-Type: application/json
-X-Api-Key: afyadata_Zsm1jjcSbSDCt289e8h-Ioj8QratlLC5AIbbQGSEW6w
+X-Api-Key: afyadata_UyUnTp60YTYFoysJ-DRixaAWd1H_qY4mfaO9Qf7YgQk
 
 {
-    "name": "Zanzibar Malaria Surveillance",
+    "title": "Zanzibar Malaria Surveillance",
     "description": "Testing the hub registration via VS Code",
-    "instance_url": "http://127.0.0.1:8040",
+    "instance_url": "http://public.afyadata.sacids.org",
     "remote_project_id": "999"
 }
 
@@ -140,9 +140,21 @@ Accept: application/json
 
 ### Register a Project on the Central Hub
 # @name register
-POST http://hub.afyadata.sacids.org:8040/api/v1/register
+POST https://public.afyadata.sacids.org/api/v1/register
 Content-Type: application/json
 
+{
+     "username": "0818181818_BP2A.250",
+     "fullName": "Eric Beda",
+     "phoneNumber": "0818181818",
+     "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
+     "password": "Kitimoto",
+     "passwordConfirm": "Kitimoto"
+}
+
+
+
+###
 {
      "username": "0787878787_BP2A.250a",
      "fullName": "Eric Beda",
