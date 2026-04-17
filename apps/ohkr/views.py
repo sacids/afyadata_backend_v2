@@ -33,10 +33,7 @@ def get_reference_form(request):
     form_id = request.GET.get("form_id")
     if not form_id:
         return None
-    try:
-        return FormDefinition.objects.get(pk=form_id)
-    except (FormDefinition.DoesNotExist, ValueError):
-        raise FormDefinition.DoesNotExist
+    return FormDefinition.objects.get(pk=form_id)
 
 
 # Create your views here.
@@ -80,7 +77,7 @@ class LocationSyncView(OHKRPermissionMixin, generic.CreateView):
 
     def get(self, *args, **kwargs):
         tza_country_id = 'fdd6e49b-b1ed-4c38-923c-be3b7bbb3b1c' #TZA country_id
-        api_url = f"{config('FAO_BASE_URL')}geographical_data/countries/{tza_country_id}"
+        api_url = f"{config('FAO_BASE_URL')}/api/geographical_data/countries/{tza_country_id}"
 
         # config headers
         headers = {"accept": "application/json"}
@@ -171,7 +168,7 @@ class DiseaseSyncView(OHKRPermissionMixin, generic.CreateView):
     model = Disease
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}diseases/"
+        api_url = f"{config('FAO_BASE_URL')}/api/diseases/"
         headers = {"accept": "application/json"}
 
         try:
@@ -254,7 +251,7 @@ class SpecieSyncView(OHKRPermissionMixin, generic.CreateView):
     model = Specie
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}species/"
+        api_url = f"{config('FAO_BASE_URL')}/api/species/"
         headers = {"accept": "application/json"}
 
         # pass authorization header
@@ -359,7 +356,7 @@ class ClinicalSignSyncView(OHKRPermissionMixin, generic.CreateView):
     model = ClinicalSign
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}clinical-signs/"
+        api_url = f"{config('FAO_BASE_URL')}/api/clinical-signs/"
         headers = {"accept": "application/json"}
 
         # pass authorization header
