@@ -221,7 +221,7 @@ def build_form_management_links(user, survey):
     links = {}
     if user.has_perm("projects.change_formdefinition"):
         links["Update Form"] = reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk})
-        links["API Config"] = reverse_lazy("projects:form-api-config", kwargs={"pk": survey.pk})
+        links["API Integrations"] = reverse_lazy("projects:form-api-config", kwargs={"pk": survey.pk})
         links["Reference Data"] = reverse_lazy("projects:form-reference-data", kwargs={"pk": survey.pk})
         links["Form Reactions"] = ""
     return links
@@ -536,6 +536,104 @@ class ProjectAssignMembersView(PermissionRequiredMixin, generic.View):
         return HttpResponseRedirect(reverse_lazy("projects:members", kwargs={"pk": project.pk}))
 
 
+class ProjectMemberCredibilityUpdateView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.change_projectmember"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectMemberCredibilityUpdateView, self).dispatch(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        member = get_object_or_404(ProjectMember, pk=kwargs["member_pk"], project=project)
+
+        try:
+            score = int(request.POST.get("credibility_score", "").strip())
+        except (TypeError, ValueError, AttributeError):
+            return JsonResponse(
+                {"success": False, "error_msg": "Credibility score must be a valid integer."},
+                status=400,
+            )
+
+        if score < 0 or score > 100:
+            return JsonResponse(
+                {"success": False, "error_msg": "Credibility score must be between 0 and 100."},
+                status=400,
+            )
+
+        member.credibility_score = score
+        member.save(update_fields=["credibility_score", "updated_at"])
+
+        return JsonResponse(
+            {
+                "success": True,
+                "success_msg": "Credibility score updated.",
+                "credibility_score": member.credibility_score,
+            }
+        )
+
+
+class ProjectMemberStatsView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.view_project"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectMemberStatsView, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        member = get_object_or_404(
+            ProjectMember.objects.select_related("member", "project"),
+            pk=kwargs["member_pk"],
+            project=project,
+        )
+        user = member.member
+
+        if not user:
+            return JsonResponse(
+                {"success": False, "error_msg": "Project member user is unavailable."},
+                status=404,
+            )
+
+        project_form_ids = list(project.forms.values_list("id", flat=True))
+        project_submissions = FormData.objects.filter(
+            form_id__in=project_form_ids,
+            created_by=user,
+            deleted=0,
+        )
+        global_submissions = FormData.objects.filter(created_by=user, deleted=0)
+
+        uploads_by_form = (
+            project_submissions.values("form__title")
+            .annotate(total=Count("id"))
+            .order_by("-total", "form__title")[:5]
+        )
+
+        stats = {
+            "member_name": user.get_full_name() or user.username,
+            "username": user.username,
+            "email": user.email or "No email provided",
+            "last_login": user.last_login.strftime("%d-%m-%Y %H:%M") if user.last_login else "Never",
+            "date_joined": user.date_joined.strftime("%d-%m-%Y %H:%M") if user.date_joined else "",
+            "credibility_score": member.credibility_score,
+            "project_uploads": project_submissions.count(),
+            "all_uploads": global_submissions.count(),
+            "forms_contributed": project_submissions.values("form_id").distinct().count(),
+            "last_submission_at": (
+                project_submissions.order_by("-created_at").values_list("created_at", flat=True).first().strftime("%d-%m-%Y %H:%M")
+                if project_submissions.exists()
+                else "No submissions yet"
+            ),
+            "active_membership": member.active,
+            "top_forms": [
+                {"form_title": row["form__title"], "total": row["total"]}
+                for row in uploads_by_form
+            ],
+        }
+
+        return JsonResponse({"success": True, "stats": stats})
+
+
 class ProjectDataView(PermissionRequiredMixin, generic.TemplateView):
     """View to list all project data"""
     permission_required = "projects.view_project"
@@ -785,7 +883,7 @@ class SurveyAPIConfig(PermissionRequiredMixin, generic.TemplateView):
             value_mapping_formset = FormValueMappingFormSet(instance=payload_config)
 
         context = {
-            "title": f"{survey.title} - API Config",
+            "title": f"{survey.title} - API Integrations",
             "survey": survey,
             "payload_config": payload_config,
             "config_form": config_form,
@@ -940,7 +1038,7 @@ class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
 
         # context
         context = {
-            "title": survey.title,
+            "title": f"{survey.title} - Reference Data",
             "survey": survey,
         }
 

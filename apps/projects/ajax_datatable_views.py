@@ -292,7 +292,7 @@ class FormsAjaxDatatableView(ProjectDatatablePermissionMixin, AjaxDatatableView)
                     '<a href="{}" title="Edit form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
                     '<i class="bx bx-edit-alt bx-xs"></i>'
                     '</a>'.format(reverse("projects:edit-form", kwargs={"pk": obj.id})),
-                    '<a href="{}" title="API config" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 cursor-pointer">'
+                    '<a href="{}" title="Integration" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 cursor-pointer">'
                     '<i class="bx bx-transfer-alt bx-xs"></i>'
                     '</a>'.format(reverse("projects:form-api-config", kwargs={"pk": obj.id})),
                 ]
@@ -391,6 +391,12 @@ class MembersAjaxDatatableView(AjaxDatatableView):
             "visible": True,
             "searchable": True,
         },
+         {
+            "name": "credibility_score",
+            "title": "Credibility Score",
+            "visible": True,
+            "searchable": True,
+        },
         {
             "name": "active",
             "title": "Active",
@@ -409,8 +415,28 @@ class MembersAjaxDatatableView(AjaxDatatableView):
             "visible": True,
             "searchable": False,
         },
-        # {'name': 'actions', 'title': 'Action', 'visible': True, 'className': 'w-12 text-left', 'placeholder': 'True', 'searchable': False, },
+        {
+            "name": "actions",
+            "title": "Action",
+            "visible": True,
+            "className": "w-12 text-left",
+            "searchable": False,
+        },
     ]
+
+    def can_manage_member(self):
+        return self.request.user.has_perm("projects.change_projectmember")
+
+    def get_column_defs(self, request):
+        columns = super().get_column_defs(request)
+        if self.request.user.has_perm("projects.view_project"):
+            return columns
+        return [
+            {**column, "visible": False}
+            if column.get("name") == "actions"
+            else column
+            for column in columns
+        ]
 
     def get_initial_queryset(self, request=None):
         project_pk = self.kwargs.get("pk")  # or whatever related FK you're filtering on
@@ -445,6 +471,15 @@ class MembersAjaxDatatableView(AjaxDatatableView):
             + ("bg-green-100 text-green-600" if obj.active else "bg-red-100 text-red-600")
             + '"> {} </span>'.format("Active" if obj.active else "Inactive")
         )
+        if obj.credibility_score == 0:
+            credibility_classes = "bg-red-100 text-red-700"
+        elif obj.credibility_score < 50:
+            credibility_classes = "bg-amber-100 text-amber-700"
+        else:
+            credibility_classes = "bg-emerald-100 text-emerald-700"
+        row["credibility_score"] = (
+            f'<span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium {credibility_classes}">{obj.credibility_score}</span>'
+        )
         row["created_at"] = (
             f'<span class="text-[11px] font-medium text-gray-600">{obj.created_at.strftime("%d-%m-%Y")}</span>'
         )
@@ -452,13 +487,33 @@ class MembersAjaxDatatableView(AjaxDatatableView):
             f'<span class="text-[11px] font-medium text-gray-600">{obj.updated_at.strftime("%d-%m-%Y")}</span>'
         )
 
-        # row["actions"] = (
-        #     '<div class="hstack flex gap-1 text-[.50rem]">'
-        #     '<a href="#" class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'\
-        #         '<i class="bx bx-edit-alt bx-xs"></i>'\
-        #         '</a>&nbsp;&nbsp;'\
-        #     '<a href="#" class="inline-flex items-center justify-center w-6 h-6 p-1 rounded-sm bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer delete">'
-        #     '<i class="bx bx-trash bx-xs"></i>'
-        #     "</a>"
-        #     "</div>"
-        # )
+        action_bits = [
+            '<button type="button" '
+            'data-url="{}" '
+            'data-member-name={} '
+            'data-member-score="{}" '
+            'title="Update credibility score" '
+            'class="member-score-btn inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
+            '<i class="bx bx-edit-alt bx-xs"></i>'
+            '</button>'.format(
+                reverse("projects:member-credibility-score", kwargs={"pk": obj.project_id, "member_pk": obj.pk}),
+                json.dumps(full_name if member else "Member"),
+                obj.credibility_score,
+            ),
+            '<button type="button" '
+            'data-url="{}" '
+            'data-member-name={} '
+            'title="View member stats" '
+            'class="member-stats-btn inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 cursor-pointer">'
+            '<i class="bx bx-bar-chart-alt-2 bx-xs"></i>'
+            '</button>'.format(
+                reverse("projects:member-stats", kwargs={"pk": obj.project_id, "member_pk": obj.pk}),
+                json.dumps(full_name if member else "Member"),
+            ),
+        ]
+        if not self.request.user.has_perm("projects.change_projectmember"):
+            action_bits = [action_bits[-1]]
+
+        row["actions"] = (
+            f'<div class="flex items-center gap-1.5 text-[.50rem]">{"".join(action_bits)}</div>'
+        )

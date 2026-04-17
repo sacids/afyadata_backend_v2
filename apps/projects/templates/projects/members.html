@@ -194,6 +194,166 @@
             $('#datatable_members').DataTable().button('.buttons-csv').trigger();
         });
 
+        $(document).on('click', '.member-score-btn', function () {
+            const url = $(this).data('url');
+            const memberName = $(this).data('member-name');
+            const currentScore = String($(this).data('member-score') ?? '0');
+
+            Swal.fire({
+                title: `Update credibility score`,
+                text: memberName,
+                input: 'number',
+                inputValue: currentScore,
+                inputAttributes: {
+                    min: 0,
+                    max: 100,
+                    step: 1
+                },
+                showCancelButton: true,
+                confirmButtonColor: '#4CAF50',
+                cancelButtonColor: '#F44336',
+                reverseButtons: true,
+                confirmButtonText: 'Submit Score',
+                cancelButtonText: 'Cancel',
+
+                inputValidator: (value) => {
+                    if (value === '' || value === null) {
+                        return 'Credibility score is required.';
+                    }
+                    const parsed = Number(value);
+                    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) {
+                        return 'Credibility score must be an integer between 0 and 100.';
+                    }
+                }
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                const formData = new FormData();
+                formData.append('credibility_score', result.value);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            //Swal.fire('Saved', data.success_msg, 'success');
+                            $('#datatable_members').DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Error', data.error_msg || 'Failed to update score.', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Error', 'Failed to update score.', 'error');
+                    });
+            });
+        });
+
+        $(document).on('click', '.member-stats-btn', function () {
+            const url = $(this).data('url');
+            const memberName = $(this).data('member-name');
+
+            Swal.fire({
+                title: memberName,
+                html: '<div class="py-4 text-sm text-gray-500">Loading member statistics...</div>',
+                showConfirmButton: false,
+                showCloseButton: true,
+                width: 720,
+            });
+
+            fetch(url)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (!data.success) {
+                        throw new Error(data.error_msg || 'Failed to load member statistics.');
+                    }
+
+                    const stats = data.stats || {};
+                    const topForms = (stats.top_forms || []).length
+                        ? `
+                            <div class="mt-4 text-left">
+                                <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Top Forms</div>
+                                <div class="space-y-2">
+                                    ${(stats.top_forms || []).map((item) => `
+                                        <div class="flex items-center justify-between rounded-lg border border-stone-200 px-3 py-2">
+                                            <span class="text-sm text-stone-700">${item.form_title}</span>
+                                            <span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">${item.total}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `
+                        : `
+                            <div class="mt-4 rounded-lg border border-dashed border-stone-300 px-4 py-5 text-sm text-stone-500">
+                                No submissions uploaded by this member for the project yet.
+                            </div>
+                        `;
+
+                    Swal.update({
+                        title: stats.member_name || memberName,
+                        html: `
+                            <div class="grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Username</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.username || ''}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Email</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.email || ''}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Last Login</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.last_login || 'Never'}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Date Joined</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.date_joined || ''}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Credibility Score</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.credibility_score ?? 0}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Membership</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.active_membership ? 'Active' : 'Inactive'}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Project Uploads</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.project_uploads ?? 0}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">All Uploads</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.all_uploads ?? 0}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Forms Contributed</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.forms_contributed ?? 0}</div>
+                                </div>
+                                <div class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                                    <div class="text-xs text-stone-500">Last Submission</div>
+                                    <div class="mt-1 text-sm font-semibold text-stone-900">${stats.last_submission_at || 'No submissions yet'}</div>
+                                </div>
+                            </div>
+                            ${topForms}
+                        `,
+                        showConfirmButton: false,
+                        confirmButtonText: 'Close',
+                        confirmButtonColor: '#334155',
+                    });
+                })
+                .catch((error) => {
+                    Swal.update({
+                        icon: 'error',
+                        html: `<div class="py-4 text-sm text-red-600">${error.message || 'Failed to load member statistics.'}</div>`,
+                        showConfirmButton: false,
+                        confirmButtonText: 'Close',
+                        confirmButtonColor: '#334155',
+                    });
+                });
+        });
+
         function filterAssignableUsers() {
             const query = ($('#assign_member_search').val() || '').trim().toLowerCase();
             let visibleRows = 0;

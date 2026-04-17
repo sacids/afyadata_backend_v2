@@ -70,6 +70,7 @@ class ProjectMember(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, related_name="members", on_delete=models.CASCADE)
     member = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    credibility_score = models.IntegerField(default=0)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
