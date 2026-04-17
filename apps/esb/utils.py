@@ -402,6 +402,9 @@ def push_payload(cfg, payload, formdata=None):
     logging.info("== headers ==")
     logging.info(headers)
 
+    logging.info("== Payload ==")
+    logging.info(payload)
+
     try:
         resp = requests.request(
             method=method,
