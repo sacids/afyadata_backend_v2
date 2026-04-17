@@ -900,7 +900,7 @@ class SurveyAPIConfig(PermissionRequiredMixin, generic.TemplateView):
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
             {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk}),},
-            {"name": "API Config", "url": "#"},
+            {"name": "API Integration", "url": "#"},
         ]
 
         # Add links to context

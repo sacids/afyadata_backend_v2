@@ -219,10 +219,10 @@ def build_affected_animals(fd, config):
     species_raw = data.get("species")
     species_id = map_value(config, "species", species_raw)
 
-    # 2) quantity (you used "quantity" in JSON)
-    numb_of_young_show_sympt = data.get("numb_of_young_show_sympt") or 0
-    numb_of_adult_show_sympt = data.get("numb_of_adult_show_sympt") or 0
-    quantity =  numb_of_adult_show_sympt + numb_of_young_show_sympt
+    # 2) quantity
+    # numb_of_young_show_sympt = data.get("numb_of_young_show_sympt") or 0
+    # numb_of_adult_show_sympt = data.get("numb_of_adult_show_sympt") or 0
+    quantity =  data.get("total_number_affected") or 0
 
     # 3) symptoms codes -> clinical_signs objects
     symptom_codes = data.get("symptoms", []) or []
@@ -238,7 +238,7 @@ def build_affected_animals(fd, config):
 
     return [
         {
-            "species_id": species_id,  # can be None if missing mapping (your choice)
+            "species_id": species_id,
             "quantity": int(quantity) if quantity is not None else 0,
             "clinical_signs": clinical_signs,
         }
