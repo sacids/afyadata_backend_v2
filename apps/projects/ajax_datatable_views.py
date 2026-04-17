@@ -374,6 +374,7 @@ class FormReferenceDataAjaxDatatableView(AjaxDatatableView):
             f'<span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">{obj.source or "N/A"}</span>'
         )
 
+
 class MembersAjaxDatatableView(AjaxDatatableView):
     model = ProjectMember
     title = "Project Members"

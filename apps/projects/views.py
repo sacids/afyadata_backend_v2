@@ -1184,10 +1184,10 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
         header_keys = list(tbl_header_dict.keys())
 
         # Headers: add UUID column first
-        cols = ["UUID"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID" ,"Created"]
+        cols = ["UUID", "Created"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
 
         # get data
-        adata = FormData.objects.filter(form_id=cur_form.id).order_by('created_at')
+        adata = FormData.objects.filter(form_id=cur_form.id).order_by("-created_at")
 
         if "parent_id" in request.GET and request.GET["parent_id"]:
             adata = adata.filter(parent_id=request.GET["parent_id"])
@@ -1208,7 +1208,7 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
                 else ""
             )
 
-            row = [row_uuid] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id, row_created_at]
+            row = [row_uuid, row_created_at] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id]
             arr_data.append(row)
 
         return JsonResponse(
