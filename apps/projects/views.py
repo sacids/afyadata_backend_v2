@@ -1184,10 +1184,10 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
         header_keys = list(tbl_header_dict.keys())
 
         # Headers: add UUID column first
-        cols = ["UUID", "Created"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
+        cols = ["UUID", "Submitted"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
 
         # get data
-        adata = FormData.objects.filter(form_id=cur_form.id).order_by("-created_at")
+        adata = FormData.objects.filter(form_id=cur_form.id).order_by("-submitted_at", "-created_at")
 
         if "parent_id" in request.GET and request.GET["parent_id"]:
             adata = adata.filter(parent_id=request.GET["parent_id"])
@@ -1203,7 +1203,9 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
             row_response_id = str(item.response_id)
             row_gps = item.gps
             row_created_at = (
-                item.created_at.strftime("%d-%m-%Y %H:%M")
+                item.submitted_at.strftime("%d-%m-%Y %H:%M")
+                if item.submitted_at
+                else item.created_at.strftime("%d-%m-%Y %H:%M")
                 if item.created_at
                 else ""
             )
