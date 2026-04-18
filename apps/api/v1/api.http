@@ -1,5 +1,6 @@
-@hostname = https://afyadata-v2.sacids.org/api/v1/
-//@hostname = http://127.0.0.1:8000/api/v1/
+@hostname = https://fao.afyadata.sacids.org/api/v1/
+@hostname = https://fao.afyadata.sacids.org/api/v1/
+@hostname = http://127.0.0.1:80/api/v1/
 @login_url = {{hostname}}token/
 @form_definition_url = {{hostname}}/api/v2/form-defn/
 
@@ -13,12 +14,12 @@ POST {{login_url}}
 Content-Type: application/json
 
 {
-  "username": "0711111111",
-  "password": "kitimoto"
+  "username": "admin",
+  "password": "21@Sacids!"
 }
 
 ###
-GET {{hostname}}projects/active
+GET {{hostname}}projects
 Authorization: Bearer {{login.response.body.access}}
 
 
@@ -49,6 +50,45 @@ Content-Type: application/json
 
 ###
 # Verify token
+# @name formreactions
+GET {{hostname}}form-reactions
+Authorization: Bearer {{login.response.body.access}}
+Content-Type: application/json
+
+
+
+
+###
+# Verify token
+# @name submit data
+POST {{hostname}}form-data
+Authorization: Bearer {{login.response.body.access}}
+Content-Type: application/json
+
+{
+     "id": 33,
+     "project": "64c27204-7c1b-49b1-986c-a9a4c18988f2",
+     "form": "c083f439-7567-45c1-9370-d7148058f153",
+     "title": "ACS : : ",
+     "uuid": "ea14e47f-fb54-48bc-9d9c-728b038d349d",
+     "original_uuid": "ea14e47f-fb54-48bc-9d9c-728b038d349c",
+     "parent_uuid": null,
+     "gps": "{\"latitude\":-6.824944,\"longitude\":39.2832387,\"altitude\":-13.09999942779541,\"accuracy\":100,\"timestamp\":\"2026-04-12T12:19:56.319Z\"}",
+     "deleted": 0,
+     "archived": 0,
+     "form_data": "{\"region\":\"morogoro\",\"district\":\"mvomero\",\"ward\":\"Bunduki\",\"village\":\"Hdb\",\"species\":\"cattle\",\"symptoms\":[\"B01\"],\"numb_of_young_show_sympt\":\"1\",\"numb_of_young_died_sympt\":\"1\",\"numb_of_adult_show_sympt\":\"1\",\"numb_of_adult_died_sympt\":\"1\",\"gps_location\":\"-6.824944 39.2832387 -13.09999942779541 100\",\"app_version\":\"2.5.5\",\"form_version\":\"20260326145913\"}",
+     "created_by": 2,
+     "created_by_name": "Eric",
+     "created_on": "2026-04-12T12:20:01.008Z",
+     "status": "finalized",
+     "status_date": "2026-04-12T12:20:01.008Z",
+     "synced": 0
+}
+
+
+
+###
+# Verify token
 # @name verify_token
 POST {{hostname}}chat/conversations
 Authorization: Bearer {{accesstoken}}
@@ -74,3 +114,69 @@ Authorization: Bearer {{accesstoken}}
 Content-Type: application/json
 
 {"external_id": "daff4474-376f-4ed9-b880-4c09cf0c7bd5", "text": "Moja moja"}
+
+
+
+
+### Register a Project on the Central Hub
+POST https://hub.afyadata.sacids.org/api/v1/projects/register/
+Content-Type: application/json
+X-Api-Key: afyadata_UyUnTp60YTYFoysJ-DRixaAWd1H_qY4mfaO9Qf7YgQk
+
+{
+    "title": "Zanzibar Malaria Surveillance",
+    "description": "Testing the hub registration via VS Code",
+    "instance_url": "http://public.afyadata.sacids.org",
+    "remote_project_id": "999"
+}
+
+###
+
+### Search for Projects (Discovery)
+GET http://hub.afyadata.sacids.org:8000/api/v1/projects/discover/?search=Zanzibar
+Accept: application/json
+
+
+
+### Register a Project on the Central Hub
+# @name register
+POST https://public.afyadata.sacids.org/api/v1/register
+Content-Type: application/json
+
+{
+     "username": "0818181818_BP2A.250",
+     "fullName": "Eric Beda",
+     "phoneNumber": "0818181818",
+     "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
+     "password": "Kitimoto",
+     "passwordConfirm": "Kitimoto"
+}
+
+
+
+###
+{
+     "username": "0787878787_BP2A.250a",
+     "fullName": "Eric Beda",
+     "phoneNumber": "0978787878",
+     "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
+     "password": "Kitimoto",
+     "passwordConfirm": "Kitimoto"
+}
+
+
+
+
+### Register a Project on the Central Hub
+POST http://hub.afyadata.sacids.org:8040/api/v1/register
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.access}}
+
+{
+     "username": "0787878787_BP2A.250a",
+     "fullName": "Eric Beda",
+     "phoneNumber": "0978787878",
+     "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
+     "password": "Kitimoto",
+     "passwordConfirm": "Kitimoto"
+}

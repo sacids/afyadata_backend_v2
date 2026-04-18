@@ -34,18 +34,15 @@ from . import x2jform
 from . import utils
 
 from .models import Project, ProjectMember, FormDefinition, FormData
-from .forms import (
-    ProjectForm,
-    SurveyAddForm,
-    SurveyUpdateForm,
-    SurveyAttachmentForm,
-    FormPayloadConfigForm,
-    FormPayloadFieldMapFormSet,
-    FormValueMappingFormSet,
-)
+from .forms import *
 from apps.ohkr.models import ClinicalSign
 from apps.esb.models import FormPayloadConfig
 from apps.accounts.utils import is_admin_user
+
+
+from django.urls import reverse
+from django.views.generic import DetailView
+from django.views import View
 
 ASSIGNABLE_MEMBER_ROLE_ALIASES = {
     "epi_official": [
@@ -214,6 +211,7 @@ def build_project_workspace_links(user, project_pk):
         links["Upload Form"] = reverse_lazy("projects:upload-form", kwargs={"pk": project_pk})
 
     links["Data"] = reverse_lazy("projects:data", kwargs={"pk": project_pk})
+    links["QR"] = reverse_lazy("projects:qrmanager", kwargs={"pk": project_pk})
     return links
 
 
@@ -1550,3 +1548,140 @@ def form_points(request, *args, **kwargs):
         )
 
     return JsonResponse(points, safe=False)
+
+
+
+
+
+
+
+# projects/views.p
+
+# views.py
+
+
+
+
+
+
+
+
+
+
+
+# views.py - Complete QR Manager Views
+
+class ProjectQRManagerView(PermissionRequiredMixin, generic.TemplateView):
+    """
+    View to manage QR codes for project joining.
+    Similar to ProjectDataView with left panel for QR list and right panel for details.
+    """
+    template_name = 'projects/qrmanager.html'
+    permission_required = 'projects.view_project'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.project = get_object_or_404(Project, pk=kwargs.get('pk'))
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Add project to context
+        context['project'] = self.project
+        
+        # Get all QR codes for this project
+        context['qr_codes'] = self.project.qr_codes.all().order_by('-created_at')
+        
+        # Get selected QR code or None
+        qr_code_id = self.kwargs.get('qr_code_id') or self.request.GET.get('qr_code_id')
+        if qr_code_id:
+            context['selected_qr'] = get_object_or_404(ProjectQRCode, pk=qr_code_id, project=self.project)
+            # Generate the QR string for display
+            context['qr_string'] = context['selected_qr'].get_qr_string(self.request, self.request.user)
+        else:
+            context['selected_qr'] = None
+            context['qr_string'] = None
+        
+        # Breadcrumbs
+        context['breadcrumbs'] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+            {"name": self.project.title, "url": reverse_lazy("projects:show", kwargs={"pk": self.project.pk})},
+            {"name": "QR Codes", "url": "#"},
+        ]
+        
+        # Add links to context
+        context['links'] = build_project_workspace_links(self.request.user, self.project.pk)
+        
+        return context
+
+
+class ProjectQRCodeCreateView(PermissionRequiredMixin, View):
+    """Create a new QR code for the project."""
+    #permission_required = 'projects.add_projectqrcode'
+    
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        
+        name = request.POST.get('name')
+        expires_at = request.POST.get('expires_at')
+        is_active = request.POST.get('is_active') == 'on'
+        
+        qr_code = ProjectQRCode(
+            project=project,
+            issued_to=request.user if is_active else None,
+            is_active=is_active,
+            expires_at=expires_at if expires_at else None,
+        )
+        qr_code.save()
+        
+        messages.success(request, f'QR Code "{name}" created successfully.')
+        return redirect('projects:qrmanager-detail', pk=project.pk, qr_code_id=qr_code.pk)
+
+
+class ProjectQRCodeUpdateView(PermissionRequiredMixin, View):
+    """Update an existing QR code."""
+    permission_required = 'projects.change_projectqrcode'
+    
+    def post(self, request, pk, qr_code_id):
+        project = get_object_or_404(Project, pk=pk)
+        qr_code = get_object_or_404(ProjectQRCode, pk=qr_code_id, project=project)
+        
+        qr_code.name = request.POST.get('name')
+        qr_code.description = request.POST.get('description')
+        qr_code.is_active = request.POST.get('is_active') == 'on'
+        expires_at = request.POST.get('expires_at')
+        qr_code.expires_at = expires_at if expires_at else None
+        
+        qr_code.save()
+        
+        messages.success(request, f'QR Code "{qr_code.name}" updated successfully.')
+        return redirect('projects:qrmanager-detail', pk=project.pk, qr_code_id=qr_code.pk)
+
+
+class ProjectQRCodeDeleteView(PermissionRequiredMixin, View):
+    """Delete a QR code."""
+    permission_required = 'projects.delete_projectqrcode'
+    
+    def post(self, request, pk, qr_code_id):
+        project = get_object_or_404(Project, pk=pk)
+        qr_code = get_object_or_404(ProjectQRCode, pk=qr_code_id, project=project)
+        qr_code_name = qr_code.name
+        qr_code.delete()
+        
+        messages.success(request, f'QR Code "{qr_code_name}" deleted successfully.')
+        return redirect('projects:qrmanager', pk=project.pk)
+
+
+class ProjectQRCodeScanView(View):
+    """Track when a QR code is scanned."""
+    
+    def post(self, request, pk, qr_code_id):
+        project = get_object_or_404(Project, pk=pk)
+        qr_code = get_object_or_404(ProjectQRCode, pk=qr_code_id, project=project)
+        
+        # Increment scan count
+        qr_code.scan_count += 1
+        qr_code.save()
+        
+        return JsonResponse({'success': True, 'scan_count': qr_code.scan_count})

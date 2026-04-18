@@ -14,7 +14,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile, File
 from django.conf import settings
 
-from .models import FormDefinition, FormData
+from .models import FormDefinition, FormData, MatchingConfiguration, ProjectQRCode
 from django.utils.dateformat import DateFormat
 
 from django.db.models import Q, F
@@ -27,6 +27,16 @@ from ajax_datatable.views import AjaxDatatableView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Case, Value, When, CharField
+
+import hashlib
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from django.contrib.gis.measure import D
+from django.utils import timezone
+from datetime import timedelta
+
+
+import requests
 
 
 class FormDataAjaxDatatableView(AjaxDatatableView):
@@ -52,7 +62,7 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
         aDefn = FormDefinition.objects.get(id=pk)
         cols = get_table_config(aDefn.form_defn)
 
-        #form definition
+        # form definition
         jForm = json.loads(aDefn.form_defn)
         dalili_fields = ["dalili", "dalil_mfugo"]
         dalili_map = {}
@@ -157,9 +167,13 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
                     related_obj = getattr(record, field_name)
                     row.append(str(related_obj) if related_obj else "")
                 elif field_name == "dalili" or field_name == "dalil_mfugo":
-                    # Handle dalili field          
-                    codes = normalize_select_multiple(form_data.get("dalili") or form_data.get("dalil_mfugo", []))
-                    labels = [dalili_map.get(code, code) for code in codes]  # fallback to code if missing
+                    # Handle dalili field
+                    codes = normalize_select_multiple(
+                        form_data.get("dalili") or form_data.get("dalil_mfugo", [])
+                    )
+                    labels = [
+                        dalili_map.get(code, code) for code in codes
+                    ]  # fallback to code if missing
                     row.append(", ".join(labels))
                     # row.append("Label" if form_data.get("dalili", "") == "1" else "")
                 elif hasattr(record, field_name):
@@ -233,16 +247,6 @@ def get_table_header_name(jform):
                 tb_name = v.get("name")
                 names[k] = tb_name
     return names
-
-
-def get_table_config1(jForm):
-    config = {}
-    # print(jForm["pages"])
-    for item in jForm["pages"]:
-        if item["type"] == "group":
-            for k, v in item["fields"][0].items():
-                config[k] = v
-    return config
 
 
 def get_table_config(jForm):
@@ -475,7 +479,9 @@ def save_uploaded_file_snapshots(file_snapshots, upload_subdir):
             temp_path = item["temp_path"]
             try:
                 with open(temp_path, "rb") as tmp_file:
-                    path = default_storage.save(full_path, File(tmp_file, name=unique_name))
+                    path = default_storage.save(
+                        full_path, File(tmp_file, name=unique_name)
+                    )
             finally:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
@@ -515,13 +521,13 @@ def generate_code(length=5):
     return "".join(random.choices(chars, k=length))
 
 
-def generate_unique_code(model, field='code', length=5):
+def generate_unique_code(model, field="code", length=5):
     while True:
         code = generate_code(length)
         if not model.objects.filter(**{field: code}).exists():
             return code
-    
-        
+
+
 def build_option_map(jform: dict, field_name: str, lang="Swahili (sw)"):
     label_key = f"label::{lang}"
     for page in jform.get("pages", []):
@@ -530,7 +536,11 @@ def build_option_map(jform: dict, field_name: str, lang="Swahili (sw)"):
                 field = field_group[field_name]
                 options = field.get("options", [])
                 return {
-                    opt["name"]: (opt.get(label_key) or opt.get("label::English (en)") or opt["name"])
+                    opt["name"]: (
+                        opt.get(label_key)
+                        or opt.get("label::English (en)")
+                        or opt["name"]
+                    )
                     for opt in options
                 }
     return {}
@@ -559,3 +569,97 @@ def normalize_select_multiple(val):
 def map_codes_to_labels(val, option_map: dict):
     codes = normalize_select_multiple(val)
     return [option_map.get(code, code) for code in codes]
+
+
+def push_project_to_hub(project):
+    """
+    Sends project details to the Central Hub.
+    """
+    headers = {
+        "X-Api-Key": settings.AFYADATA_HUB_API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "title": project.title,
+        "description": project.description,
+        "instance_url": settings.CURRENT_INSTANCE_EXTERNAL_URL,
+        "remote_project_id": str(project.id),
+    }
+
+    try:
+        response = requests.post(
+            settings.AFYADATA_HUB_URL, json=payload, headers=headers, timeout=10
+        )
+        print(settings.AFYADATA_HUB_URL)
+        print(headers)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        # Log error but don't crash the user's save process
+        print(f"Failed to sync with Hub: {e}")
+        return None
+    
+    
+    
+    
+
+
+# QR LOGIC
+
+
+
+
+
+
+# MATCHING LOGIC
+
+def calculate_jaccard(list1, list2):
+    if not list1 or not list2: return 0
+    set1, set2 = set(list1), set(list2)
+    intersection = len(set1.intersection(set2))
+    union = len(set1.union(set2))
+    return intersection / union if union > 0 else 0
+
+def find_incident_match(new_instance):
+    """
+    Finds a matching incident using PostGIS spatial lookups.
+    """
+    try:
+        config = new_instance.form.matching_config
+    except Exception: # If no config exists, skip matching
+        return None
+
+    if not new_instance.gps:
+        return None
+
+    # Define time and distance constraints
+    time_limit = timezone.now() - timedelta(hours=config.time_window_hours)
+    
+    # 1. Candidate Selection (Blocking)
+    # This query uses the PostGIS spatial index on the 'gps' field
+    candidates = FormData.objects.filter(
+        form=new_instance.form,
+        submitted_at__gte=time_limit,
+        parent_match__isnull=True,  # Match against 'root' reports
+        gps__distance_lte=(new_instance.gps, D(m=config.candidate_distance))
+    ).exclude(uuid=new_instance.uuid)
+
+    # 2. Refine by Dynamic Candidate Fields (e.g., species)
+    for field in config.candidate_selection_fields:
+        val = new_instance.form_data.get(field)
+        if val:
+            candidates = candidates.filter(**{f'form_data__{field}': val})
+
+    # 3. Similarity Check
+    for candidate in candidates:
+        scores = []
+        for sim_field in config.similarity_fields:
+            new_vals = new_instance.form_data.get(sim_field, [])
+            old_vals = candidate.form_data.get(sim_field, [])
+            scores.append(calculate_jaccard(new_vals, old_vals))
+        
+        if scores and (sum(scores) / len(scores)) >= config.similarity_threshold:
+            return candidate.uuid # Return the original_uuid to link them
+            
+    return None
