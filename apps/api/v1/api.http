@@ -143,8 +143,7 @@ Accept: application/json
 POST https://public.afyadata.sacids.org/api/v1/register
 Content-Type: application/json
 
-{
-     "username": "0818181818_BP2A.250",
+{ "username": "0818181818_BP2A.250",
      "fullName": "Eric Beda",
      "phoneNumber": "0818181818",
      "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
