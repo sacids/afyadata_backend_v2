@@ -12,7 +12,6 @@ click-didyoumean==0.3.1
 click-plugins==1.1.1.2
 click-repl==0.3.0
 crispy-tailwind==1.0.3
-cryptography==46.0.7
 Django==4.2.27
 django-ajax-datatable==4.5.0
 django-crispy-forms==2.4

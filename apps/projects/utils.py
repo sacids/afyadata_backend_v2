@@ -18,7 +18,6 @@ from .models import FormDefinition, FormData, MatchingConfiguration, ProjectQRCo
 from django.utils.dateformat import DateFormat
 
 from django.db.models import Q, F
-from django.db.models.functions import Cast, Coalesce
 import operator
 from functools import reduce
 import ast
@@ -28,8 +27,6 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Case, Value, When, CharField
 
-import hashlib
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from django.contrib.gis.measure import D
 from django.utils import timezone
