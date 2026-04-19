@@ -90,7 +90,7 @@ class ChangePasswordView(generics.UpdateAPIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class RegisterView(APIView):
+class RegisterView1(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -137,6 +137,107 @@ class RegisterView(APIView):
         return JsonResponse(response,safe=False, status=status_code)
         
  
+ 
+@method_decorator(csrf_exempt, name='dispatch')
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        full_name = request.data.get("fullName") or request.data.get("fullname")
+        phone_number = request.data.get("phoneNumber") or request.data.get("phone")
+        password_confirm = request.data.get("passwordConfirm")
+
+        # Check if user exists by username
+        existing_user = User.objects.filter(username=username).first() if username else None
+
+        # Case 1: User exists with same username
+        if existing_user:
+            # Verify the password matches
+            if existing_user.check_password(password):
+                # Password matches - return JWT tokens (login successful)
+                refresh = RefreshToken.for_user(existing_user)
+                profile = getattr(existing_user, 'profile', None)
+                
+                response = {
+                    "error": False,
+                    "uid": existing_user.pk,
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                    "user": {
+                        "id": existing_user.pk,
+                        "username": existing_user.username,
+                        "fullName": existing_user.first_name or full_name,
+                        "phone": profile.phone if profile else phone_number,
+                    },
+                    "success_msg": "User already exists. Successfully logged in.",
+                }
+                status_code = status.HTTP_200_OK
+                
+                logging.info("== User registration/login response ==")
+                logging.info(json.dumps(response, indent=2, default=str))
+                
+                return JsonResponse(response, safe=False, status=status_code)
+            else:
+                # Password doesn't match - return error
+                response = {
+                    "error": True,
+                    "error_msg": "Username already exists with a different password.",
+                    "errors": {
+                        "username": ["Username already exists. Please check your password or use login."]
+                    }
+                }
+                status_code = status.HTTP_400_BAD_REQUEST
+                
+                logging.info("== User registration failed ==")
+                logging.info(json.dumps(response, indent=2, default=str))
+                
+                return JsonResponse(response, safe=False, status=status_code)
+        
+        # Case 2: New user - proceed with registration
+        payload = {
+            "fullName": full_name,
+            "phoneNumber": phone_number,
+            "username": username,
+            "password": password,
+            "passwordConfirm": password_confirm,
+        }
+
+        serializer = RegisterSerializer(data=payload)
+
+        if serializer.is_valid():
+            new_user = serializer.save()
+            refresh = RefreshToken.for_user(new_user)
+
+            response = {
+                "error": False,
+                "uid": new_user.pk,
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": {
+                    "id": new_user.pk,
+                    "username": new_user.username,
+                    "fullName": serializer.validated_data["fullName"],
+                    "phone": serializer.validated_data["phoneNumber"],
+                },
+                "success_msg": "User successfully registered.",
+            }
+            status_code = status.HTTP_201_CREATED
+        else:
+            response = {
+                "error": True,
+                "error_msg": "Validation failed",
+                "errors": serializer.errors,
+            }
+            status_code = status.HTTP_400_BAD_REQUEST
+
+        logging.info("== User registration response ==")
+        logging.info(json.dumps(response, indent=2, default=str))            
+
+        return JsonResponse(response, safe=False, status=status_code)
+    
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
