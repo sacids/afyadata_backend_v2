@@ -50,8 +50,10 @@ services:
       - web
     ports:
       - "80:80"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-_}
     volumes:
-      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/default.conf:/etc/nginx/templates/default.conf.template:ro
       - static_data:/app/static:ro
       - media_data:/app/media:ro
 

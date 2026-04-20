@@ -281,6 +281,7 @@ At minimum set:
 SECRET_KEY=replace-with-a-real-secret
 DEBUG=False
 ALLOWED_HOST=your-domain.com,server-ip
+APP_DOMAIN=your-domain.com
 DB_NAME=afyadata_db
 DB_USER=afyadata
 DB_PASSWORD=strong-password
@@ -319,9 +320,16 @@ To also remove database data:
 docker compose down -v
 ```
 
-## Docker Deployment Behind Nginx
+## Production Docker Deployment
 
-For production, use the dedicated stack in `docker-compose.prod.yml`.
+For a production server, use the dedicated stack in `docker-compose.prod.yml`.
+This stack already includes:
+
+- PostgreSQL
+- Django + Gunicorn
+- Nginx
+
+The Nginx container now reads the instance domain automatically from `.env`, so the deployer does not need to edit the Nginx config by hand.
 
 ### Production container roles
 
@@ -349,18 +357,21 @@ python manage.py collectstatic --noinput
 gunicorn config.wsgi:application --bind 0.0.0.0:8000
 ```
 
-### 1. Prepare production environment
+### 1. Copy the production environment file
 
 ```bash
 cp .env.docker.example .env
 ```
+
+### 2. Set the instance domain and production secrets
 
 Update `.env` with real production values:
 
 ```env
 SECRET_KEY=replace-with-a-long-random-secret
 DEBUG=False
-ALLOWED_HOST=your-domain.com,www.your-domain.com,server-ip
+APP_DOMAIN=surveillance.example.org
+ALLOWED_HOST=surveillance.example.org,www.surveillance.example.org,server-ip
 
 ENGINE=django.db.backends.postgresql
 DB_NAME=afyadata_db
@@ -373,13 +384,44 @@ GUNICORN_WORKERS=3
 GUNICORN_TIMEOUT=120
 ```
 
-### 2. Build and start the production stack
+What these two domain values do:
+
+- `APP_DOMAIN`
+  - used by the Nginx container as `server_name`
+  - this is how the public instance domain is configured automatically
+- `ALLOWED_HOST`
+  - used by Django
+  - keep it aligned with the same domain, plus any `www` alias or server IP you need
+
+Examples:
+
+- Single domain:
+
+```env
+APP_DOMAIN=afyadata.example.org
+ALLOWED_HOST=afyadata.example.org
+```
+
+- Domain plus `www`:
+
+```env
+APP_DOMAIN=afyadata.example.org www.afyadata.example.org
+ALLOWED_HOST=afyadata.example.org,www.afyadata.example.org
+```
+
+Important:
+
+- In Nginx, `APP_DOMAIN` is space-separated.
+- In Django, `ALLOWED_HOST` is comma-separated.
+- If you are testing with only a server IP, use that IP for both values.
+
+### 3. Start the production stack
 
 ```bash
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-### 3. Check running containers
+### 4. Check running containers
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
@@ -391,7 +433,7 @@ Expected services:
 - `afyadata-web`
 - `afyadata-nginx`
 
-### 4. Check logs
+### 5. Check logs
 
 ```bash
 docker compose -f docker-compose.prod.yml logs -f web
@@ -399,13 +441,13 @@ docker compose -f docker-compose.prod.yml logs -f nginx
 docker compose -f docker-compose.prod.yml logs -f db
 ```
 
-### 5. Create the first admin user
+### 6. Create the first admin user
 
 ```bash
 docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
 ```
 
-### 6. Access the application
+### 7. Access the application
 
 Once the stack is up:
 
@@ -415,10 +457,28 @@ Once the stack is up:
 Open:
 
 ```text
-http://your-server-ip
+http://your-domain-or-server-ip
 ```
 
-### 7. Stop the production stack
+### 8. How automatic domain configuration works
+
+The production Nginx container uses:
+
+- [deploy/nginx/default.conf](deploy/nginx/default.conf)
+
+In `docker-compose.prod.yml`, that file is mounted as an Nginx template:
+
+- `/etc/nginx/templates/default.conf.template`
+
+The official Nginx image renders that template on container startup using environment variables. That means:
+
+- set `APP_DOMAIN` in `.env`
+- start the stack
+- Nginx uses that value automatically as `server_name`
+
+No manual `vim /etc/nginx/...` step is needed for the containerized production setup.
+
+### 9. Stop the production stack
 
 ```bash
 docker compose -f docker-compose.prod.yml down
@@ -430,19 +490,7 @@ To also remove volumes:
 docker compose -f docker-compose.prod.yml down -v
 ```
 
-### 8. Nginx configuration
-
-The production Nginx container uses:
-
-- [deploy/nginx/default.conf](deploy/nginx/default.conf)
-
-It is responsible for:
-
-- serving static files from `/app/static/`
-- serving media files from `/app/media/`
-- proxying all app traffic to the `web` container
-
-### 9. HTTPS on a production server
+### 10. HTTPS on a production server
 
 This repo currently provides HTTP deployment by default.
 
