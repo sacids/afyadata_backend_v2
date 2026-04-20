@@ -108,7 +108,11 @@ class FormDataView(viewsets.ViewSet):
             )
 
         # incoming data
+        logging.info("== incoming data ==")
+        logging.info(request.data)
         data = self._normalize_request_data(request)
+        logging.info("== normalized data ==")
+        logging.info(data)
 
         try:
 
