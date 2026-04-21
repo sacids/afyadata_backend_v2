@@ -133,7 +133,7 @@ X-Api-Key: afyadata_UyUnTp60YTYFoysJ-DRixaAWd1H_qY4mfaO9Qf7YgQk
 ###
 
 ### Search for Projects (Discovery)
-GET http://hub.afyadata.sacids.org:8000/api/v1/projects/discover/?search=Zanzibar
+GET https://hub.afyadata.sacids.org/api/v1/projects/discover/
 Accept: application/json
 
 
@@ -145,7 +145,7 @@ Content-Type: application/json
 
 {    "username": "0787878787_BP2A.250",
      "fullName": "Eric Beda",
-     "phoneNumber": "0787878787",
+     "phoneNumber": "0818181818",
      "device_id": "BP2A.250605.031.A3.S911BXXS9EZC1",
      "password": "Kitimoto",
      "passwordConfirm": "Kitimoto"
