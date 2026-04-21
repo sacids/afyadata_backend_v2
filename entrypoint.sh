@@ -8,8 +8,8 @@ if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
   done
 fi
 
-python manage.py makemigrations --noinput
-python manage.py migrate --noinput
+python manage.py makemigrations --noinput --skip-checks
+python manage.py migrate --noinput --skip-checks
 python manage.py collectstatic --noinput
 
 exec gunicorn config.wsgi:application \
