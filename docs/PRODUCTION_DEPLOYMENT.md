@@ -5,53 +5,8 @@ This guide covers production deployment for Afyadata.
 It includes:
 
 - manual Linux server deployment
-- production Docker deployment with PostgreSQL, Gunicorn, and Nginx
+- production Docker deployment with PostgreSQL, Redis, Celery worker, Gunicorn, and Nginx
 
-## Production Environment Variables
-
-Create a `.env` file in the project root or deployment directory.
-
-Example:
-
-```env
-SECRET_KEY=replace-with-a-long-random-secret
-DEBUG=False
-APP_DOMAIN=surveillance.example.org
-ALLOWED_HOST=surveillance.example.org,www.surveillance.example.org,server-ip
-
-ENGINE=django.db.backends.postgresql
-DB_NAME=afyadata_db
-DB_USER=afyadata
-DB_PASSWORD=strong-password
-DB_HOST=db
-DB_PORT=5432
-
-GUNICORN_WORKERS=3
-GUNICORN_TIMEOUT=120
-```
-
-Important:
-
-- `APP_DOMAIN` is used by the Nginx container as `server_name`
-- `ALLOWED_HOST` is used by Django
-- in Nginx, `APP_DOMAIN` is space-separated
-- in Django, `ALLOWED_HOST` is comma-separated
-
-Examples:
-
-- Single domain:
-
-```env
-APP_DOMAIN=afyadata.example.org
-ALLOWED_HOST=afyadata.example.org
-```
-
-- Domain plus `www`:
-
-```env
-APP_DOMAIN=afyadata.example.org www.afyadata.example.org
-ALLOWED_HOST=afyadata.example.org,www.afyadata.example.org
-```
 
 ## Option 1: Manual Linux Server Deployment
 
@@ -101,6 +56,18 @@ Update:
 - `DEBUG=False`
 - `ALLOWED_HOST`
 - database credentials
+
+For public projects update and verify environment variables
+- `AFYADATA_HUB_URL=https://hub.afyadata.sacids.org/api/v1/projects/register/`
+- `AFYADATA_HUB_API_KEY=hub-key`
+- `CURRENT_INSTANCE_EXTERNAL_URL=project-domain-name`
+- `AFYADATA_GLOBAL_KEY=AFYADATA_GLOBAL_KEY`
+
+For FAO Integration update and verify test environment variables
+- `FAO_BASE_URL=https://cbs-175434516411.europe-west1.run.app`
+- `FAO_AUTH_URL=https://keycloak-175434516411.europe-west1.run.app/realms/master/protocol/openid-connect/token`
+- `FAO_CLIENT_ID=change-me`
+- `FAO_CLIENT_SECRET=change-me`
 
 ### 4. Run migrations and collect static
 
@@ -194,6 +161,45 @@ python manage.py check
 python manage.py check --deploy
 ```
 
+### 9. Configure supervisor
+
+Configure redis in Linux server
+
+```bash
+sudo apt-get update
+sudo apt-get install redis-server
+sudo systemctl start redis
+sudo systemctl enable redis
+```
+
+Setup supervisor for celery
+
+```bash
+sudo apt-get install supervisor
+sudo mkdir -p /var/log/afyadata
+nano /etc/supervisor/conf.d/afyadata.conf
+```
+
+```
+[program:afyadata_worker]
+directory=/srv/afyadata
+command=/srv/afyadata/env/bin/celery -A config worker --loglevel=INFO
+user=change-me
+autostart=true
+autorestart=true
+stdout_logfile=/var/log/afyadata/worker.log
+stderr_logfile=/var/log/afyadata/worker.log
+```
+
+Update Supervisor
+
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start afyadata_worker
+```
+
+
 ## Option 2: Production Docker Deployment
 
 Use the dedicated stack in `docker-compose.prod.yml`.
@@ -201,6 +207,8 @@ Use the dedicated stack in `docker-compose.prod.yml`.
 This stack includes:
 
 - PostgreSQL
+- Redis
+- Celery worker
 - Django + Gunicorn
 - Nginx
 
@@ -211,9 +219,15 @@ The Nginx container reads the instance domain automatically from `.env`, so the 
 - `db`
   - image: `postgres:16-alpine`
   - stores application data
+- `redis`
+  - image: `redis:7-alpine`
+  - acts as the Celery broker and result backend
 - `web`
   - built from `Dockerfile`
   - runs Django through Gunicorn
+- `celery_worker`
+  - built from `Dockerfile`
+  - runs background jobs with `celery -A config worker -l info`
 - `nginx`
   - image: `nginx:1.27-alpine`
   - serves `/static/` and `/media/`
@@ -223,6 +237,7 @@ Important:
 
 - Gunicorn does not need a separate image in this setup
 - it runs inside the `web` container through [entrypoint.sh](../entrypoint.sh)
+- Supervisor is not needed because each long-running process runs in its own container
 
 That startup script already does:
 
@@ -245,10 +260,10 @@ Update `.env` with real production values.
 At minimum:
 
 ```env
+ALLOWED_HOST=domain-name.org,www.domain-name,server-ip
+APP_DOMAIN=domain-name
 SECRET_KEY=replace-with-a-long-random-secret
 DEBUG=False
-APP_DOMAIN=surveillance.example.org
-ALLOWED_HOST=surveillance.example.org,www.surveillance.example.org,server-ip
 
 ENGINE=django.db.backends.postgresql
 DB_NAME=afyadata_db
@@ -257,13 +272,22 @@ DB_PASSWORD=strong-password
 DB_HOST=db
 DB_PORT=5432
 
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+
 GUNICORN_WORKERS=3
 GUNICORN_TIMEOUT=120
 
-#AFYADATA HUB
+#AFYADATA + EMA-I INTEGRATION TEST ENVIRONMENTS
+FAO_BASE_URL=https://cbs-175434516411.europe-west1.run.app
+FAO_AUTH_URL=https://keycloak-175434516411.europe-west1.run.app/realms/master/protocol/openid-connect/token
+FAO_CLIENT_ID=change-me
+FAO_CLIENT_SECRET=change-me
+
+#AFYADATA HUB - PUBLIC PROJECTS
 AFYADATA_HUB_URL=https://hub.afyadata.sacids.org/api/v1/projects/register/
-AFYADATA_HUB_API_KEY=get-key-from-hub
-CURRENT_INSTANCE_EXTERNAL_URL=domain-url
+AFYADATA_HUB_API_KEY=change-me
+CURRENT_INSTANCE_EXTERNAL_URL=change-me
 AFYADATA_GLOBAL_KEY=AFYADATA_GLOBAL_KEY
 ```
 
@@ -282,7 +306,9 @@ docker compose -f docker-compose.prod.yml ps
 Expected services:
 
 - `afyadata-db`
+- `afyadata-redis`
 - `afyadata-web`
+- `afyadata-celery-worker`
 - `afyadata-nginx`
 
 ### 5. Check logs
@@ -291,15 +317,10 @@ Expected services:
 docker compose -f docker-compose.prod.yml logs -f web
 docker compose -f docker-compose.prod.yml logs -f nginx
 docker compose -f docker-compose.prod.yml logs -f db
+docker compose -f docker-compose.prod.yml logs -f celery_worker
 ```
 
-### 6. Create the first admin user
-
-```bash
-docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
-```
-
-### 7. Access the application
+### 6. Access the application
 
 Once the stack is up:
 
@@ -312,7 +333,7 @@ Open:
 http://your-domain-or-server-ip
 ```
 
-### 8. Create a Django superuser in Docker
+### 7. Create a Django superuser in Docker
 
 Use this after the containers are up so you can log into `/admin`.
 
@@ -336,25 +357,8 @@ You will be prompted for:
 
 If you need to create the admin user later on an already-running server, run the same command again inside the existing `web` container.
 
-### 9. How automatic domain configuration works
 
-The production Nginx container uses:
-
-- [deploy/nginx/default.conf](../deploy/nginx/default.conf)
-
-In `docker-compose.prod.yml`, that file is mounted as an Nginx template:
-
-- `/etc/nginx/templates/default.conf.template`
-
-The official Nginx image renders that template on container startup using environment variables. That means:
-
-- set `APP_DOMAIN` in `.env`
-- start the stack
-- Nginx uses that value automatically as `server_name`
-
-No manual `vim /etc/nginx/...` step is needed for the containerized production setup.
-
-### 10. Stop the production stack
+### 8. Stop the production stack
 
 ```bash
 docker compose -f docker-compose.prod.yml down
@@ -365,19 +369,3 @@ To also remove volumes:
 ```bash
 docker compose -f docker-compose.prod.yml down -v
 ```
-
-### 11. HTTPS on a production server
-
-This repo currently provides HTTP deployment by default.
-
-For HTTPS, the usual next step is one of these:
-
-- place this stack behind a host-level Nginx or Traefik with SSL
-- add Certbot on the server
-- terminate TLS at a load balancer
-
-If you want a fully containerized HTTPS path next, we can add:
-
-- `nginx` SSL config
-- Certbot companion setup
-- automatic certificate renewal

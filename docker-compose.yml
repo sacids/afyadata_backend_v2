@@ -11,6 +11,14 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   web:
     build:
       context: .
@@ -18,6 +26,7 @@ services:
     restart: unless-stopped
     depends_on:
       - db
+      - redis
     environment:
       ENGINE: ${ENGINE:-django.db.backends.postgresql}
       DB_NAME: ${DB_NAME:-afyadata_db}
@@ -32,8 +41,12 @@ services:
       AFYADATA_HUB_API_KEY: ${AFYADATA_HUB_API_KEY}
       AFYADATA_GLOBAL_KEY: ${AFYADATA_GLOBAL_KEY}
       CURRENT_INSTANCE_EXTERNAL_URL: ${CURRENT_INSTANCE_EXTERNAL_URL:-http://127.0.0.1:8000}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://127.0.0.1:6379/0}
+      FAO_BASE_URL: ${FAO_BASE_URL}
+      FAO_AUTH_URL: ${FAO_AUTH_URL}
+      FAO_CLIENT_ID: ${FAO_CLIENT_ID}
+      FAO_CLIENT_SECRET: ${FAO_CLIENT_SECRET}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
     ports:
@@ -42,7 +55,41 @@ services:
       - media_data:/app/media
       - static_data:/app/static
 
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    environment:
+      ENGINE: ${ENGINE:-django.db.backends.postgresql}
+      DB_NAME: ${DB_NAME:-afyadata_db}
+      DB_USER: ${DB_USER:-afyadata}
+      DB_PASSWORD: ${DB_PASSWORD:-afyadata}
+      DB_HOST: db
+      DB_PORT: 5432
+      DEBUG: ${DEBUG:-False}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      ALLOWED_HOST: ${ALLOWED_HOST:-*}
+      AFYADATA_HUB_URL: ${AFYADATA_HUB_URL:-https://hub.afyadata.sacids.org/api/v1/projects/register/}
+      AFYADATA_HUB_API_KEY: ${AFYADATA_HUB_API_KEY}
+      AFYADATA_GLOBAL_KEY: ${AFYADATA_GLOBAL_KEY}
+      CURRENT_INSTANCE_EXTERNAL_URL: ${CURRENT_INSTANCE_EXTERNAL_URL:-http://127.0.0.1:8000}
+      FAO_BASE_URL: ${FAO_BASE_URL}
+      FAO_AUTH_URL: ${FAO_AUTH_URL}
+      FAO_CLIENT_ID: ${FAO_CLIENT_ID}
+      FAO_CLIENT_SECRET: ${FAO_CLIENT_SECRET}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/static
+
 volumes:
   postgres_data:
   media_data:
   static_data:
+  redis_data:

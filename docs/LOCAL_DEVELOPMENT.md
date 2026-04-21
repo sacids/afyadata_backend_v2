@@ -115,6 +115,8 @@ Open:
 - App: `http://127.0.0.1:8000`
 - Admin: `http://127.0.0.1:8000/admin`
 
+
+
 ## Option 2: Docker Compose for Local Development
 
 This repo also includes a default Docker stack:
@@ -143,6 +145,19 @@ DB_USER=afyadata
 DB_PASSWORD=strong-password
 DB_HOST=db
 DB_PORT=5432
+
+#AFYADATA + EMA-I INTEGRATION TEST ENVIRONMENTS
+FAO_BASE_URL=change-me
+FAO_AUTH_URL=change-me
+FAO_CLIENT_ID=change-me
+FAO_CLIENT_SECRET=change-me
+
+#AFYADATA HUB - PUBLIC PROJECTS
+AFYADATA_HUB_URL=change-me
+AFYADATA_HUB_API_KEY=change-me
+CURRENT_INSTANCE_EXTERNAL_URL=change-me
+AFYADATA_GLOBAL_KEY=AFYADATA_GLOBAL_KEY
+
 ```
 
 ### 3. Build and start the containers
