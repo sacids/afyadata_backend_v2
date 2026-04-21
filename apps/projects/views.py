@@ -1778,6 +1778,7 @@ class ProjectQRManagerView(PermissionRequiredMixin, generic.TemplateView):
         
         # Add project to context
         context['project'] = self.project
+        context['qr_form'] = ProjectQRCodeForm()
         
         # Get all QR codes for this project
         context['qr_codes'] = self.project.qr_codes.all().order_by('-created_at')
@@ -1808,24 +1809,24 @@ class ProjectQRManagerView(PermissionRequiredMixin, generic.TemplateView):
 
 class ProjectQRCodeCreateView(PermissionRequiredMixin, View):
     """Create a new QR code for the project."""
-    #permission_required = 'projects.add_projectqrcode'
+    permission_required = 'projects.add_projectqrcode'
     
     def post(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
-        
-        name = request.POST.get('name')
-        expires_at = request.POST.get('expires_at')
-        is_active = request.POST.get('is_active') == 'on'
-        
-        qr_code = ProjectQRCode(
-            project=project,
-            issued_to=request.user if is_active else None,
-            is_active=is_active,
-            expires_at=expires_at if expires_at else None,
-        )
+
+        form = ProjectQRCodeForm(request.POST)
+        if not form.is_valid():
+            for errors in form.errors.values():
+                for error in errors:
+                    messages.error(request, error)
+            return redirect('projects:qrmanager', pk=project.pk)
+
+        qr_code = form.save(commit=False)
+        qr_code.project = project
+        qr_code.issued_to = request.user
         qr_code.save()
-        
-        messages.success(request, f'QR Code "{name}" created successfully.')
+
+        messages.success(request, f'QR Code "{qr_code.name}" created successfully.')
         return redirect('projects:qrmanager-detail', pk=project.pk, qr_code_id=qr_code.pk)
 
 
@@ -1836,13 +1837,17 @@ class ProjectQRCodeUpdateView(PermissionRequiredMixin, View):
     def post(self, request, pk, qr_code_id):
         project = get_object_or_404(Project, pk=pk)
         qr_code = get_object_or_404(ProjectQRCode, pk=qr_code_id, project=project)
-        
-        qr_code.name = request.POST.get('name')
-        qr_code.description = request.POST.get('description')
-        qr_code.is_active = request.POST.get('is_active') == 'on'
-        expires_at = request.POST.get('expires_at')
-        qr_code.expires_at = expires_at if expires_at else None
-        
+
+        form = ProjectQRCodeForm(request.POST, instance=qr_code)
+        if not form.is_valid():
+            for errors in form.errors.values():
+                for error in errors:
+                    messages.error(request, error)
+            return redirect('projects:qrmanager-detail', pk=project.pk, qr_code_id=qr_code.pk)
+
+        qr_code = form.save(commit=False)
+        if qr_code.issued_to_id is None:
+            qr_code.issued_to = request.user
         qr_code.save()
         
         messages.success(request, f'QR Code "{qr_code.name}" updated successfully.')

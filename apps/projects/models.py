@@ -346,6 +346,8 @@ class ProjectQRCode(models.Model):
     project = models.ForeignKey(
         "Project", on_delete=models.CASCADE, related_name="qr_codes"
     )
+    name = models.CharField(max_length=150)
+    description = models.TextField(null=True, blank=True)
     issued_to = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True
     )
@@ -356,6 +358,9 @@ class ProjectQRCode(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.name
 
     @property
     def is_valid(self):

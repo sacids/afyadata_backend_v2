@@ -1,5 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
+from django.utils import timezone
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field
 from .models import *
@@ -480,3 +481,51 @@ class FormReactionForm(forms.ModelForm):
             ),
             "is_active": forms.CheckboxInput(attrs={"class": "rounded-md"}),
         }
+
+
+class ProjectQRCodeForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(ProjectQRCodeForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_show_labels = True
+        self.helper.label_class = "text-gray-700 text-xs font-medium"
+
+    class Meta:
+        model = ProjectQRCode
+        fields = ["name", "description", "is_active", "expires_at"]
+        widgets = {
+            "name": forms.TextInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-xl",
+                    "placeholder": "e.g. Animal clinical qrcode",
+                }
+            ),
+            "description": forms.Textarea(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-xl",
+                    "rows": 3,
+                    "placeholder": "Optional note about where or how this QR code is used",
+                }
+            ),
+            "is_active": forms.CheckboxInput(attrs={"class": "rounded"}),
+            "expires_at": forms.DateTimeInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-xl",
+                    "type": "datetime-local",
+                },
+                format="%Y-%m-%dT%H:%M",
+            ),
+        }
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip()
+        if not name:
+            raise forms.ValidationError("Name is required.")
+        return name
+
+    def clean(self):
+        cleaned_data = super().clean()
+        expires_at = cleaned_data.get("expires_at")
+        if expires_at and expires_at <= timezone.now():
+            self.add_error("expires_at", "Expiry must be in the future.")
+        return cleaned_data
