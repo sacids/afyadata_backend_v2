@@ -15,6 +15,14 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: afyadata-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
   web:
     build:
       context: .
@@ -24,6 +32,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       ENGINE: ${ENGINE:-django.db.backends.postgresql}
       DB_NAME: ${DB_NAME}
@@ -38,8 +48,12 @@ services:
       AFYADATA_HUB_API_KEY: ${AFYADATA_HUB_API_KEY}
       AFYADATA_GLOBAL_KEY: ${AFYADATA_GLOBAL_KEY}
       CURRENT_INSTANCE_EXTERNAL_URL: ${CURRENT_INSTANCE_EXTERNAL_URL}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://127.0.0.1:6379/0}
+      FAO_BASE_URL: ${FAO_BASE_URL}
+      FAO_AUTH_URL: ${FAO_AUTH_URL}
+      FAO_CLIENT_ID: ${FAO_CLIENT_ID}
+      FAO_CLIENT_SECRET: ${FAO_CLIENT_SECRET}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
     expose:
@@ -47,6 +61,42 @@ services:
     volumes:
       - static_data:/app/static
       - media_data:/app/media
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: afyadata-celery-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      ENGINE: ${ENGINE:-django.db.backends.postgresql}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: db
+      DB_PORT: 5432
+      DEBUG: ${DEBUG:-False}
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOST: ${ALLOWED_HOST}
+      AFYADATA_HUB_URL: ${AFYADATA_HUB_URL}
+      AFYADATA_HUB_API_KEY: ${AFYADATA_HUB_API_KEY}
+      AFYADATA_GLOBAL_KEY: ${AFYADATA_GLOBAL_KEY}
+      CURRENT_INSTANCE_EXTERNAL_URL: ${CURRENT_INSTANCE_EXTERNAL_URL}
+      FAO_BASE_URL: ${FAO_BASE_URL}
+      FAO_AUTH_URL: ${FAO_AUTH_URL}
+      FAO_CLIENT_ID: ${FAO_CLIENT_ID}
+      FAO_CLIENT_SECRET: ${FAO_CLIENT_SECRET}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/static
 
   nginx:
     image: nginx:1.27-alpine
@@ -67,3 +117,4 @@ volumes:
   postgres_data:
   static_data:
   media_data:
+  redis_data:
