@@ -58,14 +58,12 @@ Update:
 - database credentials
 
 For public projects update and verify environment variables
-
 - `AFYADATA_HUB_URL=https://hub.afyadata.sacids.org/api/v1/projects/register/`
 - `AFYADATA_HUB_API_KEY=hub-key`
 - `CURRENT_INSTANCE_EXTERNAL_URL=project-domain-name`
 - `AFYADATA_GLOBAL_KEY=AFYADATA_GLOBAL_KEY`
 
 For FAO Integration update and verify test environment variables
-
 - `FAO_BASE_URL=https://cbs-175434516411.europe-west1.run.app`
 - `FAO_AUTH_URL=https://keycloak-175434516411.europe-west1.run.app/realms/master/protocol/openid-connect/token`
 - `FAO_CLIENT_ID=change-me`
@@ -162,6 +160,11 @@ sudo systemctl restart nginx
 python manage.py check
 python manage.py check --deploy
 ```
+
+### 9. Configure supervisor
+
+
+
 
 ## Option 2: Production Docker Deployment
 
