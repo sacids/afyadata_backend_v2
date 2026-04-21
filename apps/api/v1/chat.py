@@ -31,8 +31,6 @@ class ConversationView(viewsets.ViewSet):
         """
         if request.data:
             data = request.data
-            print("in instance")
-            print(data["instance"])
 
             from apps.projects.models import FormData
 
@@ -100,41 +98,44 @@ class ConversationView(viewsets.ViewSet):
         serializer = MessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         external_id = serializer.validated_data.get("external_id")
+        request_sender_id = serializer.validated_data.get("sender_id")
 
         if not external_id:
             return Response(
                 {"error": "external_id is required for idempotent messaging"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-            
+
         sender = request.user
-        
+
         # Check if the message is from system (sender_id '0' in the request)
-        request_sender_id = request.data.get("sender_id")
-        if request_sender_id == '0' or request_sender_id == 0 or request_sender_id == '1' or request_sender_id == 1:
+        logging.info(
+            f"Message sender_id from request:  {external_id} {request_sender_id}"
+        )
+        if request_sender_id == "1000000000" or request_sender_id == 1000000000:
             try:
                 from django.contrib.auth.models import User
+
                 # Get or create a system user
                 system_user, created = User.objects.get_or_create(
-                    id=1,
+                    id=1000000000,  # Use a very high ID to avoid conflicts
                     defaults={
-                        'username': 'system',
-                        'first_name': 'AfyaData',
-                        'last_name': 'Assistant',
-                        'email': 'system@afyadata.com'
-                    }
+                        "username": "afyadata_system",
+                        "first_name": "AfyaData",
+                        "last_name": "Assistant",
+                        "email": "system@afyadata.com",
+                    },
                 )
                 if created:
                     system_user.set_unusable_password()
                     system_user.save()
-                
+
                 sender = system_user
-                sender_username = 'AfyaData Assistant'
+                sender_username = "AfyaData Assistant"
             except Exception as e:
                 logging.error(f"Failed to get system user: {e}")
                 # Fallback to request user but mark as system
-                sender_username = 'AfyaData Assistant'
-
+                sender_username = "AfyaData Assistant"
 
         # insert or update message based on external id use update_or_insert method
         msg, created = Message.objects.update_or_create(

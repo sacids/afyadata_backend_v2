@@ -15,10 +15,11 @@ class UserSimpleSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSimpleSerializer(read_only=True)
+    sender_id = serializers.CharField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = Message
-        fields = ["id", "conversation", "sender", "text", "external_id" ,"created_at", "is_read"]
+        fields = ["id", "conversation", "sender", "sender_id", "text", "external_id" ,"created_at", "is_read"]
         read_only_fields = ["id", "sender", "created_at", "is_read", "conversation"]
 
 
