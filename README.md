@@ -24,9 +24,9 @@ Afyadata is a Django-based community surveillance platform for managing projects
 Use the guide that matches your goal:
 
 - Local development:
-  - [docs/LOCAL_DEVELOPMENT.md](/Users/renfridngolongolo/html/sacids/afyadata/docs/LOCAL_DEVELOPMENT.md)
+  - [docs/LOCAL_DEVELOPMENT.md](/docs/LOCAL_DEVELOPMENT.md)
 - Production deployment:
-  - [docs/PRODUCTION_DEPLOYMENT.md](/Users/renfridngolongolo/html/sacids/afyadata/docs/PRODUCTION_DEPLOYMENT.md)
+  - [docs/PRODUCTION_DEPLOYMENT.md](/docs/PRODUCTION_DEPLOYMENT.md)
 
 ## Quick Start
 
