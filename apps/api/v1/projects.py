@@ -101,14 +101,9 @@ class ProjectView(viewsets.ViewSet):
             project = Project.objects.get(code=request.data["code"])
 
             # check if user is already a member
-            if ProjectMember.objects.filter(
-                project=project, member=request.user, active=True
-            ).exists():
-
+            if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
                 # Return project details
-                project_data = ProjectSerializer(
-                    project
-                ).data  # or build a dict manually
+                project_data = ProjectSerializer(project).data  # or build a dict manually
 
                 # response
                 return Response(
@@ -122,9 +117,7 @@ class ProjectView(viewsets.ViewSet):
             else:
                 # first check if is private
                 if project.access == "private":
-                    ProjectMember.objects.create(
-                        project=project, member=request.user, active=True
-                    )
+                    ProjectMember.objects.create(project=project, member=request.user, active=True, credibility_score=50)
 
                     # response
                     return Response(
@@ -134,17 +127,15 @@ class ProjectView(viewsets.ViewSet):
                 else:
                     # check if project is auto_join is true
                     if project.auto_join:
-                        ProjectMember.objects.create(
-                            project=project, member=request.user, active=True
-                        )
+                        ProjectMember.objects.create(project=project, member=request.user, active=True,credibility_score=50)
+
+                        # response
                         return Response(
                             {"error": False, "message": "Your request has approved"},
                             status=status.HTTP_200_OK,
                         )
                     else:
-                        ProjectMember.objects.create(
-                            project=project, member=request.user, active=False
-                        )
+                        ProjectMember.objects.create(project=project, member=request.user, active=False)
 
                         # TODO: send notification to project owner
 
@@ -174,9 +165,7 @@ class ProjectView(viewsets.ViewSet):
             project = Project.objects.get(id=pk)
 
             # check if user is already a member
-            if ProjectMember.objects.filter(
-                project=project, member=request.user, active=True
-            ).exists():
+            if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
 
                 # Return project details
                 project_data = ProjectSerializer(project).data
@@ -193,9 +182,7 @@ class ProjectView(viewsets.ViewSet):
             else:
                 # first check if is private
                 if project.access == "private":
-                    ProjectMember.objects.create(
-                        project=project, member=request.user, active=True
-                    )
+                    ProjectMember.objects.create(project=project, member=request.user, active=True, credibility_score=50)
 
                     # response
                     return Response(
@@ -206,14 +193,9 @@ class ProjectView(viewsets.ViewSet):
                 else:
                     # check if project is auto_join is true
                     if project.auto_join:
-                        ProjectMember.objects.create(
-                            project=project, member=request.user, active=True
-                        )
-                        # return Response(
-                        #     {"error": False, "message": "Your request has approved"},
-                        #     status=status.HTTP_200_OK,
-                        # )
+                        ProjectMember.objects.create(project=project, member=request.user, active=True, credibility_score=50)
 
+                        # project data
                         project_data = ProjectSerializer(project).data
 
                         # response
@@ -226,9 +208,7 @@ class ProjectView(viewsets.ViewSet):
                             status=status.HTTP_200_OK,
                         )
                     else:
-                        ProjectMember.objects.create(
-                            project=project, member=request.user, active=False
-                        )
+                        ProjectMember.objects.create(project=project, member=request.user, active=False, credibility_score=50)
 
                         # TODO: send notification to project owner
 
@@ -246,6 +226,7 @@ class ProjectView(viewsets.ViewSet):
                 status=status.HTTP_200_OK,
             )
 
+
     def unsubscribe(self, request, pk=None):
         """Unsubscribe from project"""
         code = request.data.get("code")
@@ -259,13 +240,11 @@ class ProjectView(viewsets.ViewSet):
             project = Project.objects.get(code=request.data["code"])
 
             # check if user is already a member
-            if ProjectMember.objects.filter(
-                project=project, member=request.user, active=True
-            ).exists():
+            if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
                 # unsubscribe
-                ProjectMember.objects.filter(
-                    project=project, member=request.user
-                ).delete()
+                ProjectMember.objects.filter(project=project, member=request.user).delete()
+
+                # response
                 return Response(
                     {
                         "error": False,

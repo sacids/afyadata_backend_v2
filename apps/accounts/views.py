@@ -31,7 +31,7 @@ class LoginView(View):
     """Login to the platform"""
     form_class = LoginForm
     template_name = 'login.html'
-    success_url = '/projects/lists'
+    success_url = '/dashboard/summaries'
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -288,4 +288,4 @@ class LogoutView(View):
     def get(self, request):
         logout(request)
         messages.error(request, 'Log out successfully')
-        return redirect('auth/login')
+        return redirect('/auth/login')

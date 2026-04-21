@@ -35,12 +35,20 @@ DEBUG = True
 
 # ALLOWED_HOSTS = config("ALLOWED_HOST", default="*", cast=lambda v: [s.strip() for s in v.split(",") if s.strip()])
 ALLOWED_HOSTS = ["*"]
+USE_HTTPS = config("USE_HTTPS", default=False, cast=bool)
+
+if USE_HTTPS:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+else:
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = None
+
 # Login URL
 LOGIN_URL = "/auth/login"
-LOGIN_REDIRECT_URL = "/projects/lists"
-
-# FAO URL API
-FAO_API_URL = "https://reference-data-service-175434516411.europe-west1.run.app"
+LOGIN_REDIRECT_URL = "/dashboard/summaries"
 
 # Application definition
 INSTALLED_APPS = [

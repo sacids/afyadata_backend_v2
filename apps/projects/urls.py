@@ -31,11 +31,14 @@ urlpatterns = [
 
     # OHKR {Reference Data + Form Reactions}
     path('forms/<str:pk>/reference-data', views.SurveyReferenceDataView.as_view(), name='form-reference-data'),
+    path('forms/<str:pk>/reactions', views.SurveyReactionView.as_view(), name='form-reactions'),
+    path('forms/<str:pk>/reactions/<str:reaction_pk>/delete', views.SurveyReactionDeleteView.as_view(), name='form-reaction-delete'),
 
     # form data
     path('forms/<str:pk>/data', views.SurveyDataView.as_view(), name='form-data'),
     path('forms/<str:pk>/data/export', views.SurveyDataExportView.as_view(), name="form-data-export"),
     path('forms/<str:data_id>/data/instance', views.SurveyDataInstanceView.as_view(), name="form-data-instance"),
+    path('forms/<str:data_id>/data/messages', views.SurveyDataMessagesView.as_view(), name="form-data-messages"),
 
     path('forms/<str:pk>/data/charts', views.ChartsDataView.as_view(), name='form-data-charts'),
     path('forms/<str:pk>/data/map', views.MapDataView.as_view(), name='form-data-map'),

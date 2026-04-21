@@ -46,7 +46,7 @@ class Project(models.Model):
         max_length=50, error_messages={"required": "Title is required"}
     )
     code = models.CharField(max_length=10, blank=True, null=True, unique=True)
-    tags = models.ManyToManyField(Tag, null=True, blank=True)
+    tags = models.ManyToManyField(Tag, blank=True)
     access = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="private")
     auto_join = models.BooleanField(default=False)  # auto join the project
     accept_member = models.BooleanField(default=True)  # accept member
@@ -346,6 +346,8 @@ class ProjectQRCode(models.Model):
     project = models.ForeignKey(
         "Project", on_delete=models.CASCADE, related_name="qr_codes"
     )
+    name = models.CharField(max_length=150)
+    description = models.TextField(null=True, blank=True)
     issued_to = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True
     )
@@ -356,6 +358,9 @@ class ProjectQRCode(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.name
 
     @property
     def is_valid(self):

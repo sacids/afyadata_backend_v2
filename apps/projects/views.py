@@ -3,6 +3,7 @@ import logging
 import random
 import string
 import csv
+import uuid
 from datetime import datetime
 from datetime import datetime, date
 from django.core.serializers.json import DjangoJSONEncoder
@@ -35,9 +36,10 @@ from . import utils
 
 from .models import Project, ProjectMember, FormDefinition, FormData
 from .forms import *
-from apps.ohkr.models import ClinicalSign
+from apps.ohkr.models import ClinicalSign, FormReaction, ReactionAction
 from apps.esb.models import FormPayloadConfig
 from apps.accounts.utils import is_admin_user
+from apps.chat.models import Conversation, Message
 
 
 from django.urls import reverse
@@ -221,7 +223,7 @@ def build_form_management_links(user, survey):
         links["Update Form"] = reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk})
         links["API Integrations"] = reverse_lazy("projects:form-api-config", kwargs={"pk": survey.pk})
         links["Reference Data"] = reverse_lazy("projects:form-reference-data", kwargs={"pk": survey.pk})
-        links["Form Reactions"] = ""
+        links["Form Reactions"] = reverse_lazy("projects:form-reactions", kwargs={"pk": survey.pk})
     return links
 
 
@@ -1064,6 +1066,87 @@ class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
         )
 
 
+class SurveyReactionView(PermissionRequiredMixin, generic.TemplateView):
+    """Survey Form Reactions"""
+    template_name = "surveys/reactions.html"
+    permission_required = "projects.change_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyReactionView, self).dispatch(*args, **kwargs)
+
+    def get_edit_instance(self, survey):
+        reaction_id = self.request.GET.get("reaction")
+        if not reaction_id:
+            return None
+        return get_object_or_404(FormReaction, pk=reaction_id, form=survey)
+
+    def get_context(self, survey, reaction_form=None):
+        edit_instance = self.get_edit_instance(survey)
+        reaction_form = reaction_form or FormReactionForm(instance=edit_instance)
+
+        context = {
+            "title": f"{survey.title} - Form Reactions",
+            "survey": survey,
+            "reaction_form": reaction_form,
+            "edit_instance": edit_instance,
+            "reactions": FormReaction.objects.filter(form=survey).prefetch_related("actions").order_by("priority", "rule_name"),
+            "reaction_actions": ReactionAction.objects.order_by("action_type", "action_name"),
+        }
+
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
+            {"name": "Form Reactions", "url": "#"},
+        ]
+
+        context["links"] = build_form_management_links(self.request.user, survey)
+        return context
+
+    def get(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        return render(request, self.template_name, self.get_context(survey))
+
+    def post(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        reaction_id = request.POST.get("reaction_id")
+        edit_instance = None
+
+        if reaction_id:
+            edit_instance = get_object_or_404(FormReaction, pk=reaction_id, form=survey)
+
+        reaction_form = FormReactionForm(request.POST, instance=edit_instance)
+        if reaction_form.is_valid():
+            reaction = reaction_form.save(commit=False)
+            reaction.form = survey
+            reaction.save()
+            reaction_form.save_m2m()
+            messages.success(
+                request,
+                "Form reaction updated successfully." if edit_instance else "Form reaction created successfully.",
+            )
+            return HttpResponseRedirect(reverse_lazy("projects:form-reactions", kwargs={"pk": survey.pk}))
+
+        messages.error(request, "Please correct the reaction errors below.")
+        return render(request, self.template_name, self.get_context(survey, reaction_form=reaction_form))
+
+
+class SurveyReactionDeleteView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.change_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyReactionDeleteView, self).dispatch(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        reaction = get_object_or_404(FormReaction, pk=kwargs["reaction_pk"], form=survey)
+        reaction.delete()
+        messages.success(request, "Form reaction deleted successfully.")
+        return HttpResponseRedirect(reverse_lazy("projects:form-reactions", kwargs={"pk": survey.pk}))
+
+
 class SurveyAttachmentView(PermissionRequiredMixin, generic.TemplateView):
     """Survey Attachment"""
     permission_required = "projects.change_formdefinition"
@@ -1240,6 +1323,17 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
         )
 
         # convert form data to JSON
+        attachments = [
+            {
+                "id": str(file.id),
+                "name": file.original_name or file.file.name.split("/")[-1],
+                "url": file.file.url,
+                "type": file.file_type,
+            }
+            for file in form_data.files.all()
+            if getattr(file, "file", None)
+        ]
+
         cur_data_json = {
             "id": form_data.form.id,
             "data_id": form_data.uuid,
@@ -1247,6 +1341,7 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
             "form_title": localized_form_title,
             "form_code": form_data.form.code,
             "form_data": form_data.form_data,
+            "attachments": attachments,
         }
 
         # get form
@@ -1300,6 +1395,115 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
 
         # render view
         return render(request, "surveys/data.html", context=context)
+
+
+class SurveyDataMessagesView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.view_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataMessagesView, self).dispatch(*args, **kwargs)
+
+    def get_form_data(self):
+        form_data = get_object_or_404(FormData, uuid=self.kwargs["data_id"])
+        get_accessible_project_or_404(self.request.user, form_data.form.project.pk)
+        return form_data
+
+    def get_or_create_conversation(self, form_data):
+        conversation = (
+            Conversation.objects.filter(form=form_data.form, instance=form_data)
+            .prefetch_related("participants", "messages__sender")
+            .order_by("-updated_at")
+            .first()
+        )
+
+        if conversation:
+            if not conversation.participants.filter(pk=self.request.user.pk).exists():
+                conversation.participants.add(self.request.user)
+            return conversation
+
+        conversation = Conversation.objects.create(
+            title=form_data.title or f"Conversation for {form_data.uuid}",
+            form=form_data.form,
+            instance=form_data,
+            created_by=self.request.user,
+        )
+
+        participant_ids = {self.request.user.pk}
+        if form_data.created_by_id:
+            participant_ids.add(form_data.created_by_id)
+
+        conversation.participants.set(User.objects.filter(pk__in=participant_ids))
+        return conversation
+
+    def serialize_message(self, message):
+        sender_name = (
+            message.sender.get_full_name().strip()
+            if message.sender and message.sender.get_full_name().strip()
+            else message.sender.username
+            if message.sender
+            else "System"
+        )
+        return {
+            "id": str(message.id),
+            "text": message.text,
+            "created_at": message.created_at.strftime("%d %b %Y, %H:%M") if message.created_at else "",
+            "is_read": message.is_read,
+            "direction": "outgoing" if message.sender_id == self.request.user.id else "incoming",
+            "sender_name": sender_name,
+        }
+
+    def get(self, request, *args, **kwargs):
+        form_data = self.get_form_data()
+        conversation = self.get_or_create_conversation(form_data)
+
+        conversation.messages.filter(is_read=False).exclude(sender=request.user).update(
+            is_read=True
+        )
+
+        messages_data = [
+            self.serialize_message(message)
+            for message in conversation.messages.select_related("sender").order_by("created_at")
+        ]
+
+        participant_names = [
+            participant.get_full_name().strip() or participant.username
+            for participant in conversation.participants.exclude(pk=request.user.pk)
+        ]
+
+        return JsonResponse(
+            {
+                "conversation_id": str(conversation.id),
+                "title": conversation.title or f"Conversation for {form_data.uuid}",
+                "participants": participant_names,
+                "messages": messages_data,
+            }
+        )
+
+    def post(self, request, *args, **kwargs):
+        form_data = self.get_form_data()
+        conversation = self.get_or_create_conversation(form_data)
+
+        text = (request.POST.get("text") or "").strip()
+        if not text:
+            return JsonResponse(
+                {"success": False, "error": "Reply message is required."},
+                status=400,
+            )
+
+        message = Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            text=text,
+            external_id=str(uuid.uuid4()),
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": self.serialize_message(message),
+            }
+        )
 
 
 class ChartsDataView(PermissionRequiredMixin, generic.TemplateView):
@@ -1555,20 +1759,6 @@ def form_points(request, *args, **kwargs):
 
 
 
-# projects/views.p
-
-# views.py
-
-
-
-
-
-
-
-
-
-
-
 # views.py - Complete QR Manager Views
 
 class ProjectQRManagerView(PermissionRequiredMixin, generic.TemplateView):
@@ -1588,6 +1778,7 @@ class ProjectQRManagerView(PermissionRequiredMixin, generic.TemplateView):
         
         # Add project to context
         context['project'] = self.project
+        context['qr_form'] = ProjectQRCodeForm()
         
         # Get all QR codes for this project
         context['qr_codes'] = self.project.qr_codes.all().order_by('-created_at')
@@ -1618,24 +1809,24 @@ class ProjectQRManagerView(PermissionRequiredMixin, generic.TemplateView):
 
 class ProjectQRCodeCreateView(PermissionRequiredMixin, View):
     """Create a new QR code for the project."""
-    #permission_required = 'projects.add_projectqrcode'
+    permission_required = 'projects.add_projectqrcode'
     
     def post(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
-        
-        name = request.POST.get('name')
-        expires_at = request.POST.get('expires_at')
-        is_active = request.POST.get('is_active') == 'on'
-        
-        qr_code = ProjectQRCode(
-            project=project,
-            issued_to=request.user if is_active else None,
-            is_active=is_active,
-            expires_at=expires_at if expires_at else None,
-        )
+
+        form = ProjectQRCodeForm(request.POST)
+        if not form.is_valid():
+            for errors in form.errors.values():
+                for error in errors:
+                    messages.error(request, error)
+            return redirect('projects:qrmanager', pk=project.pk)
+
+        qr_code = form.save(commit=False)
+        qr_code.project = project
+        qr_code.issued_to = request.user
         qr_code.save()
-        
-        messages.success(request, f'QR Code "{name}" created successfully.')
+
+        messages.success(request, f'QR Code "{qr_code.name}" created successfully.')
         return redirect('projects:qrmanager-detail', pk=project.pk, qr_code_id=qr_code.pk)
 
 
@@ -1646,13 +1837,17 @@ class ProjectQRCodeUpdateView(PermissionRequiredMixin, View):
     def post(self, request, pk, qr_code_id):
         project = get_object_or_404(Project, pk=pk)
         qr_code = get_object_or_404(ProjectQRCode, pk=qr_code_id, project=project)
-        
-        qr_code.name = request.POST.get('name')
-        qr_code.description = request.POST.get('description')
-        qr_code.is_active = request.POST.get('is_active') == 'on'
-        expires_at = request.POST.get('expires_at')
-        qr_code.expires_at = expires_at if expires_at else None
-        
+
+        form = ProjectQRCodeForm(request.POST, instance=qr_code)
+        if not form.is_valid():
+            for errors in form.errors.values():
+                for error in errors:
+                    messages.error(request, error)
+            return redirect('projects:qrmanager-detail', pk=project.pk, qr_code_id=qr_code.pk)
+
+        qr_code = form.save(commit=False)
+        if qr_code.issued_to_id is None:
+            qr_code.issued_to = request.user
         qr_code.save()
         
         messages.success(request, f'QR Code "{qr_code.name}" updated successfully.')

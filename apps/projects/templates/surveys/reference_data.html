@@ -24,43 +24,48 @@
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            {% include 'partials/list_header.html' with header_title="Reference Data" header_subtitle="Search and sync administrative locations, species, and clinical signs for this form." search_id="form_search" search_placeholder="Search reference data..." export_button_id="forms_export" %}
+            {% include 'partials/list_header.html' with header_title="Reference Data" header_subtitle="Search and sync locations, species, and clinical signs." search_id="form_search" search_placeholder="Search reference data..." export_button_id="forms_export" secondary_button_id="reference_sync_toggle" secondary_button_label="Sync Reference Data" secondary_button_icon="bx bx-refresh" %}
 
             <div class="p-4">
                 <div class="relative overflow-x-auto">
                     <div id="message_wrp" class="mb-3" hx-preserve></div>
 
-                    <!-- <div class="mb-4 flex flex-wrap items-center gap-2">
-                        {% if perms.ohkr.change_location %}
-                            <button type="button"
-                                class="reference-sync-btn inline-flex items-center rounded-full bg-slate-700 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800"
-                                data-url="{% url 'ohkr:locations.sync' %}?form_id={{ survey.pk }}"
-                                data-label="locations">
-                                <i class='bx bx-map-alt mr-2 text-base'></i> Sync Locations
-                            </button>
-                        {% endif %}
-                        {% if perms.ohkr.change_specie %}
-                            <button type="button"
-                                class="reference-sync-btn inline-flex items-center rounded-full bg-slate-700 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800"
-                                data-url="{% url 'ohkr:species.sync' %}?form_id={{ survey.pk }}"
-                                data-label="species">
-                                <i class='bx bx-layer mr-2 text-base'></i> Sync Species
-                            </button>
-                        {% endif %}
-                        {% if perms.ohkr.change_clinicalsign %}
-                            <button type="button"
-                                class="reference-sync-btn inline-flex items-center rounded-full bg-slate-700 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800"
-                                data-url="{% url 'ohkr:clinical-signs.sync' %}?form_id={{ survey.pk }}"
-                                data-label="clinical signs">
-                                <i class='bx bx-pulse mr-2 text-base'></i> Sync Clinical Signs
-                            </button>
-                        {% endif %}
-                    </div> -->
-
                     <table id="datatable_form_reference" class="w-full text-xs text-left text-gray-700 border-collapse">
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="reference_sync_menu" class="fixed z-40 hidden min-w-[220px] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl">
+        <div class="border-b border-stone-200 bg-stone-50 px-4 py-3">
+            <p class="text-xs font-semibold uppercase text-stone-500">Sync Options</p>
+        </div>
+        <div class="p-2">
+            {% if perms.ohkr.change_location %}
+                <button type="button"
+                    class="reference-sync-btn flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                    data-url="{% url 'ohkr:locations.sync' %}?form_id={{ survey.pk }}"
+                    data-label="locations">
+                    <i class='bx bx-map-alt mr-2 text-base text-stone-500'></i> Sync Locations
+                </button>
+            {% endif %}
+            {% if perms.ohkr.change_specie %}
+                <button type="button"
+                    class="reference-sync-btn flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                    data-url="{% url 'ohkr:species.sync' %}?form_id={{ survey.pk }}"
+                    data-label="species">
+                    <i class='bx bx-layer mr-2 text-base text-stone-500'></i> Sync Species
+                </button>
+            {% endif %}
+            {% if perms.ohkr.change_clinicalsign %}
+                <button type="button"
+                    class="reference-sync-btn flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                    data-url="{% url 'ohkr:clinical-signs.sync' %}?form_id={{ survey.pk }}"
+                    data-label="clinical signs">
+                    <i class='bx bx-pulse mr-2 text-base text-stone-500'></i> Sync Clinical Signs
+                </button>
+            {% endif %}
         </div>
     </div>
 </main>
@@ -77,6 +82,24 @@
     });
 
     $(document).ready(function () {
+        const $syncToggle = $('#reference_sync_toggle');
+        const $syncMenu = $('#reference_sync_menu');
+
+        function closeSyncMenu() {
+            $syncMenu.addClass('hidden');
+        }
+
+        function openSyncMenu() {
+            if (!$syncToggle.length || !$syncMenu.length) return;
+
+            const rect = $syncToggle[0].getBoundingClientRect();
+            $syncMenu.css({
+                top: `${rect.bottom + 8}px`,
+                left: `${Math.max(16, rect.right - $syncMenu.outerWidth())}px`,
+            });
+            $syncMenu.removeClass('hidden');
+        }
+
         AjaxDatatableViewUtils.initialize_table(
             $('#datatable_form_reference'),
             "{% url 'projects:dt-form-reference-data' survey.pk %}",
@@ -117,11 +140,37 @@
             $('#datatable_form_reference').DataTable().button('.buttons-csv').trigger();
         });
 
+        $syncToggle.on('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if ($syncMenu.hasClass('hidden')) {
+                openSyncMenu();
+                return;
+            }
+
+            closeSyncMenu();
+        });
+
+        $(window).on('resize', closeSyncMenu);
+
+        $(document).on('click', function (event) {
+            if (
+                !$syncMenu.hasClass('hidden') &&
+                !$(event.target).closest('#reference_sync_menu').length &&
+                !$(event.target).closest('#reference_sync_toggle').length
+            ) {
+                closeSyncMenu();
+            }
+        });
+
         $(document).on('click', '.reference-sync-btn', function () {
             const url = $(this).data('url');
             const label = $(this).data('label');
             const $button = $(this);
             const originalHtml = $button.html();
+
+            closeSyncMenu();
 
             $button.prop('disabled', true).html(`<i class='bx bx-loader-alt bx-spin mr-2 text-base'></i> Syncing ${label}...`);
 

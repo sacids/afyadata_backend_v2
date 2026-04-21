@@ -15,8 +15,17 @@
             currentData: current_data,
             forms: forms,
             data_instance: current_data.form_data,
+            attachments: current_data.attachments || [],
             tabId: 'information',
             viewMode: '',
+            messageThread: [],
+            messageParticipants: [],
+            replyText: '',
+            messageError: '',
+            messagesLoading: false,
+            messageSending: false,
+            attachmentPreviewOpen: false,
+            activeAttachment: null,
 
             loading: false,
             postUrl: "",
@@ -55,6 +64,13 @@
                 }));
             },
 
+            messageThreadSubtitle() {
+                if (this.messageParticipants.length > 0) {
+                    return `Conversation with ${this.messageParticipants.join(', ')}`;
+                }
+                return 'Incoming and outgoing messages for this submission.';
+            },
+
             async changeLanguage() {
                 await this.loadFormDefinition(this.activeFormId, {
                     preserveTitle: this.activeFormId === current_data.id,
@@ -75,13 +91,96 @@
                 this.activeFormId = current_data.id;
                 this.currentData = current_data;
                 this.data_instance = current_data.form_data;
+                this.attachments = current_data.attachments || [];
                 this.tabId = 'information';
                 this.viewMode = '';
                 this.title = current_data.title;
+                this.messageThread = [];
+                this.messageParticipants = [];
+                this.replyText = '';
+                this.messageError = '';
                 this.loadFormDefinition(this.activeFormId, {
                     preserveTitle: true,
                     preserveDescription: false,
                 });
+            },
+
+            imageAttachments() {
+                return (this.attachments || []).filter(file => file.type === 'image');
+            },
+
+            openAttachmentPreview(attachment) {
+                this.activeAttachment = attachment;
+                this.attachmentPreviewOpen = true;
+            },
+
+            closeAttachmentPreview() {
+                this.attachmentPreviewOpen = false;
+                this.activeAttachment = null;
+            },
+
+            async openMessages() {
+                this.tabId = 'message';
+                this.viewMode = '';
+                await this.loadMessages();
+            },
+
+            async loadMessages() {
+                this.messagesLoading = true;
+                this.messageError = '';
+
+                try {
+                    const response = await fetch(`/projects/forms/${this.parentId}/data/messages`);
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to load messages.');
+                    }
+
+                    this.messageThread = data.messages || [];
+                    this.messageParticipants = data.participants || [];
+                } catch (error) {
+                    this.messageError = error.message || 'Failed to load messages.';
+                    this.messageThread = [];
+                    this.messageParticipants = [];
+                } finally {
+                    this.messagesLoading = false;
+                }
+            },
+
+            async sendMessage() {
+                const text = (this.replyText || '').trim();
+                if (!text) return;
+
+                this.messageSending = true;
+                this.messageError = '';
+
+                try {
+                    const payload = new FormData();
+                    payload.append('text', text);
+
+                    const response = await fetch(`/projects/forms/${this.parentId}/data/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': this.csrfToken,
+                        },
+                        body: payload,
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to send message.');
+                    }
+
+                    if (data.message) {
+                        this.messageThread.push(data.message);
+                    }
+                    this.replyText = '';
+                } catch (error) {
+                    this.messageError = error.message || 'Failed to send message.';
+                } finally {
+                    this.messageSending = false;
+                }
             },
 
             initDataTable() {

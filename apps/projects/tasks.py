@@ -58,9 +58,9 @@ def push_formdata_payload_task(self, formdata_id):
             )
             return
 
-        if member.credibility_score <= 50:
+        if member.credibility_score < 50:
             logger.info(
-                "Skipping FAO push for formdata %s: credibility score %s is not greater than 50.",
+                "Skipping FAO push for formdata %s: credibility score %s is less than 50.",
                 formdata.pk,
                 member.credibility_score,
             )

@@ -34,6 +34,12 @@ services:
       DEBUG: ${DEBUG:-False}
       SECRET_KEY: ${SECRET_KEY}
       ALLOWED_HOST: ${ALLOWED_HOST}
+      AFYADATA_HUB_URL: ${AFYADATA_HUB_URL}
+      AFYADATA_HUB_API_KEY: ${AFYADATA_HUB_API_KEY}
+      AFYADATA_GLOBAL_KEY: ${AFYADATA_GLOBAL_KEY}
+      CURRENT_INSTANCE_EXTERNAL_URL: ${CURRENT_INSTANCE_EXTERNAL_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://127.0.0.1:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://127.0.0.1:6379/0}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
     expose:
@@ -50,8 +56,10 @@ services:
       - web
     ports:
       - "80:80"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-_}
     volumes:
-      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/default.conf:/etc/nginx/templates/default.conf.template:ro
       - static_data:/app/static:ro
       - media_data:/app/media:ro
 

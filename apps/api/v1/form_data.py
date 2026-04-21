@@ -115,7 +115,6 @@ class FormDataView(viewsets.ViewSet):
         logging.info(data)
 
         try:
-
             def to_bool(val, default=False):
                 if val is None:
                     return default
