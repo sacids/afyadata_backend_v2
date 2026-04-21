@@ -9,6 +9,9 @@ if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
 fi
 
 python manage.py migrate --noinput
+for app in accounts projects ohkr chat esb; do
+  python manage.py migrate "$app" --noinput
+done
 python manage.py collectstatic --noinput
 
 exec gunicorn config.wsgi:application \

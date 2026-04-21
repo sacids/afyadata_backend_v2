@@ -25,10 +25,11 @@ import apps.dashboard.urls
 import apps.projects.urls
 import apps.ohkr.urls
 import apps.api.urls
+from apps.accounts.views import LoginView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("", include(apps.accounts.urls)),
+    path("", LoginView.as_view(), name="login"),
     path('auth/', include(apps.accounts.urls)),
     path('dashboard/', include(apps.dashboard.urls)),
     path('projects/', include(apps.projects.urls)),

@@ -150,7 +150,7 @@ class SpecieResponse(models.Model):
     clinical_sign = models.ForeignKey(
         ClinicalSign, on_delete=models.SET_NULL, null=True
     )
-    responses = models.ManyToManyField(Response, null=True, blank=True)
+    responses = models.ManyToManyField(Response, blank=True)
 
     def __str__(self):
         return self.specie.name + " - " + self.clinical_sign.name

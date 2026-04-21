@@ -1,5 +1,5 @@
 
-from django.db import models
+from django.db import models, connection
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.db.models.signals import post_save
@@ -22,9 +22,16 @@ class Profile(models.Model):
         db_table = 'ad_profile'
         managed = True
 
+    @staticmethod
+    def table_exists():
+        """Guard profile signal usage during partial first-boot migrations."""
+        return Profile._meta.db_table in connection.introspection.table_names()
+
     @receiver(post_save, sender=User)
     def create_user_profile(sender, instance, created, **kwargs):
         """Create profile for user if it doesn't exist"""
+        if not Profile.table_exists():
+            return
         if created:
             Profile.objects.get_or_create(user=instance)
         else:
@@ -34,6 +41,8 @@ class Profile(models.Model):
     @receiver(post_save, sender=User)
     def save_user_profile(sender, instance, **kwargs):
         """Save the user's profile"""
+        if not Profile.table_exists():
+            return
         try:
             instance.profile.save()
         except Profile.DoesNotExist:

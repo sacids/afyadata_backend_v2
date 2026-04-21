@@ -46,7 +46,7 @@ class Project(models.Model):
         max_length=50, error_messages={"required": "Title is required"}
     )
     code = models.CharField(max_length=10, blank=True, null=True, unique=True)
-    tags = models.ManyToManyField(Tag, null=True, blank=True)
+    tags = models.ManyToManyField(Tag, blank=True)
     access = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="private")
     auto_join = models.BooleanField(default=False)  # auto join the project
     accept_member = models.BooleanField(default=True)  # accept member
