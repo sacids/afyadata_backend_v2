@@ -106,13 +106,42 @@ class ConversationView(viewsets.ViewSet):
                 {"error": "external_id is required for idempotent messaging"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+            
+        sender = request.user
+        
+        # Check if the message is from system (sender_id '0' in the request)
+        request_sender_id = request.data.get("sender_id")
+        if request_sender_id == '0' or request_sender_id == 0 or request_sender_id == '1' or request_sender_id == 1:
+            try:
+                from django.contrib.auth.models import User
+                # Get or create a system user
+                system_user, created = User.objects.get_or_create(
+                    id=1,
+                    defaults={
+                        'username': 'system',
+                        'first_name': 'AfyaData',
+                        'last_name': 'Assistant',
+                        'email': 'system@afyadata.com'
+                    }
+                )
+                if created:
+                    system_user.set_unusable_password()
+                    system_user.save()
+                
+                sender = system_user
+                sender_username = 'AfyaData Assistant'
+            except Exception as e:
+                logging.error(f"Failed to get system user: {e}")
+                # Fallback to request user but mark as system
+                sender_username = 'AfyaData Assistant'
+
 
         # insert or update message based on external id use update_or_insert method
         msg, created = Message.objects.update_or_create(
             external_id=external_id,
             defaults={
                 "conversation": conversation,
-                "sender": request.user,
+                "sender": sender,
                 "text": serializer.validated_data["text"],
             },
         )
