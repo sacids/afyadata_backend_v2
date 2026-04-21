@@ -8,7 +8,13 @@ if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
   done
 fi
 
-python manage.py makemigrations --noinput --skip-checks
+python manage.py makemigrations
+python manage.py makemigrations accounts
+python manage.py makemigrations projects
+python manage.py makemigrations ohkr
+python manage.py makemigrations chat
+python manage.py makemigrations setup
+python manage.py makemigrations esb
 python manage.py migrate --noinput --skip-checks
 python manage.py collectstatic --noinput
 
