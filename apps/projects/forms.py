@@ -4,6 +4,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field
 from .models import *
 from apps.esb.models import FormPayloadConfig, FormPayloadFieldMap, FormValueMapping
+from apps.ohkr.models import FormReaction, ReactionAction
 
 
 class ProjectForm(forms.ModelForm):
@@ -437,3 +438,45 @@ FormValueMappingFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+class FormReactionForm(forms.ModelForm):
+    actions = forms.ModelMultipleChoiceField(
+        queryset=ReactionAction.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Reaction Actions",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(FormReactionForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_show_labels = True
+        self.helper.label_class = "text-gray-700 text-xs font-medium"
+        self.fields["actions"].queryset = ReactionAction.objects.order_by("action_type", "action_name")
+
+    class Meta:
+        model = FormReaction
+        fields = ["rule_name", "condition", "priority", "is_active", "actions"]
+        widgets = {
+            "rule_name": forms.TextInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "placeholder": "e.g. High Mortality Alert",
+                }
+            ),
+            "condition": forms.Textarea(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "rows": 4,
+                    "placeholder": "e.g. ${number_dead} > 10",
+                }
+            ),
+            "priority": forms.NumberInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "min": 0,
+                }
+            ),
+            "is_active": forms.CheckboxInput(attrs={"class": "rounded-md"}),
+        }

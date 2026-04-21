@@ -36,7 +36,7 @@ from . import utils
 
 from .models import Project, ProjectMember, FormDefinition, FormData
 from .forms import *
-from apps.ohkr.models import ClinicalSign
+from apps.ohkr.models import ClinicalSign, FormReaction, ReactionAction
 from apps.esb.models import FormPayloadConfig
 from apps.accounts.utils import is_admin_user
 from apps.chat.models import Conversation, Message
@@ -223,7 +223,7 @@ def build_form_management_links(user, survey):
         links["Update Form"] = reverse_lazy("projects:edit-form", kwargs={"pk": survey.pk})
         links["API Integrations"] = reverse_lazy("projects:form-api-config", kwargs={"pk": survey.pk})
         links["Reference Data"] = reverse_lazy("projects:form-reference-data", kwargs={"pk": survey.pk})
-        links["Form Reactions"] = ""
+        links["Form Reactions"] = reverse_lazy("projects:form-reactions", kwargs={"pk": survey.pk})
     return links
 
 
@@ -1064,6 +1064,87 @@ class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
         return HttpResponse(
             '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">OHKR file created</div>'
         )
+
+
+class SurveyReactionView(PermissionRequiredMixin, generic.TemplateView):
+    """Survey Form Reactions"""
+    template_name = "surveys/reactions.html"
+    permission_required = "projects.change_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyReactionView, self).dispatch(*args, **kwargs)
+
+    def get_edit_instance(self, survey):
+        reaction_id = self.request.GET.get("reaction")
+        if not reaction_id:
+            return None
+        return get_object_or_404(FormReaction, pk=reaction_id, form=survey)
+
+    def get_context(self, survey, reaction_form=None):
+        edit_instance = self.get_edit_instance(survey)
+        reaction_form = reaction_form or FormReactionForm(instance=edit_instance)
+
+        context = {
+            "title": f"{survey.title} - Form Reactions",
+            "survey": survey,
+            "reaction_form": reaction_form,
+            "edit_instance": edit_instance,
+            "reactions": FormReaction.objects.filter(form=survey).prefetch_related("actions").order_by("priority", "rule_name"),
+            "reaction_actions": ReactionAction.objects.order_by("action_type", "action_name"),
+        }
+
+        context["breadcrumbs"] = [
+            {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+            {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+            {"name": survey.title, "url": reverse_lazy("projects:forms", kwargs={"pk": survey.project.pk})},
+            {"name": "Form Reactions", "url": "#"},
+        ]
+
+        context["links"] = build_form_management_links(self.request.user, survey)
+        return context
+
+    def get(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        return render(request, self.template_name, self.get_context(survey))
+
+    def post(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        reaction_id = request.POST.get("reaction_id")
+        edit_instance = None
+
+        if reaction_id:
+            edit_instance = get_object_or_404(FormReaction, pk=reaction_id, form=survey)
+
+        reaction_form = FormReactionForm(request.POST, instance=edit_instance)
+        if reaction_form.is_valid():
+            reaction = reaction_form.save(commit=False)
+            reaction.form = survey
+            reaction.save()
+            reaction_form.save_m2m()
+            messages.success(
+                request,
+                "Form reaction updated successfully." if edit_instance else "Form reaction created successfully.",
+            )
+            return HttpResponseRedirect(reverse_lazy("projects:form-reactions", kwargs={"pk": survey.pk}))
+
+        messages.error(request, "Please correct the reaction errors below.")
+        return render(request, self.template_name, self.get_context(survey, reaction_form=reaction_form))
+
+
+class SurveyReactionDeleteView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.change_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyReactionDeleteView, self).dispatch(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        reaction = get_object_or_404(FormReaction, pk=kwargs["reaction_pk"], form=survey)
+        reaction.delete()
+        messages.success(request, "Form reaction deleted successfully.")
+        return HttpResponseRedirect(reverse_lazy("projects:form-reactions", kwargs={"pk": survey.pk}))
 
 
 class SurveyAttachmentView(PermissionRequiredMixin, generic.TemplateView):
