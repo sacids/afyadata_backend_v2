@@ -163,7 +163,41 @@ python manage.py check --deploy
 
 ### 9. Configure supervisor
 
+Configure redis in Linux server
 
+```bash
+sudo apt-get update
+sudo apt-get install redis-server
+sudo systemctl start redis
+sudo systemctl enable redis
+```
+
+Setup supervisor for celery
+
+```bash
+sudo apt-get install supervisor
+sudo mkdir -p /var/log/afyadata
+nano /etc/supervisor/conf.d/afyadata.conf
+```
+
+```
+[program:afyadata_worker]
+directory=/srv/afyadata
+command=/srv/afyadata/env/bin/celery -A config worker --loglevel=INFO
+user=change-me
+autostart=true
+autorestart=true
+stdout_logfile=/var/log/afyadata/worker.log
+stderr_logfile=/var/log/afyadata/worker.log
+```
+
+Update Supervisor
+
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start afyadata_worker
+```
 
 
 ## Option 2: Production Docker Deployment
@@ -244,7 +278,7 @@ CELERY_RESULT_BACKEND=redis://redis:6379/0
 GUNICORN_WORKERS=3
 GUNICORN_TIMEOUT=120
 
-#AFYADATA + EMA-I INTEGRATION
+#AFYADATA + EMA-I INTEGRATION TEST ENVIRONMENTS
 FAO_BASE_URL=https://cbs-175434516411.europe-west1.run.app
 FAO_AUTH_URL=https://keycloak-175434516411.europe-west1.run.app/realms/master/protocol/openid-connect/token
 FAO_CLIENT_ID=change-me
@@ -286,13 +320,7 @@ docker compose -f docker-compose.prod.yml logs -f db
 docker compose -f docker-compose.prod.yml logs -f celery_worker
 ```
 
-### 6. Create the first admin user
-
-```bash
-docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
-```
-
-### 7. Access the application
+### 6. Access the application
 
 Once the stack is up:
 
@@ -305,7 +333,7 @@ Open:
 http://your-domain-or-server-ip
 ```
 
-### 8. Create a Django superuser in Docker
+### 7. Create a Django superuser in Docker
 
 Use this after the containers are up so you can log into `/admin`.
 
@@ -330,7 +358,7 @@ You will be prompted for:
 If you need to create the admin user later on an already-running server, run the same command again inside the existing `web` container.
 
 
-### 9. Stop the production stack
+### 8. Stop the production stack
 
 ```bash
 docker compose -f docker-compose.prod.yml down
