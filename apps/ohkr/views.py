@@ -77,7 +77,7 @@ class LocationSyncView(OHKRPermissionMixin, generic.CreateView):
 
     def get(self, *args, **kwargs):
         tza_country_id = 'fdd6e49b-b1ed-4c38-923c-be3b7bbb3b1c' #TZA country_id
-        api_url = f"{config('FAO_BASE_URL')}/api/geographical_data/countries/{tza_country_id}"
+        api_url = f"{config('FAO_BASE_URL')}/geographical_data/countries/{tza_country_id}"
 
         # config headers
         headers = {"accept": "application/json"}
@@ -251,7 +251,7 @@ class SpecieSyncView(OHKRPermissionMixin, generic.CreateView):
     model = Specie
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}/api/species/"
+        api_url = f"{config('FAO_BASE_URL')}/species/"
         headers = {"accept": "application/json"}
 
         # pass authorization header
@@ -356,7 +356,7 @@ class ClinicalSignSyncView(OHKRPermissionMixin, generic.CreateView):
     model = ClinicalSign
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}/api/clinical-signs/"
+        api_url = f"{config('FAO_BASE_URL')}/clinical-signs/"
         headers = {"accept": "application/json"}
 
         # pass authorization header
