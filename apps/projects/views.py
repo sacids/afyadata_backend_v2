@@ -3,6 +3,7 @@ import logging
 import random
 import string
 import csv
+import uuid
 from datetime import datetime
 from datetime import datetime, date
 from django.core.serializers.json import DjangoJSONEncoder
@@ -38,6 +39,7 @@ from .forms import *
 from apps.ohkr.models import ClinicalSign
 from apps.esb.models import FormPayloadConfig
 from apps.accounts.utils import is_admin_user
+from apps.chat.models import Conversation, Message
 
 
 from django.urls import reverse
@@ -1240,6 +1242,17 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
         )
 
         # convert form data to JSON
+        attachments = [
+            {
+                "id": str(file.id),
+                "name": file.original_name or file.file.name.split("/")[-1],
+                "url": file.file.url,
+                "type": file.file_type,
+            }
+            for file in form_data.files.all()
+            if getattr(file, "file", None)
+        ]
+
         cur_data_json = {
             "id": form_data.form.id,
             "data_id": form_data.uuid,
@@ -1247,6 +1260,7 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
             "form_title": localized_form_title,
             "form_code": form_data.form.code,
             "form_data": form_data.form_data,
+            "attachments": attachments,
         }
 
         # get form
@@ -1300,6 +1314,115 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
 
         # render view
         return render(request, "surveys/data.html", context=context)
+
+
+class SurveyDataMessagesView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.view_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataMessagesView, self).dispatch(*args, **kwargs)
+
+    def get_form_data(self):
+        form_data = get_object_or_404(FormData, uuid=self.kwargs["data_id"])
+        get_accessible_project_or_404(self.request.user, form_data.form.project.pk)
+        return form_data
+
+    def get_or_create_conversation(self, form_data):
+        conversation = (
+            Conversation.objects.filter(form=form_data.form, instance=form_data)
+            .prefetch_related("participants", "messages__sender")
+            .order_by("-updated_at")
+            .first()
+        )
+
+        if conversation:
+            if not conversation.participants.filter(pk=self.request.user.pk).exists():
+                conversation.participants.add(self.request.user)
+            return conversation
+
+        conversation = Conversation.objects.create(
+            title=form_data.title or f"Conversation for {form_data.uuid}",
+            form=form_data.form,
+            instance=form_data,
+            created_by=self.request.user,
+        )
+
+        participant_ids = {self.request.user.pk}
+        if form_data.created_by_id:
+            participant_ids.add(form_data.created_by_id)
+
+        conversation.participants.set(User.objects.filter(pk__in=participant_ids))
+        return conversation
+
+    def serialize_message(self, message):
+        sender_name = (
+            message.sender.get_full_name().strip()
+            if message.sender and message.sender.get_full_name().strip()
+            else message.sender.username
+            if message.sender
+            else "System"
+        )
+        return {
+            "id": str(message.id),
+            "text": message.text,
+            "created_at": message.created_at.strftime("%d %b %Y, %H:%M") if message.created_at else "",
+            "is_read": message.is_read,
+            "direction": "outgoing" if message.sender_id == self.request.user.id else "incoming",
+            "sender_name": sender_name,
+        }
+
+    def get(self, request, *args, **kwargs):
+        form_data = self.get_form_data()
+        conversation = self.get_or_create_conversation(form_data)
+
+        conversation.messages.filter(is_read=False).exclude(sender=request.user).update(
+            is_read=True
+        )
+
+        messages_data = [
+            self.serialize_message(message)
+            for message in conversation.messages.select_related("sender").order_by("created_at")
+        ]
+
+        participant_names = [
+            participant.get_full_name().strip() or participant.username
+            for participant in conversation.participants.exclude(pk=request.user.pk)
+        ]
+
+        return JsonResponse(
+            {
+                "conversation_id": str(conversation.id),
+                "title": conversation.title or f"Conversation for {form_data.uuid}",
+                "participants": participant_names,
+                "messages": messages_data,
+            }
+        )
+
+    def post(self, request, *args, **kwargs):
+        form_data = self.get_form_data()
+        conversation = self.get_or_create_conversation(form_data)
+
+        text = (request.POST.get("text") or "").strip()
+        if not text:
+            return JsonResponse(
+                {"success": False, "error": "Reply message is required."},
+                status=400,
+            )
+
+        message = Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            text=text,
+            external_id=str(uuid.uuid4()),
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": self.serialize_message(message),
+            }
+        )
 
 
 class ChartsDataView(PermissionRequiredMixin, generic.TemplateView):
@@ -1548,20 +1671,6 @@ def form_points(request, *args, **kwargs):
         )
 
     return JsonResponse(points, safe=False)
-
-
-
-
-
-
-
-# projects/views.p
-
-# views.py
-
-
-
-
 
 
 

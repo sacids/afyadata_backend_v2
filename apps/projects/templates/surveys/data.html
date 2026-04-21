@@ -69,12 +69,15 @@
                             <template x-if="tabId && tabId !== ''">
                                 <div class="flex items-center space-x-2">
                                     <button type="button"
+                                        @click="tabId = 'information'"
                                         :class="{'bg-orange-50 border-orange-400': tabId === 'information', 'bg-white border-gray-200 hover:bg-gray-50': tabId !== 'information'}"
                                         class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bxs-info-square px-1'></i> Information
                                     </button>
 
                                     <button type="button"
+                                        @click="openMessages()"
+                                        :class="{'bg-orange-50 border-orange-400': tabId === 'message', 'bg-white border-gray-200 hover:bg-gray-50': tabId !== 'message'}"
                                         class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
                                         <i class='bx bxs-chat px-1'></i> Message
                                     </button>
@@ -118,19 +121,121 @@
                     <div id="content_area" class="p-5">
                         <!-- Detail View -->
                         <div x-show="tabId === 'information'" x-transition>
-                            <div class="relative overflow-x-auto">
-                                <div x-show="data_instance">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <template x-for="entry in detailEntries()" :key="entry.key">
-                                            <div class="text-sm">
-                                                <div class="text-gray-500 font-medium" x-text="entry.label"></div>
-                                                <div class="text-gray-800" x-text="entry.value"></div>
+                            <div class="space-y-6">
+                                <div x-show="data_instance" class="space-y-6">
+                                    <div x-show="imageAttachments().length > 0" class="rounded-2xl border border-stone-200 bg-stone-50 px-5 py-4">
+                                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <div>
+                                                <h3 class="text-sm font-semibold text-stone-800">Attachments</h3>
+                                                <p class="mt-1 text-xs text-stone-500">Preview uploaded images linked to this submission.</p>
                                             </div>
+                                            <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-700 border border-stone-200"
+                                                x-text="`${imageAttachments().length} image${imageAttachments().length === 1 ? '' : 's'}`"></span>
+                                        </div>
+
+                                        <div class="mt-4 flex flex-wrap gap-3">
+                                            <template x-for="attachment in imageAttachments()" :key="attachment.id">
+                                                <button
+                                                    type="button"
+                                                    @click="openAttachmentPreview(attachment)"
+                                                    class="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-800">
+                                                    <i class='bx bx-image text-base'></i>
+                                                    <span class="max-w-[220px] truncate" x-text="attachment.name"></span>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2">
+                                        <template x-for="entry in detailEntries()" :key="entry.key">
+                                            <div class="border-b border-stone-200 md:[&:nth-last-child(-n+2)]:border-b-0 md:[&:nth-child(odd)]:border-r md:border-stone-200">
+                                                <div class="px-5 py-4">
+                                                    <p class="text-[11px] font-semibold uppercase text-stone-500" x-text="entry.label"></p>
+                                                    <p class="mt-2 text-sm capitalize leading-6 text-stone-900 break-words" x-text="entry.value"></p>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div> 
+                                </div>
+
+                                <div x-show="!data_instance" class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center">
+                                    <p class="text-sm font-medium text-stone-700">No submission selected</p>
+                                    <p class="mt-2 text-xs text-stone-500">
+                                        Click a row in the table to load its details here.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MESSAGE VIEW -->
+                        <div x-show="tabId === 'message'" x-transition>
+                            <div class="min-h-[560px] flex flex-col">
+                                <div class="border-b border-stone-200 px-1 py-1">
+                                    <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-stone-800">Message Thread</h3>
+                                            <p class="text-xs text-stone-500" x-text="messageThreadSubtitle()"></p>
+                                        </div>
+                                        <template x-if="messagesLoading">
+                                            <span class="text-xs text-stone-500">Loading messages...</span>
                                         </template>
                                     </div>
                                 </div>
-                                <div x-show="!data_instance" class="text-xs text-gray-500">
-                                    Click a row in the table to see details here.
+
+                                <div class="flex-1 overflow-y-auto px-1 py-5 space-y-4">
+                                    <template x-if="messageError">
+                                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" x-text="messageError"></div>
+                                    </template>
+
+                                    <template x-if="!messageError && messageThread.length === 0 && !messagesLoading">
+                                        <div class="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
+                                            No messages yet. Start the conversation below.
+                                        </div>
+                                    </template>
+
+                                    <template x-for="message in messageThread" :key="message.id">
+                                        <div class="flex" :class="message.direction === 'outgoing' ? 'justify-end' : 'justify-start'">
+                                            <div class="max-w-[80%] rounded-2xl px-4 py-3 shadow-sm"
+                                                :class="message.direction === 'outgoing'
+                                                    ? 'bg-red-900 text-white rounded-br-md'
+                                                    : 'bg-white border border-stone-200 text-stone-800 rounded-bl-md'">
+                                                <div class="flex items-center gap-2 text-[11px]"
+                                                    :class="message.direction === 'outgoing' ? 'text-red-100' : 'text-stone-500'">
+                                                    <span class="font-semibold" x-text="message.sender_name"></span>
+                                                    <span>&middot;</span>
+                                                    <span x-text="message.created_at"></span>
+                                                </div>
+                                                <p class="mt-2 whitespace-pre-line text-sm leading-6" x-text="message.text"></p>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <div class="border-t border-stone-200 px-1 py-4">
+                                    <form @submit.prevent="sendMessage()" class="space-y-3">
+                                        <div>
+                                            <label for="reply_message" class="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                                                Reply
+                                            </label>
+                                            <textarea
+                                                id="reply_message"
+                                                x-model="replyText"
+                                                rows="3"
+                                                placeholder="Write your outgoing message..."
+                                                class="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-800 focus:border-red-400 focus:outline-none focus:ring-0"></textarea>
+                                        </div>
+
+                                        <div class="flex items-center justify-between gap-3">
+                                            <p class="text-xs text-stone-500"></p>
+                                            <button
+                                                type="submit"
+                                                :disabled="messageSending || !replyText.trim()"
+                                                class="inline-flex items-center rounded-md bg-red-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-stone-300">
+                                                <span x-show="!messageSending">Send Reply</span>
+                                                <span x-show="messageSending">Sending...</span>
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -160,6 +265,39 @@
                     </div>
                 </div>
             </section>
+        </div>
+    </div>
+
+    <div
+        x-show="attachmentPreviewOpen"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+        @keydown.escape.window="closeAttachmentPreview()"
+        aria-modal="true"
+        role="dialog">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeAttachmentPreview()"></div>
+
+        <div class="relative z-10 w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-stone-200 px-5 py-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-stone-900">Attachment Preview</h3>
+                    <p class="mt-1 text-xs text-stone-500" x-text="activeAttachment?.name || ''"></p>
+                </div>
+                <button
+                    type="button"
+                    @click="closeAttachmentPreview()"
+                    class="inline-flex items-center rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-100">
+                    Close
+                </button>
+            </div>
+
+            <div class="bg-stone-950 p-4">
+                <img
+                    x-show="activeAttachment?.url"
+                    :src="activeAttachment?.url"
+                    :alt="activeAttachment?.name || 'Attachment preview'"
+                    class="max-h-[75vh] w-full rounded-lg object-contain">
+            </div>
         </div>
     </div>
 </main>
