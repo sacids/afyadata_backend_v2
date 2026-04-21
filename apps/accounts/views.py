@@ -288,4 +288,4 @@ class LogoutView(View):
     def get(self, request):
         logout(request)
         messages.error(request, 'Log out successfully')
-        return redirect('auth/login')
+        return redirect('/auth/login')
