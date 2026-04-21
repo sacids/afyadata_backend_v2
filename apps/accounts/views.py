@@ -31,7 +31,7 @@ class LoginView(View):
     """Login to the platform"""
     form_class = LoginForm
     template_name = 'login.html'
-    success_url = '/projects/lists'
+    success_url = '/dashboard/summaries'
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
