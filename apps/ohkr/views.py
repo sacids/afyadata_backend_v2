@@ -251,7 +251,7 @@ class SpecieSyncView(OHKRPermissionMixin, generic.CreateView):
     model = Specie
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}/species/"
+        api_url = f"{config('FAO_BASE_URL')}/species"
         headers = {"accept": "application/json"}
 
         logging.info("== base url ==")
