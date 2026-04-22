@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>APK Downloads</title>
+</head>
+<body>
+    <h1>Available APK Files</h1>
+
+    {% if apk_files %}
+        <ul>
+            {% for apk in apk_files %}
+                <li>
+                    <strong>{{ apk.name }}</strong>
+                    <!-- ({{ apk.size_mb }} MB) -->
+                      - 
+                    <a href="{{ apk.download_url }}">Download</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No APK files available.</p>
+    {% endif %}
+</body>
+</html>

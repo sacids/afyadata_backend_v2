@@ -1,6 +1,6 @@
 from django.urls import path
 from django.urls.resolvers import URLPattern
-from .views import LogoutView, LoginView, ChangePasswordView, ProfileView, ForgotPasswordView, ResetPasswordView
+from .views import LogoutView, LoginView, ChangePasswordView, ProfileView, ForgotPasswordView, ResetPasswordView, AppListView, AppDownloadView
 from django.contrib.auth import views as auth_views
 from . import users as views
 from . import roles as role_views
@@ -28,4 +28,8 @@ urlpatterns = [
     path("roles/create", role_views.RoleCreateView.as_view(), name="create-role"),
     path("roles/<int:pk>/edit", role_views.RoleUpdateView.as_view(), name="edit-role"),
     path("roles/delete/<int:pk>", role_views.delete_role, name="delete-role"),
+
+    # Download mobile app
+    path("apps/", AppListView.as_view(), name="app_list"),
+    path("apps/download/<str:filename>/", AppDownloadView.as_view(), name="download-app"),
 ]
