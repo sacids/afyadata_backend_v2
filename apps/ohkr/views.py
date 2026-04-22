@@ -269,6 +269,9 @@ class SpecieSyncView(OHKRPermissionMixin, generic.CreateView):
             response.raise_for_status()
             remote_data = response.json()
 
+            logging.info("== response ==")
+            logging.info(remote_data)
+
             if target_form:
                 result = sync_reference_values(
                     remote_data.get("values", []),

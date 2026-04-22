@@ -1,5 +1,6 @@
 import hashlib
 from typing import Any, Dict, Tuple
+import logging
 
 import requests
 from decouple import config
@@ -106,6 +107,10 @@ def get_bearer_token(force_refresh: bool = False) -> str:
 
 def get_auth_headers(force_refresh: bool = False) -> Dict[str, str]:
     token = get_bearer_token(force_refresh=force_refresh)
+
+    logging.info("== bearer token ==")
+    logging.info(token)
+
     return {
         "Authorization": f"Bearer {token}",
     }
