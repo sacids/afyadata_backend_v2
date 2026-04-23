@@ -310,7 +310,7 @@ class AppListView(TemplateView):
                     apk_files.append({
                         "name": file.name,
                         "size_mb": round(file.stat().st_size / (1024 * 1024), 2),
-                        "download_url": reverse("auth:download-app", kwargs={"filename": file.name}),
+                        "download_url": reverse("download-app", kwargs={"filename": file.name}),
                     })
 
         context["apk_files"] = sorted(apk_files, key=lambda x: x["name"].lower())

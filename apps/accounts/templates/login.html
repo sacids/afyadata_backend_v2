@@ -137,6 +137,16 @@
                                         <span x-show="!submitting">Sign In</span>
                                         <span x-show="submitting">Signing in...</span>
                                     </button>
+
+                                    <a href="{% url 'download-lists' %}"
+                                        class="inline-flex w-full items-center justify-center gap-2 rounded border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-800 transition hover:bg-green-100 hover:text-green-900">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                            class="h-5 w-5 fill-current" aria-hidden="true">
+                                            <path
+                                                d="M17.523 15.341c-.551 0-1 .45-1 1.001v4.235H7.477v-4.235c0-.552-.449-1.001-1-1.001-.553 0-1.001.449-1.001 1.001v5.236c0 .553.448 1.001 1 1.001h11.047c.553 0 1-.448 1-1.001v-5.236c0-.552-.447-1.001-1-1.001zm-8.41-4.342 2.18 2.18c.194.195.45.293.706.293.257 0 .513-.098.708-.293l2.18-2.18c.391-.391.391-1.024 0-1.415s-1.024-.391-1.415 0l-.474.473V1.999c0-.552-.448-1-1-1s-1 .448-1 1v8.058l-.474-.473c-.391-.391-1.024-.391-1.415 0s-.391 1.024 0 1.415z" />
+                                        </svg>
+                                        <span>Download Android App</span>
+                                    </a>
                                 </div>
                             </form>
                         </div>

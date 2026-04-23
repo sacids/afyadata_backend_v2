@@ -25,7 +25,7 @@ import apps.dashboard.urls
 import apps.projects.urls
 import apps.ohkr.urls
 import apps.api.urls
-from apps.accounts.views import LoginView
+from apps.accounts.views import LoginView, AppListView, AppDownloadView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -38,4 +38,9 @@ urlpatterns = [
     # API URL
     path('api/v1/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'), 
     path("api/", include(apps.api.urls)),
+
+    # Download mobile app
+    path("downloads", AppListView.as_view(), name="download-lists"),
+    path("downloads/<str:filename>", AppDownloadView.as_view(), name="download-app"),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
