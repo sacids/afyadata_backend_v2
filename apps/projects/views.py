@@ -1566,8 +1566,8 @@ class ChartsDataView(PermissionRequiredMixin, generic.TemplateView):
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
 
-        # Allowed x-axis options
-        allowed_x_y = {k: f"form_data__{k}" for k in header_keys}
+        # Allowed chart fields from the form definition
+        allowed_x_y = {k: k for k in header_keys}
 
         # Allowed aggregation functions
         allowed_aggs = {"count", "sum", "avg", "max", "min"}
@@ -1586,36 +1586,32 @@ class ChartsDataView(PermissionRequiredMixin, generic.TemplateView):
         #     if k in allowed_x:
         #         qs = qs.filter(**{allowed_x[k]: v})
 
-        # ---------- Build group-by (x-axis) ----------
+        # Extract selected JSON keys as text first. This avoids direct casts on
+        # jsonb values, which PostgreSQL rejects for non-numeric strings.
         x_key = allowed_x_y[x_axis]
-
-        # JSON field group by
-        # qs = qs.values(x_key).annotate(
-        #     x=Cast(x_key, output_field=FloatField()) if False else None
-        # )
-        # easier: just group by the JSON key as text
-        qs = qs.values(x_key)
+        qs = qs.annotate(x_value=KeyTextTransform(x_key, "form_data"))
 
         # ---------- Aggregate (y-axis + agg) ----------
         if agg == "count":
-            qs = qs.annotate(value=Count("id"))
+            qs = qs.values("x_value").annotate(value=Count("id"))
         else:
             y_key = allowed_x_y[y_axis]
-            # Cast JSON text -> numeric
-            y_expr = Cast(y_key, output_field=FloatField())
+            qs = qs.annotate(y_value_text=KeyTextTransform(y_key, "form_data"))
+            qs = qs.filter(y_value_text__regex=r"^-?\d+(\.\d+)?$")
+            y_expr = Cast("y_value_text", output_field=FloatField())
 
             if agg == "sum":
-                qs = qs.annotate(value=Sum(y_expr))
+                qs = qs.values("x_value").annotate(value=Sum(y_expr))
             elif agg == "avg":
-                qs = qs.annotate(value=Avg(y_expr))
+                qs = qs.values("x_value").annotate(value=Avg(y_expr))
             elif agg == "max":
-                qs = qs.annotate(value=Max(y_expr))
+                qs = qs.values("x_value").annotate(value=Max(y_expr))
             elif agg == "min":
-                qs = qs.annotate(value=Min(y_expr))
+                qs = qs.values("x_value").annotate(value=Min(y_expr))
 
         # Order & serialize
-        qs = qs.order_by(x_key)
-        labels = [row[x_key] if row[x_key] is not None else "Unknown" for row in qs]
+        qs = qs.order_by("x_value")
+        labels = [row["x_value"] if row["x_value"] is not None else "Unknown" for row in qs]
         data = [row["value"] or 0 for row in qs]
 
         return JsonResponse(
