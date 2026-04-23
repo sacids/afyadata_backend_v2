@@ -30,6 +30,6 @@ urlpatterns = [
     path("roles/delete/<int:pk>", role_views.delete_role, name="delete-role"),
 
     # Download mobile app
-    path("apps/", AppListView.as_view(), name="app_list"),
+    path("downloads", AppListView.as_view(), name="app_list"),
     path("apps/download/<str:filename>/", AppDownloadView.as_view(), name="download-app"),
 ]
