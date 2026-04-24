@@ -75,7 +75,7 @@ INSTALLED_APPS = [
     "ajax_datatable",
     "crispy_forms",
     "crispy_tailwind",
-    'qr_code',
+    "qr_code",
 ]
 
 MIDDLEWARE = [
@@ -225,6 +225,7 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Africa/Dar_es_Salaam"
 
+AUTH_USER_MODEL = "projects.User"
 
 ##### Logging errors in django #####
 import logging
