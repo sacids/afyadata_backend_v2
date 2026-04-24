@@ -3,11 +3,14 @@ from django.db import models
 # Create your models here.
 # models.py
 from django.db import models
-from django.contrib.auth.models import User
 from django.utils import timezone
 import json
 import hashlib
 import os
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 
 class Language(models.Model):

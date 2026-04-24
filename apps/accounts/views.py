@@ -5,8 +5,11 @@ from django.urls import reverse_lazy, reverse
 from django.utils._os import safe_join
 from django.http import FileResponse, Http404
 from django.views.generic import View, UpdateView, TemplateView
-from django.contrib.auth.models import User
 from .models import Profile
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 from django.contrib import messages
 from django.contrib.sites.shortcuts import get_current_site

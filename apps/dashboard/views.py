@@ -6,11 +6,14 @@ from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect, FileResponse
 from django.db.models import Q
 from django.db.models import Count
-from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 import json
 import logging
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 from apps.projects.models import Project, FormDefinition, FormData
 from apps.ohkr.models import Disease, Specie, ClinicalSign, Response, Location

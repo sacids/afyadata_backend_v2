@@ -1,5 +1,5 @@
 import re
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -7,6 +7,10 @@ from .models import *
 from .utils import resolve_group_by_aliases, CHW_ROLE_ALIASES
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model() 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     """Serializer for User."""

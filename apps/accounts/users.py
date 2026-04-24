@@ -10,10 +10,14 @@ from django.contrib.auth.decorators import permission_required
 from django.shortcuts import render
 from django.contrib import messages
 from django.db import transaction
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import  Group
 from apps.accounts.models import Profile
 from .forms import UserForm, UserUpdateForm, UserProfileForm, UserPasswordForm
 
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 def build_user_management_links(user):
     links = {}

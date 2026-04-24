@@ -5,9 +5,11 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm, PasswordChangeForm, SetPasswordForm
 from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import  Group
+from django.contrib.auth import get_user_model
 from .models import Profile
 
+User = get_user_model()
 TW_INPUT_CLASS = "w-full font-normal text-sm rounded-md"
 
 

@@ -2,9 +2,11 @@
 from django.conf import settings
 from django.db import models
 from apps.projects.models import FormDefinition, FormData
-from django.contrib.auth.models import User
 import uuid
 
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 class Conversation(models.Model):
     """

@@ -21,8 +21,12 @@ from django.shortcuts import render
 from django.contrib import messages
 from django.utils.safestring import mark_safe
 from django.db import transaction
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from django.db.models import Q
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 from django.db.models import Count, Sum, Avg, Max, Min
 from django.db.models.functions import Cast, TruncMonth, TruncYear

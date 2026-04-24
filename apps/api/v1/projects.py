@@ -12,9 +12,12 @@ from django.db.models.functions import Cast
 
 from apps.projects.serializers import *
 from django.db.models import Q
-from django.contrib.auth.models import User
 from apps.projects.models import Project, ProjectMember
 
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 class ProjectView(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]

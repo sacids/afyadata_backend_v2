@@ -1,7 +1,7 @@
 import logging
 import json
 from django.http import JsonResponse
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from rest_framework import viewsets
 from rest_framework import permissions, status, generics
 from apps.accounts.serializers import UserSerializer, GroupSerializer, ChangePasswordSerializer, CustomTokenObtainPairSerializer, RegisterSerializer, LoginSerializer
@@ -16,6 +16,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny
 from django.utils.decorators import method_decorator
 
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
     
 class UserViewSet(viewsets.ModelViewSet):
     """

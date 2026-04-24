@@ -10,6 +10,10 @@ from apps.chat.models import Conversation, Message
 from apps.chat.serializers import ConversationSerializer, MessageSerializer
 
 
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 class ConversationView(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -114,7 +118,6 @@ class ConversationView(viewsets.ViewSet):
         )
         if request_sender_id == "1000000000" or request_sender_id == 1000000000:
             try:
-                from django.contrib.auth.models import User
 
                 # Get or create a system user
                 system_user, created = User.objects.get_or_create(
