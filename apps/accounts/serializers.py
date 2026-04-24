@@ -63,15 +63,21 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate_username(self, value):
         username = value.strip()
+    
+        # Only check minimum length and uniqueness - NO character restrictions
         if len(username) < 3:
             raise serializers.ValidationError("Username must be at least 3 characters.")
-        if not re.fullmatch(r"^[A-Za-z0-9._-]+$", username):
-            raise serializers.ValidationError(
-                "Username may contain only letters, numbers, dot, underscore, and hyphen."
-            )
+        
+        # Optional: Add max length check (Django default is 150)
+        if len(username) > 150:
+            raise serializers.ValidationError("Username must be at most 150 characters.")
+        
+        # Check uniqueness (case-insensitive)
         if User.objects.filter(username__iexact=username).exists():
             raise serializers.ValidationError("Username already exists.")
+        
         return username
+    
 
     def validate(self, attrs):
         password = attrs.get("password")
