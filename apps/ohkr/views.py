@@ -251,7 +251,7 @@ class SpecieSyncView(OHKRPermissionMixin, generic.CreateView):
     model = Specie
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}/species/"
+        api_url = f"{config('FAO_BASE_URL')}/species"
         headers = {"accept": "application/json"}
 
         # pass authorization header
@@ -356,8 +356,11 @@ class ClinicalSignSyncView(OHKRPermissionMixin, generic.CreateView):
     model = ClinicalSign
 
     def get(self, *args, **kwargs):
-        api_url = f"{config('FAO_BASE_URL')}/clinical-signs/"
+        api_url = f"{config('FAO_BASE_URL')}/clinical-signs"
         headers = {"accept": "application/json"}
+
+        logging.info("== base url ==")
+        logging.info(api_url)
 
         # pass authorization header
         if not headers.get("Authorization"):

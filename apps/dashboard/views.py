@@ -68,20 +68,12 @@ class DashboardView(generic.TemplateView):
             submitted_at__gte=last_30_days
         ).count()
 
-        if is_admin_user(self.request.user):
-            total_users = User.objects.count()
-            active_users = User.objects.filter(is_active=True).count()
-            scope_label = "all projects"
-            scope_description = "across all projects"
-        else:
-            assigned_users = User.objects.filter(
-                member__project__in=accessible_projects,
-                member__active=True,
-            ).distinct()
-            total_users = assigned_users.count()
-            active_users = assigned_users.filter(is_active=True).count()
-            scope_label = "assigned projects"
-            scope_description = "across your assigned projects"
+        # total users
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        scope_label = "all projects"
+        scope_description = "across all projects"
+        
 
         ohkr_total = (
             Disease.objects.count()

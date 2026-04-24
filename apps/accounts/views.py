@@ -1,6 +1,10 @@
+import os
+from pathlib import Path
 from django.shortcuts import render, redirect
-from django.urls import reverse_lazy
-from django.views.generic import View, UpdateView
+from django.urls import reverse_lazy, reverse
+from django.utils._os import safe_join
+from django.http import FileResponse, Http404
+from django.views.generic import View, UpdateView, TemplateView
 from django.contrib.auth.models import User
 from .models import Profile
 
@@ -22,7 +26,6 @@ from django.contrib.auth import update_session_auth_hash
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 
-from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from .forms import *
 from .utils import is_chw_user, is_admin_user
@@ -289,3 +292,41 @@ class LogoutView(View):
         logout(request)
         messages.error(request, 'Log out successfully')
         return redirect('/auth/login')
+
+
+class AppListView(TemplateView):
+    """List all available apk"""
+    template_name = "app_lists.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        apk_dir = Path(settings.MEDIA_ROOT) / "apps"
+        apk_files = []
+
+        if apk_dir.exists() and apk_dir.is_dir():
+            for file in apk_dir.iterdir():
+                if file.is_file() and file.suffix.lower() == ".apk":
+                    apk_files.append({
+                        "name": file.name,
+                        "size_mb": round(file.stat().st_size / (1024 * 1024), 2),
+                        "download_url": reverse("download-app", kwargs={"filename": file.name}),
+                    })
+
+        context["apk_files"] = sorted(apk_files, key=lambda x: x["name"].lower())
+        return context
+    
+class AppDownloadView(View):
+    def get(self, request, filename, *args, **kwargs):
+        try:
+            file_path = safe_join(settings.MEDIA_ROOT, "apps", filename)
+        except Exception:
+            raise Http404("Invalid file path")
+
+        if not os.path.exists(file_path) or not file_path.lower().endswith(".apk"):
+            raise Http404("APK not found")
+
+        response = FileResponse(open(file_path, "rb"), as_attachment=True)
+        response["Content-Type"] = "application/vnd.android.package-archive"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
