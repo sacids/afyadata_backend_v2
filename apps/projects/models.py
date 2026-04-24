@@ -12,25 +12,27 @@ from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 from .qr_utils import generate_qr_string
 
 
-class User(AbstractUser):
-    # Override username field with no validators
-    username = models.CharField(
-        max_length=150,
-        unique=True,
-        validators=[],  # This removes all default restrictions
-        help_text='Required. Any characters allowed.'
-    )
+# class User(AbstractUser):
+#     # Override username field with no validators
+#     username = models.CharField(
+#         max_length=150,
+#         unique=True,
+#         validators=[],  # This removes all default restrictions
+#         help_text='Required. Any characters allowed.'
+#     )
     
-    # You can add custom fields here if needed
-    # bio = models.TextField(blank=True)
-    # birth_date = models.DateField(null=True, blank=True)
+#     # You can add custom fields here if needed
+#     # bio = models.TextField(blank=True)
+#     # birth_date = models.DateField(null=True, blank=True)
     
-    def __str__(self):
-        return self.username
+#     def __str__(self):
+#         return self.username
     
     
 # Create your models here.
