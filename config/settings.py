@@ -225,7 +225,7 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Africa/Dar_es_Salaam"
 
-AUTH_USER_MODEL = "projects.User"
+# AUTH_USER_MODEL = "projects.User"
 
 ##### Logging errors in django #####
 import logging
