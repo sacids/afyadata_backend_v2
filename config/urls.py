@@ -25,6 +25,7 @@ import apps.dashboard.urls
 import apps.projects.urls
 import apps.ohkr.urls
 import apps.api.urls
+import apps.workflows.urls
 from apps.accounts.views import LoginView, AppListView, AppDownloadView
 
 urlpatterns = [
@@ -33,6 +34,7 @@ urlpatterns = [
     path('auth/', include(apps.accounts.urls)),
     path('dashboard/', include(apps.dashboard.urls)),
     path('projects/', include(apps.projects.urls)),
+    path('workflows/', include(apps.workflows.urls)),
     path('ohkr/', include(apps.ohkr.urls)),
 
     # API URL

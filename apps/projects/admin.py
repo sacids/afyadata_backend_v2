@@ -73,7 +73,7 @@ class FormDefinitionAdmin(admin.ModelAdmin):
                     "version",
                     "code",
                     "icon_type",
-                    "is_root",
+                    "form_role",
                     "sort_order",
                 )
             },
@@ -385,3 +385,20 @@ class ProjectQRCodeAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return self.list_display
         return [f for f in self.list_display if f not in ['id_short', 'qr_code_preview']]
+    
+    
+    
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+

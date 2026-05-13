@@ -1,5 +1,6 @@
+import json
 import uuid
-from django.db import models
+from django.db import models, transaction
 
 # from django.contrib.gis.db import models  # Use GIS models
 
@@ -11,6 +12,13 @@ from django.urls import reverse
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+
+
+
+
+from django.contrib.auth.models import Group, Permission
+from django.utils.translation import gettext_lazy as _
+
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -137,6 +145,11 @@ class ProjectMember(models.Model):
 
 class FormDefinition(models.Model):
     """Model definition for form_definition"""
+    
+    class FormRole(models.TextChoices):
+        ROOT = "ROOT", "Root"
+        CHILD = "CHILD", "Child"
+        WORKFLOW = "WORKFLOW", "Workflow"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, related_name="forms", on_delete=models.CASCADE)
@@ -160,6 +173,14 @@ class FormDefinition(models.Model):
         max_length=50, null=True, blank=True, default="entypo:clipboard"
     )
     is_root = models.BooleanField(default=False)
+    
+    form_role = models.CharField(
+        max_length=20,
+        choices=FormRole.choices,
+        default=FormRole.ROOT,
+        help_text="Defines if the form is a standalone Root, a sub-form Child, or a Workflow transition form"
+    )
+    
     form_actions = models.CharField(max_length=255, blank=True, null=True)
     form_category = models.TextField(null=True, blank=True)
     xlsform = models.FileField(
@@ -303,6 +324,51 @@ class FormData(models.Model):
     @property
     def int_updated_at(self):
         return self.updated_at.strftime("%Y%m%d%H%M%S")
+    
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save to handle workflow initialization on first submission.
+        """
+        is_new = self.pk is None
+        
+        # Wrap in transaction to ensure both FormData and FormDataWorkflow are saved
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+
+            # Only attempt to initialize workflow for new submissions
+            if is_new:
+                self.initialize_workflow_if_enabled()
+
+    def initialize_workflow_if_enabled(self):
+        """
+        Parses the FormDefinition's form_defn JSON to check for an enabled workflow.
+        If enabled, it creates the initial record in FormDataWorkflow.
+        """
+        from apps.workflows.models import FormDataWorkflow  # Local import to avoid circular dependency
+    
+        form_defn_raw = self.form.form_defn
+        if not form_defn_raw:
+            return
+
+        try:
+            # Parse the JSON stored in the FormDefinition
+            defn_json = json.loads(form_defn_raw)
+            workflow_config = defn_json.get("workflow", {})
+
+            # Check if workflow is explicitly marked as enabled in the JSON
+            if workflow_config.get("enabled") is True:
+                # Use the helper method already defined in FormDataWorkflow
+                # This sets the state to the 'is_initial=True' state defined in DB
+                print(f"Initializing workflow for FormData {self.uuid} based on FormDefinition {self.form.id}")
+                FormDataWorkflow.initialize_for_form_data(
+                    form_data=self,
+                    config=workflow_config,
+                    user=self.created_by
+                )
+        except (json.JSONDecodeError, TypeError, Exception) as e:
+            # Log error or handle silently depending on requirements
+            print(f"Workflow initialization failed for FormData {self.uuid}: {e}")
 
     class Meta:
         """Meta definition for form data."""
@@ -425,3 +491,10 @@ class MatchingConfiguration(models.Model):
 
     def __str__(self):
         return f"Logic for {self.form_definition.title}"
+
+
+
+
+
+
+

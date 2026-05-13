@@ -9,6 +9,7 @@ from .v1.surveys import *
 from .v1.form_data import *
 from .v1.chat import *
 from .v1.form_reactions import *
+from .v1.workflows import WorkflowSyncViewSet
 from .v1.language import LanguageViewSet, LanguageVersionViewSet, language_export, bulk_upload
 
 app_name = 'api'
@@ -74,6 +75,6 @@ urlpatterns = [
     path('v1/translations/<str:code>/', LanguageViewSet.as_view({'get': 'translations'}), name='language-translations'),
     
     
-
+    path('v1/workflow-sync/', WorkflowSyncViewSet.as_view({'get': 'list', 'post': 'create'}), name='workflow-sync'),
   
 ]

@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "apps.esb",
     "apps.reports",
     "apps.api",
+    "apps.workflows",
     # libs
     "rest_framework_simplejwt",
     "rest_framework",

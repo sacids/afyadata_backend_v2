@@ -2,6 +2,7 @@ from django.urls import path
 from . import views, utils
 from . import ajax_datatable_views
 
+
 app_name = 'projects'
 
 urlpatterns = [
@@ -66,4 +67,7 @@ urlpatterns = [
     
 
     path('reference-data-datatable/<str:pk>', ajax_datatable_views.FormReferenceDataAjaxDatatableView.as_view(), name="dt-form-reference-data"),
+    
 ]
+
+
