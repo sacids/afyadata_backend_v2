@@ -158,6 +158,14 @@ class WorkflowTransition(models.Model):
     action_code = models.SlugField(
         help_text="Machine readable action code"
     )
+    
+    icon = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        default="MaterialIcons:play-circle-outline",
+        help_text="Optional icon name"
+    )
 
     description = models.TextField(blank=True, null=True)
     
