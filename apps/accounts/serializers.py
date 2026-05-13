@@ -157,17 +157,21 @@ class LoginSerializer(serializers.Serializer):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['user'] = {
+    @staticmethod
+    def build_user_payload(user):
+        return {
             'id': user.id,
             'username': user.username,
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'groups': [group.name for group in user.groups.all()]
+            'groups': [group.name for group in user.groups.all()],
         }
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['user'] = cls.build_user_payload(user)
         return token
 
     def validate(self, attrs):
@@ -178,13 +182,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         user = self.user
 
         # Add user information to the response
-        data['user'] =  {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'groups': [group.name for group in user.groups.all()]
-        }
+        data['user'] = self.build_user_payload(user)
 
         return data

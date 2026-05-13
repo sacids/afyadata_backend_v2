@@ -57,7 +57,8 @@ urlpatterns = [
     path("v1/form-definition/detail/<str:pk>",FormDefinitionView.as_view({"get": "getForm"}),),
 
     # Form data
-    path("v1/form-data", FormDataView.as_view({"get": "retrieve", "post": "create"})),
+    path("v1/form-data", FormDataView.as_view({"get": "retrieve", "head": "head", "post": "create"})),
+    path("v1/form-data/", FormDataView.as_view({"get": "retrieve", "head": "head", "post": "create"})),
     path("v1/form-data/<str:pk>", FormDataView.as_view({"get": "detail"})),
 
     # chat
