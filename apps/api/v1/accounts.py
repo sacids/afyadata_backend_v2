@@ -19,6 +19,10 @@ from django.utils.decorators import method_decorator
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
+
+def build_user_group_payload(user):
+    return [group.name for group in user.groups.all()]
     
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -121,6 +125,7 @@ class RegisterView1(APIView):
                     "username": new_user.username,
                     "fullName": serializer.validated_data["fullName"],
                     "phone": serializer.validated_data["phoneNumber"],
+                    "groups": build_user_group_payload(new_user),
                 },
                 "success_msg": "User successfully registered.",
             }
@@ -173,6 +178,7 @@ class RegisterView(APIView):
                         "username": existing_user.username,
                         "fullName": existing_user.first_name or full_name,
                         "phone": profile.phone if profile else phone_number,
+                        "groups": build_user_group_payload(existing_user),
                     },
                     "success_msg": "User already exists. Successfully logged in.",
                 }
@@ -223,6 +229,7 @@ class RegisterView(APIView):
                     "username": new_user.username,
                     "fullName": serializer.validated_data["fullName"],
                     "phone": serializer.validated_data["phoneNumber"],
+                    "groups": build_user_group_payload(new_user),
                 },
                 "success_msg": "User successfully registered.",
             }
@@ -256,7 +263,12 @@ class LoginView(APIView):
                 'error': False,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token), 
-                'user': {'fullName': user.first_name, 'username': user.username, 'phone': profile.phone}
+                'user': {
+                    'fullName': user.first_name,
+                    'username': user.username,
+                    'phone': profile.phone,
+                    'groups': build_user_group_payload(user),
+                }
             })
         else:
             return JsonResponse({
