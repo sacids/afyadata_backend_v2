@@ -257,6 +257,8 @@ class WorkflowTransitionAdmin(admin.ModelAdmin):
                     "workflow",
                     "action_name",
                     "action_code",
+                    "icon_name",
+                    "icon_color",
                     "transition_form",
                     "description",
                 )

@@ -1,3 +1,4 @@
+
 import json
 import uuid
 from django.db import models, transaction
@@ -14,6 +15,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 
 
+from datetime import datetime
 
 
 from django.contrib.auth.models import Group, Permission
@@ -228,6 +230,13 @@ class FormDefinition(models.Model):
         verbose_name = "Form definition"
         verbose_name_plural = "3. Form Definitions"
         db_table = "ad_form_definitions"
+        
+    
+    def save(self, *args, **kwargs):
+        # --- Mandatory: Update and Save Version ---
+        # 1. Always set version to current timestamp format
+        self.version = datetime.now().strftime("%Y%m%d%H%M%S")
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title if self.title else self.pk

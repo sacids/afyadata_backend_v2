@@ -73,6 +73,8 @@ def generate_workflow_json(request, form_definition_id):
         transitions.append({
             "action": transition.action_code,
             "label": transition.action_name,
+            "icon_name": transition.icon_name,
+            "icon_color": transition.icon_color,
 
             "from": list(
                 transition.from_state.values_list(
