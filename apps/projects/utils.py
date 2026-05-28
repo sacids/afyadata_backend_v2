@@ -582,14 +582,15 @@ def push_project_to_hub(project):
         "description": project.description,
         "instance_url": settings.CURRENT_INSTANCE_EXTERNAL_URL,
         "remote_project_id": str(project.id),
+        "is_active": project.active,
     }
 
     try:
         response = requests.post(
             settings.AFYADATA_HUB_URL, json=payload, headers=headers, timeout=10
         )
-        print(settings.AFYADATA_HUB_URL)
-        print(headers)
+        #print(settings.AFYADATA_HUB_URL)
+        #print(headers)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:

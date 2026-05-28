@@ -21,9 +21,9 @@ from .utils import push_project_to_hub
 def sync_public_project_with_hub(sender, instance, created, **kwargs):
     """
     Triggered whenever a Project is saved.
-    Only pushes if the project is 'public' and active.
+    Only pushes if the project is 'public'.
     """
-    if instance.access == 'public' and instance.active:
+    if instance.access == 'public':
         # For production, consider wrapping this in a Celery task 
         push_project_to_hub(instance)
         
