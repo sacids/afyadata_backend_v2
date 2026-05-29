@@ -32,7 +32,7 @@ class FormDataWorkflowSyncSerializer(serializers.ModelSerializer):
         model = FormDataWorkflow
         fields = [
             'id', 'form_data_uuid', 'workflow_state',
-            'last_action', 'is_locked', 'is_closed', 'metadata', 
+            'is_locked', 'is_closed', 'metadata', 
             'updated_at', 'action_logs'
         ]
 

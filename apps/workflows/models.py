@@ -548,13 +548,9 @@ class FormDataWorkflow(models.Model):
         self.workflow_state = state_code
 
 
-        if action:
-            self.last_action = action
-
         self.save(
             update_fields=[
                 "workflow_state",
-                "last_action",
                 "updated_at",
             ]
         )

@@ -407,7 +407,6 @@ class FormDataWorkflowAdmin(admin.ModelAdmin):
         ("Current Status", {
             "fields": (
                 "workflow_state", 
-                "last_action", 
             )
         }),
         ("Assignment", {
