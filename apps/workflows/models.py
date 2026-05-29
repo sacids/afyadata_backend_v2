@@ -465,10 +465,6 @@ class FormDataWorkflow(models.Model):
             form_data=form_data,
 
             workflow_state=initial_state_data["code"],
-
-            workflow_updated_at=timezone.now(),
-
-            workflow_updated_by=user,
         )
 
     # ===================================================
@@ -551,9 +547,6 @@ class FormDataWorkflow(models.Model):
 
         self.workflow_state = state_code
 
-        self.workflow_updated_at = timezone.now()
-
-        self.workflow_updated_by = user
 
         if action:
             self.last_action = action
@@ -561,8 +554,6 @@ class FormDataWorkflow(models.Model):
         self.save(
             update_fields=[
                 "workflow_state",
-                "workflow_updated_at",
-                "workflow_updated_by",
                 "last_action",
                 "updated_at",
             ]
