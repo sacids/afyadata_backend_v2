@@ -339,20 +339,6 @@ class FormDataWorkflow(models.Model):
         help_text="Current workflow state code"
     )
 
-    workflow_updated_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        db_index=True
-    )
-
-    workflow_updated_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="updated_form_workflows"
-    )
-
     # ---------------------------------------------------
     # CURRENT ASSIGNMENT
     # ---------------------------------------------------
@@ -375,20 +361,6 @@ class FormDataWorkflow(models.Model):
         help_text="Current responsible user"
     )
 
-    # ---------------------------------------------------
-    # LAST ACTION
-    # ---------------------------------------------------
-
-    last_action = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        help_text="Last executed workflow action"
-    )
-
-    # ---------------------------------------------------
-    # WORKFLOW FLAGS
-    # ---------------------------------------------------
 
     is_locked = models.BooleanField(
         default=False,
@@ -447,7 +419,6 @@ class FormDataWorkflow(models.Model):
 
         indexes = [
             models.Index(fields=["workflow_state"]),
-            models.Index(fields=["workflow_updated_at"]),
             models.Index(fields=["assigned_group"]),
             models.Index(fields=["assigned_to"]),
             models.Index(fields=["is_closed"]),
