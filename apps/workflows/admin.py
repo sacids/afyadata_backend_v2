@@ -379,7 +379,6 @@ class FormDataWorkflowAdmin(admin.ModelAdmin):
         "is_locked", 
         "is_closed", 
         "due_at_status",
-        "workflow_updated_at",
     )
     
     list_filter = (
@@ -396,7 +395,7 @@ class FormDataWorkflowAdmin(admin.ModelAdmin):
         "assigned_to__username"
     )
     
-    readonly_fields = ("created_at", "updated_at", "workflow_updated_at")
+    readonly_fields = ("created_at", "updated_at")
     
     #inlines = [WorkflowActionLogInline]
 
@@ -409,8 +408,6 @@ class FormDataWorkflowAdmin(admin.ModelAdmin):
             "fields": (
                 "workflow_state", 
                 "last_action", 
-                "workflow_updated_at", 
-                "workflow_updated_by"
             )
         }),
         ("Assignment", {
