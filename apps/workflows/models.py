@@ -312,7 +312,7 @@ class WorkflowActionLog(models.Model):
         
 class FormDataWorkflow(models.Model):
     form_data = models.OneToOneField(
-        'FormData',  # Use string syntax if defined in the same file/lazy-loaded
+        FormData,
         on_delete=models.CASCADE,
         related_name="workflow"
     )
