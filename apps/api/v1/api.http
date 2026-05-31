@@ -58,6 +58,11 @@ Content-Type: application/json
 
 
 
+###
+GET {{hostname}}workflow-sync/?project_id=6c0de747-805e-4948-a8ae-6d12e8b090f7&last_update=1970-01-01T00:00:00Z
+Authorization: Bearer {{login.response.body.access}}
+Content-Type: application/json
+
 
 ###
 # Verify token
@@ -91,8 +96,8 @@ Content-Type: application/json
 ###
 # Verify token
 # @name verify_token
-GET {{hostname}}api/v1/form-data/?project_id=64c27204-7c1b-49b1-986c-a9a4c18988f2&form=c083f439-7567-45c1-9370-d7148058f153
-Authorization: Bearer {{accesstoken}}
+GET {{hostname}}form-data/?project_id=64c27204-7c1b-49b1-986c-a9a4c18988f2&form=c083f439-7567-45c1-9370-d7148058f153
+Authorization: Bearer {{login.response.body.access}}
 Content-Type: application/json
 
 

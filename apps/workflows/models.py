@@ -310,10 +310,140 @@ class WorkflowActionLog(models.Model):
         )
         
         
-        
-
-
 class FormDataWorkflow(models.Model):
+    form_data = models.OneToOneField(
+        'FormData',  # Use string syntax if defined in the same file/lazy-loaded
+        on_delete=models.CASCADE,
+        related_name="workflow"
+    )
+    workflow_state = models.CharField(max_length=100, db_index=True, help_text="Current workflow state code")
+    assigned_group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_workflows")
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_form_workflows")
+    
+    is_locked = models.BooleanField(default=False)
+    is_closed = models.BooleanField(default=False)
+    escalation_level = models.PositiveIntegerField(default=0)
+    reopened_count = models.PositiveIntegerField(default=0)
+    due_at = models.DateTimeField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "ad_form_data_workflows"
+        verbose_name = "Form Data Workflow"
+        verbose_name_plural = "Form Data Workflows"
+        indexes = [
+            models.Index(fields=["workflow_state"]),
+            models.Index(fields=["assigned_group"]),
+            models.Index(fields=["assigned_to"]),
+            models.Index(fields=["is_closed"]),
+            models.Index(fields=["is_locked"]),
+            models.Index(fields=["due_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.form_data_id} - {self.workflow_state}"
+
+    # ===================================================
+    # INITIALIZATION (Optimized)
+    # ===================================================
+    @classmethod
+    def initialize_for_form_data(cls, form_data, config, user=None):
+        """
+        Creates workflow runtime instance using workflow initial state.
+        """
+        if not config or not config.get("enabled"):
+            return None
+
+        states = config.get("states", [])
+        
+        # Find the state dictionary where "initial" is True
+        initial_state_data = next((s for s in states if s.get("initial") is True), None)
+
+        if not initial_state_data:
+            raise Exception(
+                f"Workflow '{config.get('name', 'Unknown')}' has no initial state defined in JSON"
+            )
+
+        state_code = initial_state_data.get("code")
+        
+        # Build a robust metadata object matching the design of your system
+        initial_metadata = {
+            "action": "initialize",
+            "label": initial_state_data.get("label", "Submitted"),
+            "icon_name": initial_state_data.get("icon", "MaterialCommunityIcons:star-four-points-circle"),
+            "icon_color": initial_state_data.get("color", "#78A083"),
+            "initialized_by": user.username if user else "system"
+        }
+
+        return cls.objects.create(
+            form_data=form_data,
+            workflow_state=state_code,
+            is_closed=initial_state_data.get("final", False), # Auto-close if initial state is final
+            metadata=initial_metadata
+        )
+
+    # ===================================================
+    # STATE UPDATE (Enhanced)
+    # ===================================================
+    def set_state(self, state_code, user=None, action_payload=None):
+        """
+        Updates state and appends contextual metadata detailing how it got here.
+        """
+        self.workflow_state = state_code
+        
+        update_fields = ["workflow_state", "updated_at"]
+
+        # If you pass the matched action object from your UI/schema helper, save it in metadata!
+        if action_payload:
+            self.metadata = {
+                "action": action_payload.get("action"),
+                "label": action_payload.get("label"),
+                "icon_name": action_payload.get("icon_name"),
+                "icon_color": action_payload.get("icon_color"),
+                "updated_by": user.username if user else "system"
+            }
+            update_fields.append("metadata")
+            
+            # Auto-handle closing states if final state metrics are provided
+            if "final" in action_payload:
+                self.is_closed = action_payload.get("final")
+                update_fields.append("is_closed")
+
+        self.save(update_fields=update_fields)
+
+    # ===================================================
+    # HELPERS
+    # ===================================================
+    def assign_to_user(self, user):
+        self.assigned_to = user
+        self.save(update_fields=["assigned_to", "updated_at"])
+
+    def assign_to_group(self, group):
+        self.assigned_group = group
+        self.save(update_fields=["assigned_group", "updated_at"])
+
+    def lock(self):
+        self.is_locked = True
+        self.save(update_fields=["is_locked", "updated_at"])
+
+    def unlock(self):
+        self.is_locked = False
+        self.save(update_fields=["is_locked", "updated_at"])
+
+    def close(self):
+        self.is_closed = True
+        self.save(update_fields=["is_closed", "updated_at"])
+
+    @property
+    def is_overdue(self):
+        if not self.due_at:
+            return False
+        return timezone.now() > self.due_at    
+
+
+class FormDataWorkflow1(models.Model):
     """
     Runtime workflow state for a submitted form.
 
@@ -463,9 +593,11 @@ class FormDataWorkflow(models.Model):
 
         return cls.objects.create(
             form_data=form_data,
-
             workflow_state=initial_state_data["code"],
+            metadata={"action":initial_state_data["code"],"icon_color":"#78A083"}
         )
+        
+        #{"action":"confirmed","label":"Confirmees","icon_name":"FontAwesome6:circle-check","icon_color":"#78A083","from":["submitted"],"to":"confirmee","groups":["admin","epi_official"],"transition_form_id":"2d2d3601-dd97-43e5-8b63-00e103a27e9e","allow_offline":true,"description":""}
 
     # ===================================================
     # ASSIGNMENT HELPERS
