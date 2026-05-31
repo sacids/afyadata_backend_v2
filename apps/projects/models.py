@@ -201,6 +201,14 @@ class FormDefinition(models.Model):
     active = models.IntegerField(default=1)
     response = models.CharField(max_length=200, null=True, blank=True)
     callback_url = models.URLField(null=True, blank=True)
+    
+    permitted_groups = models.ManyToManyField(
+        Group,
+        related_name="accessible_forms",
+        blank=True,
+        help_text="Groups with access to this form ",
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
