@@ -1,6 +1,6 @@
 @hostname = https://fao.afyadata.sacids.org/api/v1/
 @hostname = https://fao.afyadata.sacids.org/api/v1/
-//@hostname = http://127.0.0.1:80/api/v1/
+@hostname = http://127.0.0.1:8000/api/v1/
 @login_url = {{hostname}}token/
 @form_definition_url = {{hostname}}/api/v2/form-defn/
 
@@ -15,8 +15,8 @@ POST {{login_url}}
 Content-Type: application/json
 
 {
-  "username": "admin",
-  "password": "21@Sacids!"
+  "username": "0811111111_BP2A.250605.031.A3.S",
+  "password": "Kitimoto"
 }
 
 ###
@@ -57,6 +57,10 @@ Authorization: Bearer {{login.response.body.access}}
 Content-Type: application/json
 
 
+###
+GET {{hostname}}form-data/?project_id=a9b25611-3e2b-416a-90e9-2aa2dea5ed3b HTTP/1.1
+Authorization: Bearer {{login.response.body.access}}
+Accept: application/json
 
 ###
 GET {{hostname}}workflow-sync/?project_id=6c0de747-805e-4948-a8ae-6d12e8b090f7&last_update=1970-01-01T00:00:00Z
