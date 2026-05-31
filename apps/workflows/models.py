@@ -443,260 +443,260 @@ class FormDataWorkflow(models.Model):
         return timezone.now() > self.due_at    
 
 
-class FormDataWorkflow1(models.Model):
-    """
-    Runtime workflow state for a submitted form.
+# class FormDataWorkflow1(models.Model):
+#     """
+#     Runtime workflow state for a submitted form.
 
-    This stores ONLY the CURRENT workflow state.
+#     This stores ONLY the CURRENT workflow state.
 
-    Full audit trail/history is stored separately
-    in WorkflowActionLog.
-    """
+#     Full audit trail/history is stored separately
+#     in WorkflowActionLog.
+#     """
 
-    form_data = models.OneToOneField(
-        FormData,
-        on_delete=models.CASCADE,
-        related_name="workflow"
-    )
+#     form_data = models.OneToOneField(
+#         FormData,
+#         on_delete=models.CASCADE,
+#         related_name="workflow"
+#     )
 
-    # ---------------------------------------------------
-    # CURRENT WORKFLOW STATE
-    # ---------------------------------------------------
+#     # ---------------------------------------------------
+#     # CURRENT WORKFLOW STATE
+#     # ---------------------------------------------------
 
-    workflow_state = models.CharField(
-        max_length=100,
-        db_index=True,
-        help_text="Current workflow state code"
-    )
+#     workflow_state = models.CharField(
+#         max_length=100,
+#         db_index=True,
+#         help_text="Current workflow state code"
+#     )
 
-    # ---------------------------------------------------
-    # CURRENT ASSIGNMENT
-    # ---------------------------------------------------
+#     # ---------------------------------------------------
+#     # CURRENT ASSIGNMENT
+#     # ---------------------------------------------------
 
-    assigned_group = models.ForeignKey(
-        Group,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="assigned_workflows",
-        help_text="Current responsible group"
-    )
+#     assigned_group = models.ForeignKey(
+#         Group,
+#         on_delete=models.SET_NULL,
+#         null=True,
+#         blank=True,
+#         related_name="assigned_workflows",
+#         help_text="Current responsible group"
+#     )
 
-    assigned_to = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="assigned_form_workflows",
-        help_text="Current responsible user"
-    )
+#     assigned_to = models.ForeignKey(
+#         settings.AUTH_USER_MODEL,
+#         on_delete=models.SET_NULL,
+#         null=True,
+#         blank=True,
+#         related_name="assigned_form_workflows",
+#         help_text="Current responsible user"
+#     )
 
 
-    is_locked = models.BooleanField(
-        default=False,
-        help_text="Prevent further editing"
-    )
+#     is_locked = models.BooleanField(
+#         default=False,
+#         help_text="Prevent further editing"
+#     )
 
-    is_closed = models.BooleanField(
-        default=False,
-        help_text="Workflow completed/closed"
-    )
+#     is_closed = models.BooleanField(
+#         default=False,
+#         help_text="Workflow completed/closed"
+#     )
 
-    escalation_level = models.PositiveIntegerField(
-        default=0
-    )
+#     escalation_level = models.PositiveIntegerField(
+#         default=0
+#     )
 
-    reopened_count = models.PositiveIntegerField(
-        default=0
-    )
+#     reopened_count = models.PositiveIntegerField(
+#         default=0
+#     )
 
-    # ---------------------------------------------------
-    # SLA / DEADLINES
-    # ---------------------------------------------------
+#     # ---------------------------------------------------
+#     # SLA / DEADLINES
+#     # ---------------------------------------------------
 
-    due_at = models.DateTimeField(
-        null=True,
-        blank=True
-    )
+#     due_at = models.DateTimeField(
+#         null=True,
+#         blank=True
+#     )
 
-    # ---------------------------------------------------
-    # EXTRA METADATA
-    # ---------------------------------------------------
+#     # ---------------------------------------------------
+#     # EXTRA METADATA
+#     # ---------------------------------------------------
 
-    metadata = models.JSONField(
-        default=dict,
-        blank=True
-    )
+#     metadata = models.JSONField(
+#         default=dict,
+#         blank=True
+#     )
 
-    # ---------------------------------------------------
-    # AUDIT
-    # ---------------------------------------------------
+#     # ---------------------------------------------------
+#     # AUDIT
+#     # ---------------------------------------------------
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+#     created_at = models.DateTimeField(
+#         auto_now_add=True
+#     )
 
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
+#     updated_at = models.DateTimeField(
+#         auto_now=True
+#     )
 
-    class Meta:
-        db_table = "ad_form_data_workflows"
+#     class Meta:
+#         db_table = "ad_form_data_workflows"
 
-        verbose_name = "Form Data Workflow"
+#         verbose_name = "Form Data Workflow"
 
-        verbose_name_plural = "Form Data Workflows"
+#         verbose_name_plural = "Form Data Workflows"
 
-        indexes = [
-            models.Index(fields=["workflow_state"]),
-            models.Index(fields=["assigned_group"]),
-            models.Index(fields=["assigned_to"]),
-            models.Index(fields=["is_closed"]),
-            models.Index(fields=["is_locked"]),
-            models.Index(fields=["due_at"]),
-        ]
+#         indexes = [
+#             models.Index(fields=["workflow_state"]),
+#             models.Index(fields=["assigned_group"]),
+#             models.Index(fields=["assigned_to"]),
+#             models.Index(fields=["is_closed"]),
+#             models.Index(fields=["is_locked"]),
+#             models.Index(fields=["due_at"]),
+#         ]
 
-    def __str__(self):
-        return (
-            f"{self.form_data_id} - "
-            f"{self.workflow_state}"
-        )
+#     def __str__(self):
+#         return (
+#             f"{self.form_data_id} - "
+#             f"{self.workflow_state}"
+#         )
 
-    # ===================================================
-    # INITIALIZATION
-    # ===================================================
+#     # ===================================================
+#     # INITIALIZATION
+#     # ===================================================
 
-    @classmethod
-    def initialize_for_form_data(
-        cls,
-        form_data,
-        config,
-        user=None
-    ):
-        """
-        Creates workflow runtime instance
-        using workflow initial state.
-        """
-        if not config or not config.get("enabled"):
-            return None
+#     @classmethod
+#     def initialize_for_form_data(
+#         cls,
+#         form_data,
+#         config,
+#         user=None
+#     ):
+#         """
+#         Creates workflow runtime instance
+#         using workflow initial state.
+#         """
+#         if not config or not config.get("enabled"):
+#             return None
 
-        # config is a dict, so use config.get("states") instead of config.states
-        states = config.get("states", [])
+#         # config is a dict, so use config.get("states") instead of config.states
+#         states = config.get("states", [])
         
-        # Find the state dictionary where "initial" is True
-        initial_state_data = next((s for s in states if s.get("initial") is True), None)
+#         # Find the state dictionary where "initial" is True
+#         initial_state_data = next((s for s in states if s.get("initial") is True), None)
 
-        if not initial_state_data:
-            raise Exception(
-                f"Workflow '{config.get('name')}' has no initial state defined in JSON"
-            )
+#         if not initial_state_data:
+#             raise Exception(
+#                 f"Workflow '{config.get('name')}' has no initial state defined in JSON"
+#             )
 
-        return cls.objects.create(
-            form_data=form_data,
-            workflow_state=initial_state_data["code"],
-            metadata={"action":initial_state_data["code"],"icon_color":"#78A083"}
-        )
+#         return cls.objects.create(
+#             form_data=form_data,
+#             workflow_state=initial_state_data["code"],
+#             metadata={"action":initial_state_data["code"],"icon_color":"#78A083"}
+#         )
         
-        #{"action":"confirmed","label":"Confirmees","icon_name":"FontAwesome6:circle-check","icon_color":"#78A083","from":["submitted"],"to":"confirmee","groups":["admin","epi_official"],"transition_form_id":"2d2d3601-dd97-43e5-8b63-00e103a27e9e","allow_offline":true,"description":""}
+#         #{"action":"confirmed","label":"Confirmees","icon_name":"FontAwesome6:circle-check","icon_color":"#78A083","from":["submitted"],"to":"confirmee","groups":["admin","epi_official"],"transition_form_id":"2d2d3601-dd97-43e5-8b63-00e103a27e9e","allow_offline":true,"description":""}
 
-    # ===================================================
-    # ASSIGNMENT HELPERS
-    # ===================================================
+#     # ===================================================
+#     # ASSIGNMENT HELPERS
+#     # ===================================================
 
-    def assign_to_user(self, user):
+#     def assign_to_user(self, user):
 
-        self.assigned_to = user
+#         self.assigned_to = user
 
-        self.save(
-            update_fields=[
-                "assigned_to",
-                "updated_at",
-            ]
-        )
+#         self.save(
+#             update_fields=[
+#                 "assigned_to",
+#                 "updated_at",
+#             ]
+#         )
 
-    def assign_to_group(self, group):
+#     def assign_to_group(self, group):
 
-        self.assigned_group = group
+#         self.assigned_group = group
 
-        self.save(
-            update_fields=[
-                "assigned_group",
-                "updated_at",
-            ]
-        )
+#         self.save(
+#             update_fields=[
+#                 "assigned_group",
+#                 "updated_at",
+#             ]
+#         )
 
-    # ===================================================
-    # LOCKING HELPERS
-    # ===================================================
+#     # ===================================================
+#     # LOCKING HELPERS
+#     # ===================================================
 
-    def lock(self):
+#     def lock(self):
 
-        self.is_locked = True
+#         self.is_locked = True
 
-        self.save(
-            update_fields=[
-                "is_locked",
-                "updated_at",
-            ]
-        )
+#         self.save(
+#             update_fields=[
+#                 "is_locked",
+#                 "updated_at",
+#             ]
+#         )
 
-    def unlock(self):
+#     def unlock(self):
 
-        self.is_locked = False
+#         self.is_locked = False
 
-        self.save(
-            update_fields=[
-                "is_locked",
-                "updated_at",
-            ]
-        )
+#         self.save(
+#             update_fields=[
+#                 "is_locked",
+#                 "updated_at",
+#             ]
+#         )
 
-    # ===================================================
-    # CLOSE HELPERS
-    # ===================================================
+#     # ===================================================
+#     # CLOSE HELPERS
+#     # ===================================================
 
-    def close(self):
+#     def close(self):
 
-        self.is_closed = True
+#         self.is_closed = True
 
-        self.save(
-            update_fields=[
-                "is_closed",
-                "updated_at",
-            ]
-        )
+#         self.save(
+#             update_fields=[
+#                 "is_closed",
+#                 "updated_at",
+#             ]
+#         )
 
-    # ===================================================
-    # STATE UPDATE
-    # ===================================================
+#     # ===================================================
+#     # STATE UPDATE
+#     # ===================================================
 
-    def set_state(
-        self,
-        state_code,
-        user=None,
-        action=None
-    ):
+#     def set_state(
+#         self,
+#         state_code,
+#         user=None,
+#         action=None
+#     ):
 
-        self.workflow_state = state_code
+#         self.workflow_state = state_code
 
 
-        self.save(
-            update_fields=[
-                "workflow_state",
-                "updated_at",
-            ]
-        )
+#         self.save(
+#             update_fields=[
+#                 "workflow_state",
+#                 "updated_at",
+#             ]
+#         )
 
-    # ===================================================
-    # UTILITIES
-    # ===================================================
+#     # ===================================================
+#     # UTILITIES
+#     # ===================================================
 
-    @property
-    def is_overdue(self):
+#     @property
+#     def is_overdue(self):
 
-        if not self.due_at:
-            return False
+#         if not self.due_at:
+#             return False
 
-        return timezone.now() > self.due_at
+#         return timezone.now() > self.due_at
         
         
