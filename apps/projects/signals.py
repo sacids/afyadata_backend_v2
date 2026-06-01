@@ -3,7 +3,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import FormData
-from .tasks import push_formdata_payload_task
+from .tasks import push_formdata_payload_task, predict_disease_task
 
 @receiver(post_save, sender=FormData)
 def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
