@@ -5,8 +5,8 @@ from django.contrib.auth import views as auth_views
 from .v1.accounts import RegisterView, CustomTokenObtainPairView
 from .v1.ohkr import *
 from .v1.projects import *
-from .v1.surveys import *
-from .v1.form_data import *
+from .v1.surveys_v2 import *
+from .v1.form_data_v2 import *
 from .v1.chat import *
 from .v1.form_reactions import *
 from .v1.workflows import WorkflowSyncViewSet

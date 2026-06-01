@@ -19,6 +19,21 @@ class ProjectMemberInline(admin.TabularInline):
     model = ProjectMember
     ordering = ("id",)
     extra = 0
+    
+class FormDataFilterInline(admin.StackedInline):
+    model = FormDataFilter
+    extra = 1
+    fieldsets = (
+        (None, {
+            'fields': (('name', 'filter_text'), 'description')
+        }),
+        ('Access Control Permissions', {
+            'fields': ('permitted_groups', 'permitted_users'),
+            'classes': ('collapse',), # Optional: keeps it clean until expanded
+        }),
+    )
+    # Provides the clean dual-listbox UI inside the inline form
+    filter_horizontal = ('permitted_groups', 'permitted_users')
 
 
 @admin.register(Project)
@@ -57,7 +72,9 @@ class FormDefinitionAdmin(admin.ModelAdmin):
         "updated_at",
         "updated_by",
     )
+    filter_horizontal = ('permitted_groups',)
     list_filter = ("created_at", "updated_at", "created_by", "updated_by")
+    
     search_fields = ("title", "short_title", "version", "code", "description")
     ordering = ("sort_order", "-created_at")
     readonly_fields = ("created_at", "updated_at")
@@ -91,6 +108,8 @@ class FormDefinitionAdmin(admin.ModelAdmin):
         ),
     )
 
+    inlines = [FormAttachmentInline, FormDataFilterInline,]
+    
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
@@ -389,7 +408,12 @@ class ProjectQRCodeAdmin(admin.ModelAdmin):
     
     
     
-    
+@admin.register(FormDataFilter)
+class FormDataFilterAdmin(admin.ModelAdmin):
+    list_display = ('name', 'form', 'created_at', 'updated_at')
+    list_filter = ('form__project', 'form')
+    search_fields = ('name', 'filter_text', 'description')
+    filter_horizontal = ('permitted_groups', 'permitted_users')   
 
 
 

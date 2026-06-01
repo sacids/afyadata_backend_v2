@@ -201,6 +201,14 @@ class FormDefinition(models.Model):
     active = models.IntegerField(default=1)
     response = models.CharField(max_length=200, null=True, blank=True)
     callback_url = models.URLField(null=True, blank=True)
+    
+    permitted_groups = models.ManyToManyField(
+        Group,
+        related_name="accessible_forms",
+        blank=True,
+        help_text="Groups with access to this form ",
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -437,6 +445,39 @@ class FormDataFile(models.Model):
 
     def __str__(self):
         return self.original_name or str(self.id)
+
+
+
+class FormDataFilter(models.Model):
+    """Model definition for form data filter"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    form = models.ForeignKey(FormDefinition, related_name="filters", on_delete=models.CASCADE)
+    name = models.CharField(max_length=150)
+    description = models.TextField(null=True, blank=True)
+    filter_text = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    permitted_groups = models.ManyToManyField(
+        Group,
+        related_name="data_group_filters",
+        blank=True,
+        help_text="Groups with access to this filter ",
+    )
+    
+    permitted_users = models.ManyToManyField(
+        User,
+        related_name="user_group_filters",
+        blank=True,
+        help_text="Users with access to this filter ",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.name
+
 
 
 class ProjectQRCode(models.Model):
