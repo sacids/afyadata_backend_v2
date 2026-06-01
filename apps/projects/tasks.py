@@ -4,6 +4,8 @@ import logging
 from apps.projects.models import FormData, FormDataFile, ProjectMember
 from apps.projects.utils import save_uploaded_file_snapshots
 from apps.esb.utils import build_payload, push_payload
+from apps.ohkr.ohkr_service import OHKRService
+from apps.ohkr.models import ReferenceData
 
 logger = logging.getLogger(__name__)
 
@@ -84,3 +86,50 @@ def push_formdata_payload_task(self, formdata_id):
         payload = build_payload(formdata, config)
         push_payload(config, payload, formdata=formdata)
         formdata.refresh_from_db(fields=["push_status"])
+
+
+
+@shared_task
+def predict_disease_task(formdata_id):
+    try:
+        form_data = FormData.objects.get(pk=formdata_id)
+
+        payload = form_data.data or {}
+
+        species_name = payload.get("species")
+        symptoms = payload.get("symptoms", [])
+
+        if not species_name:
+            return f"No species found for FormData {formdata_id}"
+
+        if not symptoms:
+            return f"No symptoms found for FormData {formdata_id}"
+
+        specie = (
+            ReferenceData.objects.filter(
+                rd_type="specie",
+                name__iexact=species_name,
+                active=True,
+            )
+            .first()
+        )
+
+        if not specie:
+            return f"Specie '{species_name}' not found"
+
+        result = OHKRService.predict_disease(
+            specie_id=specie.id,
+            clinical_sign_codes=symptoms,
+        )
+
+        # TODO: 1. Save to ohkr predicted disease model
+        # TODO: 2. Send sms to CAW
+        logger.info(f"OHKR prediction result for FormData {formdata_id}: {result}")
+
+        return result
+
+    except FormData.DoesNotExist:
+        return f"FormData {formdata_id} does not exist"
+
+    except Exception as e:
+        return str(e)

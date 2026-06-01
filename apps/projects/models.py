@@ -208,6 +208,7 @@ class FormDefinition(models.Model):
         blank=True,
         help_text="Groups with access to this form ",
     )
+    allow_ohkr = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

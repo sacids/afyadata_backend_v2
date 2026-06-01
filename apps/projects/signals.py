@@ -12,7 +12,20 @@ def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
 
     transaction.on_commit(lambda: push_formdata_payload_task.delay(instance.pk))
     
+
+@receiver(post_save, sender=FormData)
+def predict_disease_on_create(sender, instance: FormData, created: bool, **kwargs):
+    if instance.deleted == 1:
+        return
+
+    if not created:
+        return
     
+    if instance.form.allow_ohkr == False:
+        return
+
+    transaction.on_commit(lambda: predict_disease_task.delay(instance.pk))    
+
 
 from .models import Project
 from .utils import push_project_to_hub
