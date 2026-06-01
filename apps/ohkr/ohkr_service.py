@@ -5,6 +5,26 @@ from .models import Disease, ReferenceData, OHKRScore
 
 
 class OHKRService:
+    def format_data_request(submitted_data):
+        """
+        Convert submitted form data into payload required by predict_disease()
+        """
+
+        species_name = submitted_data.get("species")
+        symptoms = submitted_data.get("symptoms", [])
+
+        specie = ReferenceData.objects.filter(
+            rd_type="specie",
+            name__iexact=species_name
+        ).first()
+
+        if not specie:
+            raise ValueError(f"Specie '{species_name}' not found")
+
+        return {
+            "specie_id": str(specie.id),
+            "clinical_signs": symptoms,
+        }
     
     @staticmethod
     def predict_disease(specie_id, clinical_sign_codes):
