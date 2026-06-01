@@ -2,18 +2,19 @@ from django.contrib import admin
 from .models import *
 
 # Register your models here.
-admin.site.register(Specie)
-admin.site.register(Disease)
-admin.site.register(Response)
+@admin.register(Disease)
+class DiseaseAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name')
+    search_fields = ('name',)
 
+@admin.register(ReferenceData)
+class ReferenceDataAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'rd_type', 'code')
+    search_fields = ('name', 'rd_type')
+    list_filter = ('rd_type',)
 
-class ClinicalSignAdmin(admin.ModelAdmin):
-    list_display = ["id", "name"]
-
-
-admin.site.register(ClinicalSign, ClinicalSignAdmin)
-admin.site.register(SpecieResponse)
-admin.site.register(ClinicalSignScore)
+admin.site.register(OHKRScore)
+admin.site.register(OHKRResponse)
 
 @admin.register(ReactionAction)
 class ReactionActionAdmin(admin.ModelAdmin):
