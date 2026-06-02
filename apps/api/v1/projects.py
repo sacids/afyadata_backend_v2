@@ -124,7 +124,11 @@ class ProjectView(viewsets.ViewSet):
 
                     # response
                     return Response(
-                        {"error": False, "message": "Your request has approved"},
+                        {
+                                "error": False, 
+                                "message": "Your request has approved",
+                                "project": project_data   
+                        },
                         status=status.HTTP_200_OK,
                     )
                 else:
@@ -134,7 +138,11 @@ class ProjectView(viewsets.ViewSet):
 
                         # response
                         return Response(
-                            {"error": False, "message": "Your request has approved"},
+                        {
+                                "error": False, 
+                                "message": "Your request has approved",
+                                "project": project_data   
+                        },
                             status=status.HTTP_200_OK,
                         )
                     else:
@@ -189,7 +197,11 @@ class ProjectView(viewsets.ViewSet):
 
                     # response
                     return Response(
-                        {"error": False, "message": "Your request has approved"},
+                        {
+                                "error": False, 
+                                "message": "Your request has approved",
+                                "project": project_data   
+                        },
                         status=status.HTTP_200_OK,
                     )
 

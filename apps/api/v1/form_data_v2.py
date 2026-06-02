@@ -489,6 +489,133 @@ class FormDataView(viewsets.ViewSet):
                 snapshot_uploaded_files(request.FILES) if request.FILES else []
             )
 
+            # --- SEEN_BY DISTINCT UNION LOGIC START ---
+            incoming_seen_by = data.get("seen_by") or ""
+            
+            # Split incoming string by commas and strip surrounding whitespaces
+            incoming_users = [u.strip() for u in incoming_seen_by.split(",") if u.strip()]
+
+            # Look up existing record to check its current db seen_by value
+            existing_instance = FormData.objects.filter(uuid=uuid).first()
+            if existing_instance and existing_instance.seen_by:
+                db_users = [u.strip() for u in existing_instance.seen_by.split(",") if u.strip()]
+            else:
+                db_users = []
+
+            # Perform a unique distinct union using a Python set (maintains uniqueness)
+            distinct_union_set = set(db_users + incoming_users)
+            
+            # Re-serialize into a clean comma-separated string without duplicate components
+            final_seen_by = ",".join(sorted(list(distinct_union_set)))
+            # ---- SEEN_BY DISTINCT UNION LOGIC END ----
+
+            now = timezone.now()
+            defaults = {
+                "form_data": data["form_data"],
+                "original_uuid": data.get("original_uuid", uuid),
+                "parent_id": data.get("parent_uuid"),
+                "title": data.get("title", ""),
+                "created_by_name": data.get("created_by_name", ""),
+                "form_id": form_id,
+                "gps": data.get("gps"),
+                "created_at": created_on,
+                "created_by": request.user if request.user.is_authenticated else None,
+                "updated_at": now,
+                "last_updated_at": now,
+                "submitted_at": now,
+                "deleted": deleted,
+                "synced": 1,
+                "seen_by": final_seen_by,  # Insert the computed unique union string here
+            }
+
+            with transaction.atomic():
+                instance, created_flag = FormData.objects.update_or_create(
+                    uuid=uuid,
+                    defaults=defaults,
+                )
+                if file_snapshots:
+                    transaction.on_commit(
+                        lambda: save_formdata_files_task.delay(
+                            instance.pk,
+                            file_snapshots,
+                            request.user.pk if request.user.is_authenticated else None,
+                        )
+                    )
+
+            logging.info("== inserted/updated form data ==")
+            logging.info(
+                {"id": instance.id, "uuid": instance.uuid, "created": created_flag}
+            )
+
+            instance.refresh_from_db()
+
+            if getattr(instance.form, "response", None):
+                response_payload = {
+                    "uuid": instance.uuid,
+                    "synced": 1,
+                    "message": instance.form.response,
+                }
+            else:
+                response_payload = {
+                    "uuid": instance.uuid,
+                    "synced": 1,
+                    "message": (
+                        "Form data created successfully"
+                        if created_flag
+                        else "Form data updated successfully"
+                    ),
+                }
+
+            return Response(
+                {"success": True, "data": response_payload},
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+    def create1(self, request, *args, **kwargs):
+        """Create new form data coming from mobile app"""
+        if not request.data:
+            return Response(
+                {"success": False, "message": "Request body is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logging.info("== incoming data ==")
+        logging.info(request.data)
+        data = self._normalize_request_data(request)
+        logging.info("== normalized data ==")
+        logging.info(data)
+
+        try:
+            def to_bool(val, default=False):
+                if val is None:
+                    return default
+                return str(val).lower() in ("1", "true", "yes")
+
+            uuid = (data.get("uuid") or "").strip()
+            if not uuid:
+                raise ValueError("uuid is required")
+
+            form_id = data.get("form")
+            if not form_id:
+                raise ValueError("form is required")
+
+            if not FormDefinition.objects.filter(pk=form_id).exists():
+                raise ValueError("Invalid form")
+
+            data["form_data"] = self._parse_form_data(data.get("form_data"))
+            created_on = self._parse_created_at(data)
+            deleted = to_bool(data.get("deleted"), default=False)
+
+            file_snapshots = (
+                snapshot_uploaded_files(request.FILES) if request.FILES else []
+            )
+
             now = timezone.now()
             defaults = {
                 "form_data": data["form_data"],
