@@ -12,7 +12,8 @@ from django.db.models.functions import Cast
 
 from apps.projects.serializers import *
 from django.db.models import Q
-from apps.projects.models import Project, ProjectMember
+from apps.accounts.utils import is_admin_user
+from apps.projects.models import KnowledgeBase, Project, ProjectMember
 
 
 
@@ -265,3 +266,81 @@ class ProjectView(viewsets.ViewSet):
                 {"error": True, "message": "Project does not exist"},
                 status=status.HTTP_200_OK,
             )
+
+
+class KnowledgeBaseView(viewsets.ViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def _get_accessible_project(self, request, project_id):
+        project = Project.objects.filter(pk=project_id, deleted=False).first()
+        if not project:
+            raise Project.DoesNotExist
+
+        if is_admin_user(request.user):
+            return project
+
+        if ProjectMember.objects.filter(
+            project=project,
+            member=request.user,
+            active=True,
+        ).exists():
+            return project
+
+        raise PermissionError("You do not have access to this project")
+
+    def lists(self, request, project_id=None):
+        try:
+            self._get_accessible_project(request, project_id)
+        except Project.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Project does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except PermissionError as exc:
+            return Response(
+                {"success": False, "message": str(exc)},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        knowledge_base = (
+            KnowledgeBase.objects.filter(project_id=project_id)
+            .select_related("project", "created_by", "updated_by")
+            .order_by("-updated_at", "title")
+        )
+        serializer = KnowledgeBaseSerializer(
+            knowledge_base,
+            many=True,
+            context={"request": request},
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def detail(self, request, project_id=None, pk=None):
+        try:
+            self._get_accessible_project(request, project_id)
+        except Project.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Project does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except PermissionError as exc:
+            return Response(
+                {"success": False, "message": str(exc)},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        knowledge_base = KnowledgeBase.objects.filter(
+            project_id=project_id,
+            pk=pk,
+        ).select_related("project", "created_by", "updated_by").first()
+        if not knowledge_base:
+            return Response(
+                {"success": False, "message": "Knowledge base does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = KnowledgeBaseSerializer(
+            knowledge_base,
+            context={"request": request},
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
