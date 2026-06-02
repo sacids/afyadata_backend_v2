@@ -193,7 +193,7 @@ class ProjectView(viewsets.ViewSet):
             else:
                 # first check if is private
                 if project.access == "private":
-                    ProjectMember.objects.create(project=project, member=request.user, active=True, credibility_score=50)
+                    ProjectMember.objects.update_or_create(project=project, member=request.user, active=True, credibility_score=50)
 
                     # response
                     return Response(
@@ -208,7 +208,7 @@ class ProjectView(viewsets.ViewSet):
                 else:
                     # check if project is auto_join is true
                     if project.auto_join:
-                        ProjectMember.objects.create(project=project, member=request.user, active=True, credibility_score=50)
+                        ProjectMember.objects.update_or_create(project=project, member=request.user, active=True, credibility_score=50)
 
                         # project data
                         project_data = ProjectSerializer(project).data
@@ -223,7 +223,7 @@ class ProjectView(viewsets.ViewSet):
                             status=status.HTTP_200_OK,
                         )
                     else:
-                        ProjectMember.objects.create(project=project, member=request.user, active=False, credibility_score=50)
+                        ProjectMember.objects.update_or_create(project=project, member=request.user, active=False, credibility_score=50)
 
                         # TODO: send notification to project owner
 
