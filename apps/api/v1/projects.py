@@ -248,12 +248,18 @@ class ProjectView(viewsets.ViewSet):
                             },
                             status=status.HTTP_200_OK,
                         )
-        except:
+                        
+        except Exception as e:
+            import traceback
+            traceback.print_exc() 
+            
             return Response(
-                {"error": True, "message": "Project does not exist"},
-                status=status.HTTP_200_OK,
+                {
+                    "error": True, 
+                    "message": f"An error occurred: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR, # Return 500 for actual server errors
             )
-
 
     def unsubscribe(self, request, pk=None):
         """Unsubscribe from project"""
