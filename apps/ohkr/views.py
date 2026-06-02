@@ -429,7 +429,7 @@ class ClinicalSignSyncView(OHKRPermissionMixin, generic.CreateView):
 class ResponseListView(OHKRPermissionMixin, generic.ListView):
     permission_required = "ohkr.view_response"
 
-    model = Response
+    model = OHKRResponse
     context_object_name = "responses"
     template_name = "responses/lists.html"
 

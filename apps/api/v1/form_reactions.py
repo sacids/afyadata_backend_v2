@@ -33,6 +33,7 @@ class FormReactionView(viewsets.ViewSet):
         serializer = FormReactionSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
     def retrieve(self, request, pk=None):
         """Get reactions for a specific form_id"""
         try:
@@ -49,6 +50,7 @@ class FormReactionView(viewsets.ViewSet):
                 {"error": True, "message": str(e)},
                 status=status.HTTP_404_NOT_FOUND
             )
+
 
     def sync(self, request):
         """

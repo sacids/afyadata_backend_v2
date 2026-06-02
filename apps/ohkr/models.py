@@ -93,30 +93,7 @@ class Disease(models.Model):
         db_table = "ohkr_diseases"
         managed = True
         verbose_name = "Disease"
-        verbose_name_plural = "3. Diseases"
-
-
-class Response(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=150)
-    description = models.TextField(null=True, blank=True)
-    external_id = models.CharField(max_length=150, null=True, blank=True)
-    language_code = models.CharField(max_length=10, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True, null=True)
-    updated_at = models.DateTimeField(auto_now=True, null=True)
-
-    @property
-    def last_updated(self):
-        return self.updated_at.strftime("%Y%m%d%H%M%S")
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        db_table = "ohkr_responses"
-        managed = True
-        verbose_name = "Response"
-        verbose_name_plural = "5. Responses"
+        verbose_name_plural = "1. Diseases"
 
 
 class ClinicalSign(models.Model):
@@ -142,42 +119,6 @@ class ClinicalSign(models.Model):
         managed = True
         verbose_name = "Clinical Sign"
         verbose_name_plural = "4. Clinical Signs"
-
-
-class SpecieResponse(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    specie = models.ForeignKey(Specie, on_delete=models.CASCADE)
-    clinical_sign = models.ForeignKey(
-        ClinicalSign, on_delete=models.SET_NULL, null=True
-    )
-    responses = models.ManyToManyField(Response, blank=True)
-
-    def __str__(self):
-        return self.specie.name + " - " + self.clinical_sign.name
-
-    class Meta:
-        db_table = "ohkr_specie_responses"
-        managed = True
-        verbose_name = "Specie Response"
-        verbose_name_plural = "6. Specie Responses"
-
-
-class ClinicalSignScore(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    disease = models.ForeignKey(Disease, on_delete=models.CASCADE)
-    clinical_sign = models.ForeignKey(
-        ClinicalSign, on_delete=models.SET_NULL, null=True
-    )
-    score = models.IntegerField()
-
-    def __str__(self):
-        return self.disease.name
-
-    class Meta:
-        db_table = "ohkr_scores"
-        managed = True
-        verbose_name = "Score"
-        verbose_name_plural = "7. Scores"
 
 
 class ReferenceData(models.Model):
@@ -212,7 +153,42 @@ class ReferenceData(models.Model):
         db_table = "ohkr_reference_data"
         managed = True
         verbose_name = "Reference Data"
-        verbose_name_plural = "1. Reference Data"
+        verbose_name_plural = "2. Reference Data"
+
+
+class OHKRScore(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    disease = models.ForeignKey(Disease, related_name="disease_scores", on_delete=models.CASCADE)
+    specie = models.ForeignKey(ReferenceData,related_name="specie_scores", on_delete=models.SET_NULL, null=True)
+    clinical_sign = models.ForeignKey(ReferenceData, related_name="clinical_sign_scores", on_delete=models.SET_NULL, null=True)
+    score = models.IntegerField(default=0)
+
+    def __str__(self):
+        return self.disease.name
+
+    class Meta:
+        db_table = "ohkr_disease_scores"
+        managed = True
+        verbose_name = "OHKR Score"
+        verbose_name_plural = "3. OHKR Scores"
+
+
+class OHKRResponse(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    disease = models.ForeignKey(Disease, related_name="disease_responses", on_delete=models.CASCADE)
+    message = models.TextField(null=True, blank=True)
+    active  = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def __str__(self):
+        return self.disease.name
+
+    class Meta:
+        db_table = "ohkr_disease_responses"
+        managed = True
+        verbose_name = "OHKR Response"
+        verbose_name_plural = "4. OHKR Responses"
 
 
 class ReactionAction(models.Model):
@@ -234,6 +210,10 @@ class ReactionAction(models.Model):
 
     def __str__(self):
         return f"{self.action_name} ({self.action_type})"
+    
+    class Meta:
+        verbose_name = "Reaction Action"
+        verbose_name_plural = "5. Reaction Actions"
 
 
 class FormReaction(models.Model):
@@ -250,3 +230,7 @@ class FormReaction(models.Model):
 
     def __str__(self):
         return f"{self.form_id}: {self.rule_name}"
+    
+    class Meta:
+        verbose_name = "Form Reaction"
+        verbose_name_plural = "6. Form Reactions"

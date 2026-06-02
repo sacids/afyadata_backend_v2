@@ -20,11 +20,13 @@ class DiseaseSerializer(serializers.ModelSerializer):
         model = Disease
         fields = '__all__'
 
+
 class ResponseSerializer(serializers.ModelSerializer):
     """Serializer for clinical response"""
     class Meta:
-        model = Response
+        model = OHKRResponse
         fields = '__all__'
+
 
 class ClinicalSignSerializer(serializers.ModelSerializer):
     """Serializer for clinical sign"""
@@ -33,21 +35,21 @@ class ClinicalSignSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class SpecieResponseSerializer(serializers.ModelSerializer):
-    """Serializer for specie response"""
-    specie = SpecieSerializer(read_only=True)
-    clinical_sign = ClinicalSignSerializer(read_only=True)
-    responses = ResponseSerializer(many=True, read_only=True)
-    class Meta:
-        model = SpecieResponse
-        fields = '__all__'
+# class SpecieResponseSerializer(serializers.ModelSerializer):
+#     """Serializer for specie response"""
+#     specie = SpecieSerializer(read_only=True)
+#     clinical_sign = ClinicalSignSerializer(read_only=True)
+#     responses = ResponseSerializer(many=True, read_only=True)
+#     class Meta:
+#         model = SpecieResponse
+#         fields = '__all__'
 
 
-class ScoreSerializer(serializers.ModelSerializer):
-    """Serializer for clinical sign score"""
-    class Meta:
-        model = ClinicalSignScore
-        fields = '__all__'
+# class ScoreSerializer(serializers.ModelSerializer):
+#     """Serializer for clinical sign score"""
+#     class Meta:
+#         model = ClinicalSignScore
+#         fields = '__all__'
 
 
 class ReactionActionSerializer(serializers.ModelSerializer):

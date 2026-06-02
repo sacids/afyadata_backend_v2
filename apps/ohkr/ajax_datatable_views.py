@@ -304,7 +304,7 @@ class ClinicalSignAjaxDatatableView(OHKRDatatablePermissionMixin, AjaxDatatableV
 
 
 class ResponseAjaxDatatableView(OHKRDatatablePermissionMixin, AjaxDatatableView):
-    model = Response
+    model = OHKRResponse
     change_permission = "ohkr.change_response"
     title = "Clinical Response"
     initial_order = [

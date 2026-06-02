@@ -16,7 +16,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 from apps.projects.models import Project, FormDefinition, FormData
-from apps.ohkr.models import Disease, Specie, ClinicalSign, Response, Location
+from apps.ohkr.models import Disease, Specie, ClinicalSign, Location
 from apps.accounts.utils import is_admin_user
 
 
@@ -82,7 +82,6 @@ class DashboardView(generic.TemplateView):
             Disease.objects.count()
             + Specie.objects.count()
             + ClinicalSign.objects.count()
-            + Response.objects.count()
             + Location.objects.count()
         )
 

@@ -1,0 +1,566 @@
+# This is an auto-generated Django model module.
+# You'll have to do the following manually to clean this up:
+#   * Rearrange models' order
+#   * Make sure each model has one field with primary_key=True
+#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
+# Feel free to rename the models, but don't rename db_table values or field names.
+from django.db import models
+
+
+class AdFormAttachments(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    title = models.CharField(max_length=150, blank=True, null=True)
+    type = models.CharField(max_length=20)
+    attachment = models.CharField(max_length=200, blank=True, null=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    form = models.ForeignKey('AdFormDefinitions', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ad_form_attachments'
+
+
+class AdFormData(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    uuid = models.TextField(blank=True, null=True)
+    original_uuid = models.TextField(blank=True, null=True)
+    parent_id = models.TextField(blank=True, null=True)
+    title = models.CharField(max_length=150, blank=True, null=True)
+    gps = models.CharField(max_length=150, blank=True, null=True)
+    path = models.TextField(blank=True, null=True)
+    form_data = models.JSONField(blank=True, null=True)
+    deleted = models.IntegerField(blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+    last_updated_at = models.DateTimeField(blank=True, null=True)
+    submitted_at = models.DateTimeField(blank=True, null=True)
+    created_by_name = models.TextField(blank=True, null=True)
+    synced = models.IntegerField(blank=True, null=True)
+    created_by = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
+    last_updated_by = models.ForeignKey('AuthUser', models.DO_NOTHING, related_name='adformdata_last_updated_by_set', blank=True, null=True)
+    updated_by = models.ForeignKey('AuthUser', models.DO_NOTHING, related_name='adformdata_updated_by_set', blank=True, null=True)
+    form = models.ForeignKey('AdFormDefinitions', models.DO_NOTHING)
+    photo = models.CharField(max_length=200, blank=True, null=True)
+    push_status = models.BooleanField()
+    response_id = models.TextField(blank=True, null=True)
+    response_json = models.JSONField(blank=True, null=True)
+    parent_match = models.ForeignKey('self', models.DO_NOTHING, blank=True, null=True)
+    score = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'ad_form_data'
+
+
+class AdFormDataFiles(models.Model):
+    id = models.UUIDField(primary_key=True)
+    file = models.CharField(max_length=200)
+    file_type = models.CharField(max_length=20)
+    original_name = models.CharField(max_length=255, blank=True, null=True)
+    field_name = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField()
+    form_data = models.ForeignKey(AdFormData, models.DO_NOTHING)
+    uploaded_by = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
+    response_json = models.JSONField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ad_form_data_files'
+
+
+class AdFormDefinitions(models.Model):
+    id = models.UUIDField(primary_key=True)
+    title = models.CharField(max_length=100)
+    short_title = models.CharField(max_length=10, blank=True, null=True)
+    short_description = models.CharField(max_length=100, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    version = models.CharField(max_length=20, blank=True, null=True)
+    code = models.IntegerField(blank=True, null=True)
+    sort_order = models.IntegerField()
+    xlsform = models.CharField(max_length=100, blank=True, null=True)
+    form_actions = models.CharField(max_length=255, blank=True, null=True)
+    form_defn = models.TextField(blank=True, null=True)
+    children = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    synced = models.IntegerField()
+    created_by = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
+    updated_by = models.ForeignKey('AuthUser', models.DO_NOTHING, related_name='adformdefinitions_updated_by_set', blank=True, null=True)
+    project = models.ForeignKey('AdProjects', models.DO_NOTHING)
+    response = models.CharField(max_length=200, blank=True, null=True)
+    active = models.IntegerField()
+    compulsory = models.IntegerField()
+    depends_on = models.IntegerField()
+    form_category = models.TextField(blank=True, null=True)
+    form_id = models.TextField(blank=True, null=True)
+    form_type = models.TextField(blank=True, null=True)
+    is_root = models.BooleanField()
+    icon_type = models.CharField(max_length=50, blank=True, null=True)
+    callback_url = models.CharField(max_length=200, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ad_form_definitions'
+
+
+class AdProfile(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    digest = models.CharField(max_length=200, blank=True, null=True)
+    pic = models.CharField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    verified_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    user = models.ForeignKey('AuthUser', models.DO_NOTHING)
+    verified_by = models.ForeignKey('AuthUser', models.DO_NOTHING, related_name='adprofile_verified_by_set', blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ad_profile'
+
+
+class AdProjectMembers(models.Model):
+    id = models.UUIDField(primary_key=True)
+    active = models.BooleanField()
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    member = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
+    project = models.ForeignKey('AdProjects', models.DO_NOTHING)
+    credibility_score = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'ad_project_members'
+
+
+class AdProjects(models.Model):
+    id = models.UUIDField(primary_key=True)
+    title = models.CharField(max_length=50)
+    code = models.CharField(max_length=10, blank=True, null=True)
+    access = models.CharField(max_length=20)
+    auto_join = models.BooleanField()
+    accept_member = models.BooleanField()
+    accept_data = models.BooleanField()
+    active = models.BooleanField()
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    created_by = models.ForeignKey('AuthUser', models.DO_NOTHING, blank=True, null=True)
+    updated_by = models.ForeignKey('AuthUser', models.DO_NOTHING, related_name='adprojects_updated_by_set', blank=True, null=True)
+    deleted = models.BooleanField()
+
+    class Meta:
+        managed = False
+        db_table = 'ad_projects'
+
+
+class AdProjectsTags(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    project = models.ForeignKey(AdProjects, models.DO_NOTHING)
+    tag = models.ForeignKey('AdTags', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ad_projects_tags'
+
+
+class AdTags(models.Model):
+    id = models.UUIDField(primary_key=True)
+    title = models.CharField(max_length=50)
+
+    class Meta:
+        managed = False
+        db_table = 'ad_tags'
+
+
+class AuthGroup(models.Model):
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=150)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_group'
+
+
+class AuthGroupPermissions(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    group = models.ForeignKey(AuthGroup, models.DO_NOTHING)
+    permission = models.ForeignKey('AuthPermission', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_group_permissions'
+
+
+class AuthPermission(models.Model):
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=255)
+    content_type = models.ForeignKey('DjangoContentType', models.DO_NOTHING)
+    codename = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_permission'
+
+
+class AuthUser(models.Model):
+    id = models.IntegerField(primary_key=True)
+    password = models.CharField(max_length=128)
+    last_login = models.DateTimeField(blank=True, null=True)
+    is_superuser = models.BooleanField()
+    username = models.CharField(max_length=150)
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150)
+    email = models.CharField(max_length=254)
+    is_staff = models.BooleanField()
+    is_active = models.BooleanField()
+    date_joined = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'auth_user'
+
+
+class AuthUserGroups(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+    group = models.ForeignKey(AuthGroup, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_user_groups'
+
+
+class AuthUserUserPermissions(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+    permission = models.ForeignKey(AuthPermission, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'auth_user_user_permissions'
+
+
+class ChatConversations(models.Model):
+    id = models.UUIDField(primary_key=True)
+    title = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    form = models.ForeignKey(AdFormDefinitions, models.DO_NOTHING)
+    instance = models.ForeignKey(AdFormData, models.DO_NOTHING)
+    created_by = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'chat_conversations'
+
+
+class ChatConversationsParticipants(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    conversation = models.ForeignKey(ChatConversations, models.DO_NOTHING)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'chat_conversations_participants'
+
+
+class ChatMessages(models.Model):
+    id = models.UUIDField(primary_key=True)
+    text = models.TextField()
+    created_at = models.DateTimeField()
+    is_read = models.BooleanField()
+    conversation = models.ForeignKey(ChatConversations, models.DO_NOTHING)
+    sender = models.ForeignKey(AuthUser, models.DO_NOTHING)
+    external_id = models.CharField(max_length=150, blank=True, null=True)
+    language_code = models.CharField(max_length=10, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'chat_messages'
+
+
+class DjangoAdminLog(models.Model):
+    id = models.IntegerField(primary_key=True)
+    action_time = models.DateTimeField()
+    object_id = models.TextField(blank=True, null=True)
+    object_repr = models.CharField(max_length=200)
+    action_flag = models.SmallIntegerField()
+    change_message = models.TextField()
+    content_type = models.ForeignKey('DjangoContentType', models.DO_NOTHING, blank=True, null=True)
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'django_admin_log'
+
+
+class DjangoContentType(models.Model):
+    id = models.IntegerField(primary_key=True)
+    app_label = models.CharField(max_length=100)
+    model = models.CharField(max_length=100)
+
+    class Meta:
+        managed = False
+        db_table = 'django_content_type'
+
+
+class DjangoMigrations(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    app = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
+    applied = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'django_migrations'
+
+
+class DjangoSession(models.Model):
+    session_key = models.CharField(primary_key=True, max_length=40)
+    session_data = models.TextField()
+    expire_date = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'django_session'
+
+
+class EsbFormPayloadConfig(models.Model):
+    id = models.UUIDField(primary_key=True)
+    endpoint = models.CharField(max_length=200, blank=True, null=True)
+    method = models.CharField(max_length=10)
+    headers = models.JSONField()
+    is_active = models.BooleanField()
+    form = models.ForeignKey(AdFormDefinitions, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'esb_form_payload_config'
+
+
+class EsbFormPayloadFieldMap(models.Model):
+    id = models.UUIDField(primary_key=True)
+    payload_field = models.CharField(max_length=120)
+    form_data_path = models.CharField(max_length=200, blank=True, null=True)
+    default_value = models.CharField(max_length=255, blank=True, null=True)
+    required = models.BooleanField()
+    transform = models.CharField(max_length=50, blank=True, null=True)
+    config = models.ForeignKey(EsbFormPayloadConfig, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'esb_form_payload_field_map'
+
+
+class EsbFormValueMapping(models.Model):
+    id = models.UUIDField(primary_key=True)
+    entity_type = models.CharField(max_length=50)
+    source_value = models.CharField(max_length=200)
+    target_value = models.CharField(max_length=200)
+    config = models.ForeignKey(EsbFormPayloadConfig, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'esb_form_value_mapping'
+
+
+class OhkrClinicalSigns(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=150)
+    external_id = models.CharField(max_length=150, blank=True, null=True)
+    language_code = models.CharField(max_length=10, blank=True, null=True)
+    code = models.CharField(max_length=10, blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+    active = models.BooleanField()
+    source = models.CharField(max_length=20, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_clinical_signs'
+
+
+class OhkrDiseases(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True, null=True)
+    external_id = models.CharField(max_length=150, blank=True, null=True)
+    language_code = models.CharField(max_length=10, blank=True, null=True)
+    causes = models.TextField(blank=True, null=True)
+    diagnosis = models.TextField(blank=True, null=True)
+    photo = models.CharField(max_length=200, blank=True, null=True)
+    prevention = models.TextField(blank=True, null=True)
+    symptoms = models.TextField(blank=True, null=True)
+    treatment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+    active = models.BooleanField()
+    source = models.CharField(max_length=20, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_diseases'
+
+
+class OhkrFormreaction(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    rule_name = models.CharField(max_length=200)
+    condition = models.TextField()
+    priority = models.IntegerField()
+    is_active = models.BooleanField()
+    form = models.ForeignKey(AdFormDefinitions, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_formreaction'
+
+
+class OhkrFormreactionActions(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    formreaction = models.ForeignKey(OhkrFormreaction, models.DO_NOTHING)
+    reactionaction = models.ForeignKey('OhkrReactionaction', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_formreaction_actions'
+
+
+class OhkrLocations(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=150)
+    level = models.SmallIntegerField()
+    iso3 = models.CharField(max_length=3, blank=True, null=True)
+    external_id = models.CharField(max_length=150, blank=True, null=True)
+    language_code = models.CharField(max_length=10, blank=True, null=True)
+    source = models.CharField(max_length=20, blank=True, null=True)
+    active = models.BooleanField()
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+    parent = models.ForeignKey('self', models.DO_NOTHING, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_locations'
+
+
+class OhkrReactionaction(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    action_name = models.CharField(max_length=200)
+    action_type = models.CharField(max_length=50)
+    message = models.TextField()
+    metadata = models.JSONField()
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_reactionaction'
+
+
+class OhkrReferenceData(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=150)
+    code = models.CharField(max_length=10, blank=True, null=True)
+    external_id = models.CharField(max_length=150, blank=True, null=True)
+    rd_type = models.CharField(max_length=50)
+    language_code = models.CharField(max_length=10, blank=True, null=True)
+    source = models.CharField(max_length=20, blank=True, null=True)
+    active = models.BooleanField()
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+    form = models.ForeignKey(AdFormDefinitions, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_reference_data'
+
+
+class OhkrResponses(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True, null=True)
+    external_id = models.CharField(max_length=150, blank=True, null=True)
+    language_code = models.CharField(max_length=10, blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_responses'
+
+
+class OhkrScores(models.Model):
+    id = models.UUIDField(primary_key=True)
+    score = models.IntegerField()
+    clinical_sign = models.ForeignKey(OhkrClinicalSigns, models.DO_NOTHING, blank=True, null=True)
+    disease = models.ForeignKey(OhkrDiseases, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_scores'
+
+
+class OhkrSpecieResponses(models.Model):
+    id = models.UUIDField(primary_key=True)
+    clinical_sign = models.ForeignKey(OhkrClinicalSigns, models.DO_NOTHING, blank=True, null=True)
+    specie = models.ForeignKey('OhkrSpecies', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_specie_responses'
+
+
+class OhkrSpecieResponsesResponses(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    specieresponse = models.ForeignKey(OhkrSpecieResponses, models.DO_NOTHING)
+    response = models.ForeignKey(OhkrResponses, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_specie_responses_responses'
+
+
+class OhkrSpecies(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=150)
+    external_id = models.CharField(max_length=150, blank=True, null=True)
+    language_code = models.CharField(max_length=10, blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+    active = models.BooleanField()
+    source = models.CharField(max_length=20, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'ohkr_species'
+
+
+class ProjectsMatchingconfiguration(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    candidate_selection_fields = models.JSONField()
+    candidate_distance = models.FloatField()
+    time_window_hours = models.IntegerField()
+    similarity_fields = models.JSONField()
+    similarity_threshold = models.FloatField()
+    form_definition = models.ForeignKey(AdFormDefinitions, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'projects_matchingconfiguration'
+
+
+class ProjectsProjectqrcode(models.Model):
+    id = models.UUIDField(primary_key=True)
+    is_active = models.BooleanField()
+    expires_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField()
+    scan_count = models.IntegerField()
+    issued_to = models.ForeignKey(AuthUser, models.DO_NOTHING, blank=True, null=True)
+    project = models.ForeignKey(AdProjects, models.DO_NOTHING)
+    description = models.TextField(blank=True, null=True)
+    name = models.CharField(max_length=150)
+
+    class Meta:
+        managed = False
+        db_table = 'projects_projectqrcode'
