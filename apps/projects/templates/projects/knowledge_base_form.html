@@ -1,0 +1,140 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block extra-css %}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<style>
+    #knowledge_base_editor {
+        min-height: 260px;
+        font-size: 0.875rem;
+    }
+
+    .ql-toolbar.ql-snow {
+        border-color: rgb(214 211 209);
+        border-top-left-radius: 0.375rem;
+        border-top-right-radius: 0.375rem;
+    }
+
+    .ql-container.ql-snow {
+        border-color: rgb(214 211 209);
+        border-bottom-left-radius: 0.375rem;
+        border-bottom-right-radius: 0.375rem;
+    }
+</style>
+{% endblock extra-css %}
+
+{% block content %}
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-4xl py-6 px-4 sm:px-6 lg:px-8">
+        <div class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+            <div class="border-b border-stone-200 bg-stone-50/80 px-5 py-5">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-base font-semibold tracking-tight text-stone-900">{{ title }}</h2>
+                        <p class="mt-1 text-sm text-stone-500">Add guidance, images, and notes linked to {{ project.title }}.</p>
+                    </div>
+                    <a href="{% url 'projects:knowledge-base' project.pk %}"
+                        class="inline-flex items-center rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-medium text-stone-700 shadow-sm transition hover:bg-stone-100">
+                        <i class="bx bx-arrow-back mr-2 text-base"></i> Back
+                    </a>
+                </div>
+            </div>
+
+            {% if messages %}
+            <div class="px-5 pt-4">
+                <div class="space-y-2">
+                    {% for message in messages %}
+                    <div class="rounded-xl border px-4 py-3 text-sm {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" class="space-y-5 px-5 py-5">
+                {% csrf_token %}
+
+                <div>
+                    <label for="{{ form.title.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Title</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                        <p class="mt-2 text-xs text-red-700">{{ form.title.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.photo.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Photo</label>
+                    {{ form.photo }}
+                    {% if knowledge_base.photo %}
+                        <p class="mt-2 text-xs text-stone-500">Current: {{ knowledge_base.photo.name }}</p>
+                    {% endif %}
+                    {% if form.photo.errors %}
+                        <p class="mt-2 text-xs text-red-700">{{ form.photo.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.description.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Description</label>
+                    {{ form.description }}
+                    <div id="knowledge_base_editor" class="bg-white"></div>
+                    {% if form.description.errors %}
+                        <p class="mt-2 text-xs text-red-700">{{ form.description.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                {% if form.non_field_errors %}
+                    <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                        {{ form.non_field_errors|striptags }}
+                    </div>
+                {% endif %}
+
+                <div class="flex justify-end gap-2 border-t border-stone-200 pt-5">
+                    <a href="{% url 'projects:knowledge-base' project.pk %}"
+                        class="bg-white hover:bg-red-600 text-red-600 hover:text-white border border-red-600 text-sm py-2 px-4 rounded-md">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                        class="text-white bg-slate-700 border-slate-700 hover:bg-red-800 font-normal rounded-md text-sm w-full sm:w-auto px-4 py-2 text-center inline-flex items-center justify-center min-w-[140px]">
+                         {{ submit_label }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra-js %}
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const descriptionField = document.getElementById('{{ form.description.id_for_label }}');
+        const editorElement = document.getElementById('knowledge_base_editor');
+        const formElement = editorElement.closest('form');
+
+        descriptionField.classList.add('hidden');
+
+        const quill = new Quill(editorElement, {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ header: [2, 3, false] }],
+                    ['bold', 'italic', 'underline'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    ['link'],
+                    ['clean']
+                ]
+            },
+            placeholder: 'Write guidance, response notes, or supporting project knowledge...'
+        });
+
+        quill.root.innerHTML = descriptionField.value || '';
+
+        formElement.addEventListener('submit', function () {
+            descriptionField.value = quill.root.innerHTML;
+        });
+    });
+</script>
+{% endblock extra-js %}

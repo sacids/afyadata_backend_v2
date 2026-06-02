@@ -598,3 +598,42 @@ class ProjectQRCodeForm(forms.ModelForm):
         if expires_at and expires_at <= timezone.now():
             self.add_error("expires_at", "Expiry must be in the future.")
         return cleaned_data
+
+
+class KnowledgeBaseForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(KnowledgeBaseForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_show_labels = True
+        self.helper.label_class = "text-gray-700 text-xs font-medium"
+
+    class Meta:
+        model = KnowledgeBase
+        fields = ["title", "photo", "description"]
+        widgets = {
+            "title": forms.TextInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "placeholder": "Knowledge base title",
+                }
+            ),
+            "photo": forms.FileInput(
+                attrs={
+                    "class": "block w-full rounded-md border border-gray-200 px-3 py-2 text-sm",
+                    "accept": "image/*",
+                }
+            ),
+            "description": forms.Textarea(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "rows": 5,
+                    "placeholder": "Write guidance, response notes, or supporting project knowledge...",
+                }
+            ),
+        }
+
+    def clean_title(self):
+        title = (self.cleaned_data.get("title") or "").strip()
+        if not title:
+            raise forms.ValidationError("Title is required.")
+        return title

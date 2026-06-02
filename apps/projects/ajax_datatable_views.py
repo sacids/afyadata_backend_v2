@@ -1,6 +1,8 @@
 import json
 from ajax_datatable.views import AjaxDatatableView
 from django.urls import reverse
+from django.utils.html import escape
+from django.utils.html import strip_tags
 from .models import *
 from apps.ohkr.models import ReferenceData
 from apps.accounts.utils import is_admin_user
@@ -91,7 +93,7 @@ class ProjectAjaxDatatableView(ProjectDatatablePermissionMixin, AjaxDatatableVie
     def customize_row(self, row, obj):
         # absoluteURL
         detail_url = reverse("projects:forms", kwargs=({"pk": obj.id}))
-        description = (obj.description or "No description added yet.").strip()
+        description = strip_tags(obj.description or "No description added yet.").strip()
         short_description = (
             description[:96] + "..." if len(description) > 96 else description
         )
@@ -372,6 +374,140 @@ class FormReferenceDataAjaxDatatableView(AjaxDatatableView):
         )
         row["source"] = (
             f'<span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">{obj.source or "N/A"}</span>'
+        )
+
+
+class KnowledgeBaseAjaxDatatableView(AjaxDatatableView):
+    model = KnowledgeBase
+    title = "Knowledge Base"
+    initial_order = [
+        ["created_at", "desc"],
+    ]
+    length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
+    search_values_separator = "+"
+
+    column_defs = [
+        {
+            "name": "title",
+            "title": "Title",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "description",
+            "title": "Description",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "created_by",
+            "title": "Created By",
+            "visible": True,
+            "searchable": False,
+        },
+        {
+            "name": "updated_at",
+            "title": "Updated",
+            "visible": True,
+            "searchable": False,
+        },
+        {
+            "name": "actions",
+            "title": "Action",
+            "visible": True,
+            "className": "w-12 text-left",
+            "placeholder": "True",
+            "searchable": False,
+        },
+    ]
+
+    def get_initial_queryset(self, request=None):
+        project_pk = self.kwargs.get("pk")
+        if request is not None and not request.user.has_perm("projects.view_knowledgebase"):
+            return KnowledgeBase.objects.none()
+
+        project_queryset = Project.objects.filter(pk=project_pk, deleted=False)
+        if request is not None and not is_admin_user(request.user):
+            project_queryset = project_queryset.filter(
+                members__member=request.user,
+                members__active=True,
+            )
+        if not project_queryset.exists():
+            return KnowledgeBase.objects.none()
+
+        return KnowledgeBase.objects.filter(project_id=project_pk).select_related(
+            "created_by",
+            "updated_by",
+        )
+
+    def customize_row(self, row, obj):
+        description = strip_tags(obj.description or "No description added yet.").strip()
+        short_description = (
+            description[:140] + "..." if len(description) > 140 else description
+        )
+        title = escape(obj.title)
+        short_description = escape(short_description)
+        photo_url = obj.photo.url if obj.photo else ""
+
+        row["title"] = (
+            '<div class="flex min-w-[240px] items-center gap-3">'
+            '<div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-stone-200 bg-stone-50 text-stone-400">'
+            + (
+                f'<img src="{escape(photo_url)}" alt="" class="h-full w-full object-cover">'
+                if photo_url
+                else '<i class="bx bx-book-content text-lg"></i>'
+            )
+            + "</div>"
+            f'<div><div class="text-sm font-semibold text-stone-900">{title}</div>'
+            f'<div class="mt-1 text-[11px] text-stone-500">Created {obj.created_at.strftime("%d %b %Y") if obj.created_at else ""}</div></div>'
+            "</div>"
+        )
+        row["description"] = (
+            f'<div class="max-w-xl whitespace-normal text-xs leading-5 text-stone-600">{short_description}</div>'
+        )
+        row["created_by"] = (
+            obj.created_by.get_full_name().strip()
+            or obj.created_by.username
+            if obj.created_by
+            else "System"
+        )
+        row["updated_at"] = (
+            f'<span class="text-xs text-stone-600">{obj.updated_at.strftime("%d %b %Y, %H:%M") if obj.updated_at else ""}</span>'
+        )
+
+        action_bits = []
+        if self.request.user.has_perm("projects.change_knowledgebase"):
+            action_bits.append(
+                '<a href="{}" title="Edit knowledge base" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer">'
+                '<i class="bx bx-edit-alt bx-xs"></i>'
+                "</a>".format(
+                    reverse(
+                        "projects:knowledge-base-edit",
+                        kwargs={"pk": obj.project_id, "kb_pk": obj.pk},
+                    )
+                )
+            )
+        if self.request.user.has_perm("projects.delete_knowledgebase"):
+            action_bits.append(
+                '<button type="button" '
+                'data-url="{}" '
+                'data-title={} '
+                'title="Delete knowledge base" '
+                'class="knowledge-base-delete inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer">'
+                '<i class="bx bx-trash bx-xs"></i>'
+                '</button>'.format(
+                    reverse(
+                        "projects:knowledge-base-delete",
+                        kwargs={"pk": obj.project_id, "kb_pk": obj.pk},
+                    ),
+                    json.dumps(obj.title),
+                )
+            )
+
+        row["actions"] = (
+            f'<div class="flex items-center gap-1.5 text-[.50rem]">{"".join(action_bits)}</div>'
+            if action_bits
+            else ""
         )
 
 

@@ -219,6 +219,7 @@ def build_project_workspace_links(user, project_pk):
 
     links["Data"] = reverse_lazy("projects:data", kwargs={"pk": project_pk})
     links["QR"] = reverse_lazy("projects:qrmanager", kwargs={"pk": project_pk})
+    links["Knowledge Base"] = reverse_lazy("projects:knowledge-base", kwargs={"pk": project_pk})
     return links
 
 
@@ -2013,3 +2014,151 @@ class ProjectQRCodeScanView(View):
         qr_code.save()
         
         return JsonResponse({'success': True, 'scan_count': qr_code.scan_count})
+
+
+class ProjectKnowledgeBaseListView(PermissionRequiredMixin, generic.TemplateView):
+    template_name = "projects/knowledge_base.html"
+    permission_required = "projects.view_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseListView, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        context = {
+            "title": f"{project.title} - Knowledge Base",
+            "project": project,
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+                {"name": project.title, "url": reverse_lazy("projects:show", kwargs={"pk": project.pk})},
+                {"name": "Knowledge Base", "url": "#"},
+            ],
+            "links": build_project_workspace_links(request.user, project.pk),
+        }
+        return render(request, self.template_name, context)
+
+
+class ProjectKnowledgeBaseCreateView(PermissionRequiredMixin, generic.TemplateView):
+    template_name = "projects/knowledge_base_form.html"
+    permission_required = "projects.add_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseCreateView, self).dispatch(*args, **kwargs)
+
+    def get_context(self, request, project, form=None):
+        return {
+            "title": "Create Knowledge Base",
+            "project": project,
+            "form": form or KnowledgeBaseForm(),
+            "submit_label": "Create",
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+                {"name": project.title, "url": reverse_lazy("projects:show", kwargs={"pk": project.pk})},
+                {"name": "Knowledge Base", "url": reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})},
+                {"name": "Create", "url": "#"},
+            ],
+            "links": build_project_workspace_links(request.user, project.pk),
+        }
+
+    def get(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        return render(request, self.template_name, self.get_context(request, project))
+
+    def post(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        form = KnowledgeBaseForm(request.POST, request.FILES)
+        if form.is_valid():
+            knowledge_base = form.save(commit=False)
+            knowledge_base.project = project
+            knowledge_base.created_by = request.user
+            knowledge_base.updated_by = request.user
+            knowledge_base.save()
+            messages.success(request, "Knowledge base created successfully.")
+            return HttpResponseRedirect(
+                reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
+            )
+
+        messages.error(request, "Please correct the knowledge base errors below.")
+        return render(request, self.template_name, self.get_context(request, project, form=form))
+
+
+class ProjectKnowledgeBaseUpdateView(PermissionRequiredMixin, generic.TemplateView):
+    template_name = "projects/knowledge_base_form.html"
+    permission_required = "projects.change_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseUpdateView, self).dispatch(*args, **kwargs)
+
+    def get_knowledge_base(self, project):
+        return get_object_or_404(KnowledgeBase, pk=self.kwargs["kb_pk"], project=project)
+
+    def get_context(self, request, project, knowledge_base, form=None):
+        return {
+            "title": "Edit Knowledge Base",
+            "project": project,
+            "knowledge_base": knowledge_base,
+            "form": form or KnowledgeBaseForm(instance=knowledge_base),
+            "submit_label": "Update",
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+                {"name": project.title, "url": reverse_lazy("projects:show", kwargs={"pk": project.pk})},
+                {"name": "Knowledge Base", "url": reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})},
+                {"name": knowledge_base.title, "url": "#"},
+            ],
+            "links": build_project_workspace_links(request.user, project.pk),
+        }
+
+    def get(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        knowledge_base = self.get_knowledge_base(project)
+        return render(
+            request,
+            self.template_name,
+            self.get_context(request, project, knowledge_base),
+        )
+
+    def post(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        knowledge_base = self.get_knowledge_base(project)
+        form = KnowledgeBaseForm(request.POST, request.FILES, instance=knowledge_base)
+        if form.is_valid():
+            knowledge_base = form.save(commit=False)
+            knowledge_base.updated_by = request.user
+            knowledge_base.save()
+            messages.success(request, "Knowledge base updated successfully.")
+            return HttpResponseRedirect(
+                reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
+            )
+
+        messages.error(request, "Please correct the knowledge base errors below.")
+        return render(
+            request,
+            self.template_name,
+            self.get_context(request, project, knowledge_base, form=form),
+        )
+
+
+class ProjectKnowledgeBaseDeleteView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.delete_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseDeleteView, self).dispatch(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        knowledge_base = get_object_or_404(
+            KnowledgeBase,
+            pk=kwargs["kb_pk"],
+            project=project,
+        )
+        knowledge_base.delete()
+        return JsonResponse(
+            {"error": False, "success_msg": "Knowledge base deleted successfully."}
+        )
