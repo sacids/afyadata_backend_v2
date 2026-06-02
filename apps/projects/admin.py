@@ -15,6 +15,12 @@ class TagAdmin(admin.ModelAdmin):
     ordering = ("title",)
 
 
+@admin.register(KnowledgeBase)
+class KnowledgeBaseAdmin(admin.ModelAdmin):
+    list_display = ["title"]
+    ordering = ("title",)
+
+
 class ProjectMemberInline(admin.TabularInline):
     model = ProjectMember
     ordering = ("id",)

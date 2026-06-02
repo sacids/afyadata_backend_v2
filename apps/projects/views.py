@@ -44,7 +44,7 @@ from apps.ohkr.models import ClinicalSign, FormReaction, OHKRScore, ReactionActi
 from apps.esb.models import FormPayloadConfig
 from apps.accounts.utils import is_admin_user
 from apps.chat.models import Conversation, Message
-from apps.workflows.models import FormDataWorkflow
+from apps.workflows.models import FormDataWorkflow, WorkflowActionLog
 
 
 from django.urls import reverse
@@ -1548,6 +1548,97 @@ class SurveyDataMessagesView(PermissionRequiredMixin, generic.View):
             {
                 "success": True,
                 "message": self.serialize_message(message),
+            }
+        )
+
+
+class SurveyDataWorkflowView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.view_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataWorkflowView, self).dispatch(*args, **kwargs)
+
+    def get_form_data(self):
+        form_data = get_object_or_404(FormData, uuid=self.kwargs["data_id"])
+        get_accessible_project_or_404(self.request.user, form_data.form.project.pk)
+        return form_data
+
+    def serialize_user(self, user):
+        if not user:
+            return ""
+        return user.get_full_name().strip() or user.username
+
+    def serialize_state(self, state):
+        if not state:
+            return None
+        return {
+            "id": str(state.id),
+            "name": state.name,
+            "code": state.code,
+            "color": state.color or "",
+            "is_initial": state.is_initial,
+            "is_final": state.is_final,
+        }
+
+    def serialize_log(self, log):
+        return {
+            "id": str(log.id),
+            "action_name": log.action_name,
+            "from_state": self.serialize_state(log.from_state),
+            "to_state": self.serialize_state(log.to_state),
+            "action_by": self.serialize_user(log.action_by),
+            "metadata": log.metadata or {},
+            "created_at": log.created_at.strftime("%d %b %Y, %H:%M") if log.created_at else "",
+        }
+
+    def get(self, request, *args, **kwargs):
+        form_data = self.get_form_data()
+        workflow = (
+            FormDataWorkflow.objects.filter(form_data=form_data)
+            .select_related("assigned_group", "assigned_to")
+            .first()
+        )
+
+        if not workflow:
+            return JsonResponse(
+                {
+                    "has_workflow": False,
+                    "message": "No workflow has been initialized for this submission.",
+                    "logs": [],
+                }
+            )
+
+        workflow_definition = getattr(form_data.form, "workflow", None)
+        current_state = None
+        if workflow_definition:
+            current_state = workflow_definition.states.filter(
+                code=workflow.workflow_state
+            ).first()
+
+        logs = (
+            WorkflowActionLog.objects.filter(transition_form_data=form_data)
+            .select_related("from_state", "to_state", "action_by")
+            .order_by("-created_at")
+        )
+
+        return JsonResponse(
+            {
+                "has_workflow": True,
+                "workflow_state": workflow.workflow_state,
+                "state": self.serialize_state(current_state),
+                "assigned_group": workflow.assigned_group.name if workflow.assigned_group else "",
+                "assigned_to": self.serialize_user(workflow.assigned_to),
+                "is_locked": workflow.is_locked,
+                "is_closed": workflow.is_closed,
+                "is_overdue": workflow.is_overdue,
+                "escalation_level": workflow.escalation_level,
+                "reopened_count": workflow.reopened_count,
+                "due_at": workflow.due_at.strftime("%d %b %Y, %H:%M") if workflow.due_at else "",
+                "metadata": workflow.metadata or {},
+                "created_at": workflow.created_at.strftime("%d %b %Y, %H:%M") if workflow.created_at else "",
+                "updated_at": workflow.updated_at.strftime("%d %b %Y, %H:%M") if workflow.updated_at else "",
+                "logs": [self.serialize_log(log) for log in logs],
             }
         )
 

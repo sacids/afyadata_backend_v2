@@ -40,6 +40,7 @@ urlpatterns = [
     path('forms/<str:pk>/data/export', views.SurveyDataExportView.as_view(), name="form-data-export"),
     path('forms/<str:data_id>/data/instance', views.SurveyDataInstanceView.as_view(), name="form-data-instance"),
     path('forms/<str:data_id>/data/messages', views.SurveyDataMessagesView.as_view(), name="form-data-messages"),
+    path('forms/<str:data_id>/data/workflow', views.SurveyDataWorkflowView.as_view(), name="form-data-workflow"),
 
     path('forms/<str:pk>/data/charts', views.ChartsDataView.as_view(), name='form-data-charts'),
     path('forms/<str:pk>/data/map', views.MapDataView.as_view(), name='form-data-map'),
@@ -69,5 +70,4 @@ urlpatterns = [
     path('reference-data-datatable/<str:pk>', ajax_datatable_views.FormReferenceDataAjaxDatatableView.as_view(), name="dt-form-reference-data"),
     
 ]
-
 

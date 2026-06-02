@@ -394,7 +394,7 @@ class FormData(models.Model):
 
         indexes = [models.Index(fields=["uuid", "form", "created_at"])]
         verbose_name = "Form data"
-        verbose_name_plural = "4. Form data"
+        verbose_name_plural = "5. Form data"
         db_table = "ad_form_data"
 
     def __str__(self):
@@ -448,7 +448,6 @@ class FormDataFile(models.Model):
         return self.original_name or str(self.id)
 
 
-
 class FormDataFilter(models.Model):
     """Model definition for form data filter"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -475,10 +474,13 @@ class FormDataFilter(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        managed = True
+        app_label = "projects"
+        verbose_name = "Form Data Filter"
+        verbose_name_plural = "6. Form Data Filters"
 
     def __str__(self):
         return self.name
-
 
 
 class ProjectQRCode(models.Model):
@@ -499,6 +501,10 @@ class ProjectQRCode(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        managed = True
+        app_label = "projects"
+        verbose_name = "QR Code"
+        verbose_name_plural = "4. QR Codes"
 
     def __str__(self):
         return self.name
@@ -545,8 +551,47 @@ class MatchingConfiguration(models.Model):
         return f"Logic for {self.form_definition.title}"
 
 
+class KnowledgeBase(models.Model):
+    """Model definition for knowledge base"""
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey("Project", on_delete=models.CASCADE, related_name="project_kb")
+    title = models.CharField(max_length=255)
+    photo = models.FileField(
+        upload_to="assets/uploads/photo/",
+        max_length=200,
+        null=True,
+        blank=True,
+    )
+    description = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name="kb_created_by",
+        blank=True,
+        null=True,
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        related_name="kb_updated_by",
+        blank=True,
+        null=True,
+    )
 
+    class Meta:
+        """Meta definition for knowledge base."""
+        indexes = [models.Index(fields=["title"])]
+        db_table = "ad_knowledge_base"
+        managed = True
+        app_label = "projects"
+        verbose_name = "Knowledge Base"
+        verbose_name_plural = "7. Knowledge Bases"
+
+    def __str__(self):
+        return self.title
 
 
 

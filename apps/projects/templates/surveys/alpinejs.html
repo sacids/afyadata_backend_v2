@@ -24,6 +24,9 @@
             messageError: '',
             messagesLoading: false,
             messageSending: false,
+            workflowData: null,
+            workflowError: '',
+            workflowLoading: false,
             attachmentPreviewOpen: false,
             activeAttachment: null,
 
@@ -99,6 +102,8 @@
                 this.messageParticipants = [];
                 this.replyText = '';
                 this.messageError = '';
+                this.workflowData = null;
+                this.workflowError = '';
                 this.loadFormDefinition(this.activeFormId, {
                     preserveTitle: true,
                     preserveDescription: false,
@@ -125,6 +130,12 @@
                 await this.loadMessages();
             },
 
+            async openWorkflow() {
+                this.tabId = 'workflow';
+                this.viewMode = '';
+                await this.loadWorkflow();
+            },
+
             async loadMessages() {
                 this.messagesLoading = true;
                 this.messageError = '';
@@ -146,6 +157,64 @@
                 } finally {
                     this.messagesLoading = false;
                 }
+            },
+
+            async loadWorkflow() {
+                this.workflowLoading = true;
+                this.workflowError = '';
+
+                try {
+                    const response = await fetch(`/projects/forms/${this.parentId}/data/workflow`);
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to load workflow.');
+                    }
+
+                    this.workflowData = data;
+                } catch (error) {
+                    this.workflowError = error.message || 'Failed to load workflow.';
+                    this.workflowData = null;
+                } finally {
+                    this.workflowLoading = false;
+                }
+            },
+
+            workflowStateLabel() {
+                if (!this.workflowData) return '-';
+                return this.workflowData.state?.name || this.workflowData.metadata?.label || this.workflowData.workflow_state || '-';
+            },
+
+            workflowStateStyle() {
+                const color = this.workflowData?.state?.color || this.workflowData?.metadata?.icon_color || '#e0f2fe';
+                return `background-color: ${color}; color: ${this.contrastText(color)};`;
+            },
+
+            workflowLogStateLabel(state, fallback) {
+                return state?.name || state?.code || fallback;
+            },
+
+            workflowMetadataEntries() {
+                return Object.entries(this.workflowData?.metadata || {}).map(([key, value]) => ({
+                    key: this.prettyHeader(key),
+                    value: typeof value === 'object' ? JSON.stringify(value) : String(value ?? '-'),
+                }));
+            },
+
+            contrastText(color) {
+                const normalized = String(color || '').trim();
+                if (!normalized.startsWith('#') || ![4, 7].includes(normalized.length)) {
+                    return '#1c1917';
+                }
+
+                const hex = normalized.length === 4
+                    ? normalized.slice(1).split('').map(ch => ch + ch).join('')
+                    : normalized.slice(1);
+                const red = parseInt(hex.slice(0, 2), 16);
+                const green = parseInt(hex.slice(2, 4), 16);
+                const blue = parseInt(hex.slice(4, 6), 16);
+                const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+                return brightness > 150 ? '#1c1917' : '#ffffff';
             },
 
             async sendMessage() {
