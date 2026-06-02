@@ -194,11 +194,10 @@
                 return state?.name || state?.code || fallback;
             },
 
-            workflowMetadataEntries() {
-                return Object.entries(this.workflowData?.metadata || {}).map(([key, value]) => ({
-                    key: this.prettyHeader(key),
-                    value: typeof value === 'object' ? JSON.stringify(value) : String(value ?? '-'),
-                }));
+            workflowMetadataText() {
+                const metadata = this.workflowData?.metadata || {};
+                if (!Object.keys(metadata).length) return '';
+                return JSON.stringify(metadata, null, 2);
             },
 
             contrastText(color) {
