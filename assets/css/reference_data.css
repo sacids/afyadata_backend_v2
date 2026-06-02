@@ -1,0 +1,39 @@
+#datatable_form_reference_wrapper .dataTables_filter {
+    display: none !important;
+}
+
+#datatable_form_reference thead tr:nth-child(2) {
+    display: none !important;
+}
+
+#datatable_form_reference thead input,
+#datatable_form_reference thead select {
+    display: none !important;
+}
+
+#ohkr_score_modal .select2-container {
+    width: 100% !important;
+}
+
+#ohkr_score_modal .select2-container--default .select2-selection--single {
+    min-height: 38px;
+    border-color: rgb(214 211 209);
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+}
+
+#ohkr_score_modal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: rgb(68 64 60);
+    font-size: 0.875rem;
+    line-height: 38px;
+    padding-left: 0.75rem;
+}
+
+#ohkr_score_modal .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+
+.select2-container--open {
+    z-index: 60;
+}

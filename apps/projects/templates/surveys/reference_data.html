@@ -3,20 +3,8 @@
 {% load humanize %}
 
 {% block extra-css %}
-<style>
-    #datatable_form_reference_wrapper .dataTables_filter {
-        display: none !important;
-    }
-
-    #datatable_form_reference thead tr:nth-child(2) {
-        display: none !important;
-    }
-
-    #datatable_form_reference thead input,
-    #datatable_form_reference thead select {
-        display: none !important;
-    }
-</style>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="{% static 'css/reference_data.css' %}" rel="stylesheet" type="text/css" />
 {% endblock extra-css %}
 
 {% block content %}
@@ -25,6 +13,13 @@
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             {% include 'partials/list_header.html' with header_title="Reference Data" header_subtitle="Search and sync locations, species, and clinical signs." search_id="form_search" search_placeholder="Search reference data..." export_button_id="forms_export" secondary_button_id="reference_sync_toggle" secondary_button_label="Sync Reference Data" secondary_button_icon="bx bx-refresh" %}
+
+            <div class="flex justify-end border-b border-stone-200 bg-white px-5 py-3">
+                <button id="ohkr_score_modal_open" type="button"
+                    class="inline-flex shrink-0 items-center rounded-full bg-stone-900 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-stone-800">
+                    Add OHKR Score
+                </button>
+            </div>
 
             <div class="p-4">
                 <div class="relative overflow-x-auto">
@@ -68,12 +63,103 @@
             {% endif %}
         </div>
     </div>
+
+    <div id="ohkr_score_modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 px-4 py-6">
+        <div class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-5 py-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-stone-900">Add OHKR Score</h3>
+                    <p class="mt-1 text-xs text-stone-500">Map a disease score to this form's species and clinical signs.</p>
+                </div>
+                <button id="ohkr_score_modal_close" type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-200 hover:text-stone-900"
+                    aria-label="Close OHKR score modal">
+                    <i class='bx bx-x text-xl'></i>
+                </button>
+            </div>
+
+            <form id="ohkr_score_form" method="post" action="{% url 'projects:form-reference-data' survey.pk %}" class="px-5 py-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add-ohkr-score">
+
+                <div id="ohkr_score_success" class="mb-4 hidden rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"></div>
+                <div id="ohkr_score_errors" class="mb-4 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"></div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block text-xs font-medium text-stone-700">
+                        Disease
+                        <span class="mt-1 block">{{ ohkr_score_form.disease }}</span>
+                    </label>
+                    <label class="block text-xs font-medium text-stone-700">
+                        Species
+                        <span class="mt-1 block">{{ ohkr_score_form.specie }}</span>
+                    </label>
+                    <label class="block text-xs font-medium text-stone-700">
+                        Clinical Sign
+                        <span class="mt-1 block">{{ ohkr_score_form.clinical_sign }}</span>
+                    </label>
+                    <label class="block text-xs font-medium text-stone-700">
+                        Score
+                        <span class="mt-1 block">{{ ohkr_score_form.score }}</span>
+                    </label>
+                </div>
+
+                <div class="mt-5 flex justify-end gap-2">
+                    <button id="ohkr_score_cancel" type="button"
+                        class="inline-flex items-center rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-100">
+                        Cancel
+                    </button>
+                    <button id="ohkr_score_submit" type="submit"
+                        class="inline-flex items-center rounded-full bg-red-900 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-red-800">
+                        <i class='bx bx-save mr-2 text-base'></i> Save Score
+                    </button>
+                </div>
+            </form>
+
+            <div class="border-t border-stone-200 px-5 py-4">
+                <div class="mb-3 flex items-center justify-between">
+                    <h4 class="text-xs font-semibold uppercase text-stone-500">Current Scores</h4>
+                    <span class="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-600"><span id="ohkr_score_count">{{ ohkr_scores|length }}</span> saved</span>
+                </div>
+
+                <div class="max-h-64 overflow-auto rounded-xl border border-stone-200">
+                    <table class="w-full min-w-[620px] text-left text-xs text-stone-700">
+                        <thead class="sticky top-0 bg-stone-50 text-[11px] uppercase text-stone-500">
+                            <tr>
+                                <th class="px-3 py-2 font-semibold">Disease</th>
+                                <th class="px-3 py-2 font-semibold">Species</th>
+                                <th class="px-3 py-2 font-semibold">Clinical Sign</th>
+                                <th class="w-20 px-3 py-2 text-right font-semibold">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ohkr_score_table_body" class="divide-y divide-stone-100 bg-white">
+                            {% for score in ohkr_scores %}
+                                <tr class="hover:bg-stone-50">
+                                    <td class="px-3 py-2 font-medium text-stone-900">{{ score.disease.name }}</td>
+                                    <td class="px-3 py-2">{{ score.specie.name|default:"-" }}</td>
+                                    <td class="px-3 py-2">{{ score.clinical_sign.name|default:"-" }}</td>
+                                    <td class="px-3 py-2 text-right">
+                                        <span class="inline-flex min-w-8 justify-center rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">{{ score.score }}</span>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr id="ohkr_score_empty">
+                                    <td colspan="4" class="px-3 py-5 text-center text-stone-500">No OHKR scores have been added for this form.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 
 {% endblock %}
 
 {% block extra-js %}
 
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script language="javascript">
     $(document).on('draw.dt', function () {
         if (window.htmx) {
@@ -84,9 +170,65 @@
     $(document).ready(function () {
         const $syncToggle = $('#reference_sync_toggle');
         const $syncMenu = $('#reference_sync_menu');
+        const $scoreModal = $('#ohkr_score_modal');
+        const $scoreForm = $('#ohkr_score_form');
+        const $scoreSuccess = $('#ohkr_score_success');
+        const $scoreErrors = $('#ohkr_score_errors');
+        const $scoreSubmit = $('#ohkr_score_submit');
 
         function closeSyncMenu() {
             $syncMenu.addClass('hidden');
+        }
+
+        function openScoreModal() {
+            $scoreSuccess.addClass('hidden').empty();
+            $scoreErrors.addClass('hidden').empty();
+            $scoreModal.removeClass('hidden').addClass('flex');
+        }
+
+        function closeScoreModal() {
+            $scoreModal.addClass('hidden').removeClass('flex');
+        }
+
+        function renderScoreErrors(errors, fallback) {
+            const messages = [];
+            Object.keys(errors || {}).forEach((field) => {
+                const fieldErrors = Array.isArray(errors[field]) ? errors[field] : [errors[field]];
+                fieldErrors.forEach((message) => messages.push(message));
+            });
+
+            $scoreErrors
+                .html(messages.length ? messages.join('<br>') : fallback)
+                .removeClass('hidden');
+        }
+
+        function renderScoreSuccess(message) {
+            $scoreSuccess.html(message).removeClass('hidden');
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function initializeScoreSelects() {
+            if (!$.fn.select2) return;
+
+            $('.ohkr-score-select').each(function () {
+                const $select = $(this);
+                if ($select.hasClass('select2-hidden-accessible')) return;
+
+                $select.select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: $select.data('placeholder') || 'Search...',
+                    dropdownParent: $scoreModal,
+                });
+            });
         }
 
         function openSyncMenu() {
@@ -151,6 +293,63 @@
 
             closeSyncMenu();
         });
+
+        $('#ohkr_score_modal_open').on('click', openScoreModal);
+        $('#ohkr_score_modal_close, #ohkr_score_cancel').on('click', closeScoreModal);
+        $scoreModal.on('click', function (event) {
+            if (event.target === this) {
+                closeScoreModal();
+            }
+        });
+
+        $scoreForm.on('submit', function (event) {
+            event.preventDefault();
+            $scoreSuccess.addClass('hidden').empty();
+            $scoreErrors.addClass('hidden').empty();
+
+            const originalHtml = $scoreSubmit.html();
+            $scoreSubmit.prop('disabled', true).html(`<i class='bx bx-loader-alt bx-spin mr-2 text-base'></i> Saving...`);
+
+            fetch($scoreForm.attr('action'), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: new FormData($scoreForm[0]),
+            })
+                .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok || !data.success) {
+                        renderScoreErrors(data.errors, data.error_msg || 'Failed to save OHKR score.');
+                        return;
+                    }
+
+                    renderScoreSuccess(data.success_msg);
+                    $('#ohkr_score_empty').remove();
+                    $('#ohkr_score_table_body').prepend(
+                        `<tr class="hover:bg-stone-50">
+                            <td class="px-3 py-2 font-medium text-stone-900">${escapeHtml(data.score.disease)}</td>
+                            <td class="px-3 py-2">${escapeHtml(data.score.specie) || '-'}</td>
+                            <td class="px-3 py-2">${escapeHtml(data.score.clinical_sign) || '-'}</td>
+                            <td class="px-3 py-2 text-right">
+                                <span class="inline-flex min-w-8 justify-center rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">${escapeHtml(data.score.value)}</span>
+                            </td>
+                        </tr>`
+                    );
+                    const currentCount = Number($('#ohkr_score_count').text()) || 0;
+                    $('#ohkr_score_count').text(currentCount + 1);
+                    $scoreForm[0].reset();
+                    $('.ohkr-score-select').val(null).trigger('change');
+                })
+                .catch(() => {
+                    renderScoreErrors({}, 'Failed to save OHKR score.');
+                })
+                .finally(() => {
+                    $scoreSubmit.prop('disabled', false).html(originalHtml);
+                });
+        });
+
+        initializeScoreSelects();
 
         $(window).on('resize', closeSyncMenu);
 

@@ -163,10 +163,10 @@ class FormDataAjaxDatatableView(AjaxDatatableView):
                     # Handle foreign key fields
                     related_obj = getattr(record, field_name)
                     row.append(str(related_obj) if related_obj else "")
-                elif field_name == "dalili" or field_name == "dalil_mfugo":
+                elif field_name == "dalili" or field_name == "dalil_mfugo" or field_name == "symptoms":
                     # Handle dalili field
                     codes = normalize_select_multiple(
-                        form_data.get("dalili") or form_data.get("dalil_mfugo", [])
+                        form_data.get("dalili") or form_data.get("symptoms", []) or form_data.get("dalil_mfugo", [])
                     )
                     labels = [
                         dalili_map.get(code, code) for code in codes

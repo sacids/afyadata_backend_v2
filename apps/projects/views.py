@@ -8,7 +8,7 @@ from datetime import datetime
 from datetime import datetime, date
 from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.sites.shortcuts import get_current_site
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.views import generic
@@ -40,10 +40,11 @@ from . import utils
 
 from .models import Project, ProjectMember, FormDefinition, FormData
 from .forms import *
-from apps.ohkr.models import ClinicalSign, FormReaction, ReactionAction
+from apps.ohkr.models import ClinicalSign, FormReaction, OHKRScore, ReactionAction
 from apps.esb.models import FormPayloadConfig
 from apps.accounts.utils import is_admin_user
 from apps.chat.models import Conversation, Message
+from apps.workflows.models import FormDataWorkflow
 
 
 from django.urls import reverse
@@ -1035,18 +1036,21 @@ class SurveyAPIConfig(PermissionRequiredMixin, generic.TemplateView):
 
 class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
     """Survey Reference Data"""
+    template_name = "surveys/reference_data.html"
     permission_required = "projects.change_formdefinition"
-    def get(self, request, *args, **kwargs):
-        # survey
-        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
-        # context
+    def get_context(self, survey, ohkr_score_form=None):
         context = {
             "title": f"{survey.title} - Reference Data",
             "survey": survey,
+            "ohkr_score_form": ohkr_score_form or OHKRScoreForm(survey=survey),
+            "ohkr_scores": (
+                OHKRScore.objects.filter(specie__form=survey)
+                .select_related("disease", "specie", "clinical_sign")
+                .order_by("disease__name", "specie__name", "clinical_sign__name")
+            ),
         }
 
-        # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
@@ -1055,18 +1059,50 @@ class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = build_form_management_links(request.user, survey)
+        context["links"] = build_form_management_links(self.request.user, survey)
+        return context
 
-        # render view
-        return render(request, "surveys/reference_data.html", context=context)
+    def get(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        return render(request, self.template_name, context=self.get_context(survey))
     
     def post(self, request, *args, **kwargs):
-        # survey
         survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        action = request.POST.get("action")
 
-        # success response
-        return HttpResponse(
-            '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">OHKR file created</div>'
+        if action == "add-ohkr-score":
+            form = OHKRScoreForm(request.POST, survey=survey)
+            if form.is_valid():
+                score = form.save()
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "success_msg": "OHKR score added successfully.",
+                        "score": {
+                            "id": str(score.pk),
+                            "disease": score.disease.name,
+                            "specie": score.specie.name if score.specie else "",
+                            "clinical_sign": score.clinical_sign.name if score.clinical_sign else "",
+                            "value": score.score,
+                        },
+                    }
+                )
+
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error_msg": "Please correct the OHKR score errors.",
+                    "errors": {
+                        field: [str(error) for error in errors]
+                        for field, errors in form.errors.items()
+                    },
+                },
+                status=400,
+            )
+
+        return JsonResponse(
+            {"success": False, "error_msg": "Unsupported reference data action."},
+            status=400,
         )
 
 
@@ -1269,7 +1305,7 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
         header_keys = list(tbl_header_dict.keys())
 
         # Headers: add UUID column first
-        cols = ["UUID", "Submitted"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
+        cols = ["UUID", "Submitted", "Workflow State"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
 
         # get data
         adata = FormData.objects.filter(form_id=cur_form.id).order_by("-submitted_at", "-created_at")
@@ -1295,7 +1331,13 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
                 else ""
             )
 
-            row = [row_uuid, row_created_at] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id]
+            #check if attended from workflow data
+            attended = 'Submitted'
+            workflow_data = FormDataWorkflow.objects.filter(form_data=item).order_by("-created_at").first()
+            if workflow_data:
+                attended = workflow_data.workflow_state
+
+            row = [row_uuid, row_created_at, attended] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id]
             arr_data.append(row)
 
         return JsonResponse(

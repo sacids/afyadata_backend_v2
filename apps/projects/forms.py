@@ -5,7 +5,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field
 from .models import *
 from apps.esb.models import FormPayloadConfig, FormPayloadFieldMap, FormValueMapping
-from apps.ohkr.models import FormReaction, ReactionAction
+from apps.ohkr.models import Disease, FormReaction, OHKRScore, ReactionAction, ReferenceData
 
 
 class ProjectForm(forms.ModelForm):
@@ -481,6 +481,75 @@ class FormReactionForm(forms.ModelForm):
             ),
             "is_active": forms.CheckboxInput(attrs={"class": "rounded-md"}),
         }
+
+
+class OHKRScoreForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        self.survey = kwargs.pop("survey", None)
+        super(OHKRScoreForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_show_labels = True
+        self.helper.label_class = "text-gray-700 text-xs font-medium"
+
+        self.fields["disease"].queryset = Disease.objects.order_by("name")
+        reference_queryset = ReferenceData.objects.none()
+        if self.survey:
+            reference_queryset = ReferenceData.objects.filter(form=self.survey)
+
+        self.fields["specie"].queryset = reference_queryset.filter(rd_type="specie").order_by("name")
+        self.fields["clinical_sign"].queryset = reference_queryset.filter(rd_type="clinical_sign").order_by("name")
+
+    class Meta:
+        model = OHKRScore
+        fields = ["disease", "specie", "clinical_sign", "score"]
+        widgets = {
+            "disease": forms.Select(
+                attrs={
+                    "class": "ohkr-score-select w-full font-normal text-sm rounded-md",
+                    "data-placeholder": "Search disease...",
+                }
+            ),
+            "specie": forms.Select(
+                attrs={
+                    "class": "ohkr-score-select w-full font-normal text-sm rounded-md",
+                    "data-placeholder": "Search species...",
+                }
+            ),
+            "clinical_sign": forms.Select(
+                attrs={
+                    "class": "ohkr-score-select w-full font-normal text-sm rounded-md",
+                    "data-placeholder": "Search clinical sign...",
+                }
+            ),
+            "score": forms.NumberInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "min": 0,
+                    "placeholder": "0",
+                }
+            ),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        disease = cleaned_data.get("disease")
+        specie = cleaned_data.get("specie")
+        clinical_sign = cleaned_data.get("clinical_sign")
+
+        if disease and specie and clinical_sign:
+            exists = OHKRScore.objects.filter(
+                disease=disease,
+                specie=specie,
+                clinical_sign=clinical_sign,
+            )
+            if self.instance.pk:
+                exists = exists.exclude(pk=self.instance.pk)
+            if exists.exists():
+                raise forms.ValidationError(
+                    "An OHKR score already exists for this disease, species, and clinical sign."
+                )
+
+        return cleaned_data
 
 
 class ProjectQRCodeForm(forms.ModelForm):
