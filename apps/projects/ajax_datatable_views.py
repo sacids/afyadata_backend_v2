@@ -381,7 +381,7 @@ class KnowledgeBaseAjaxDatatableView(AjaxDatatableView):
     model = KnowledgeBase
     title = "Knowledge Base"
     initial_order = [
-        ["created_at", "desc"],
+        ["updated_at", "desc"],
     ]
     length_menu = [[10, 20, 50, 100, -1], [10, 20, 50, 100, "all"]]
     search_values_separator = "+"
@@ -437,7 +437,6 @@ class KnowledgeBaseAjaxDatatableView(AjaxDatatableView):
 
         return KnowledgeBase.objects.filter(project_id=project_pk).select_related(
             "created_by",
-            "updated_by",
         )
 
     def customize_row(self, row, obj):
@@ -466,8 +465,7 @@ class KnowledgeBaseAjaxDatatableView(AjaxDatatableView):
             f'<div class="max-w-xl whitespace-normal text-xs leading-5 text-stone-600">{short_description}</div>'
         )
         row["created_by"] = (
-            obj.created_by.get_full_name().strip()
-            or obj.created_by.username
+            obj.created_by.get_full_name().strip() or obj.created_by.username
             if obj.created_by
             else "System"
         )
