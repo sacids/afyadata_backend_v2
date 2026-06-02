@@ -99,7 +99,7 @@ class FormDataView(viewsets.ViewSet):
         if not is_member:
             raise PermissionError("You do not have access to this project")
 
-    def _parse_odk_filter_clause(self, filter_text, user):
+    def _parse_odk_filter_clause1(self, filter_text, user):
         """
         Parses ODK-style filter strings like:
         ${form_data.created_by} = 24 and ${form_data.region} = 'rukwa' and ${deleted} = 0
@@ -166,6 +166,98 @@ class FormDataView(viewsets.ViewSet):
             if operator == "!=":
                 clause_query &= ~Q(**{django_lookup: value})
             else:
+                clause_query &= Q(**{lookup: value})
+
+        return clause_query
+
+    def _parse_odk_filter_clause(self, filter_text, user):
+        """
+        Parses ODK-style filter strings with extended operators like:
+        ${form_data.name} icontains 'john' and ${form_data.region} iexact 'RUKWA'
+        """
+        if not filter_text or not filter_text.strip():
+            return Q()
+
+        # Handle special dynamic context substitutions
+        filter_text = filter_text.replace("current_user_id", str(user.id))
+        filter_text = filter_text.replace("current_user_username", f"'{user.username}'")
+
+        # Split multiple clauses separated by case-insensitive ' and '
+        clauses = re.split(r'\s+and\s+', filter_text, flags=re.IGNORECASE)
+        clause_query = Q()
+
+        for clause in clauses:
+            clause = clause.strip()
+            if not clause:
+                continue
+
+            # Expanded Regex: captures words like 'contains', 'icontains', 'iexact', 'like', 'ilike'
+            match = re.match(
+                r'^\$\{(?P<field>[^}]+)\}\s*(?P<operator>=|!=|>=|<=|>|<|contains|icontains|iexact|like|ilike)\s*(?P<value>.+)$', 
+                clause, 
+                flags=re.IGNORECASE
+            )
+            if not match:
+                logging.warning(f"Failed to parse ODK statement clause: {clause}")
+                continue
+
+            field_path = match.group('field').strip()
+            operator = match.group('operator').strip().lower()  # Normalize operator to lower-case
+            raw_value = match.group('value').strip()
+
+            # Strip string wrapper quotes
+            if (raw_value.startswith("'") and raw_value.endswith("'")) or \
+            (raw_value.startswith('"') and raw_value.endswith('"')):
+                value = raw_value[1:-1]
+            else:
+                # Cast string values to correct types dynamically
+                try:
+                    value = int(raw_value)
+                except ValueError:
+                    try:
+                        value = float(raw_value)
+                    except ValueError:
+                        value = raw_value
+
+            # Route json fields vs native database table columns
+            if field_path.startswith("form_data."):
+                json_key = field_path.replace("form_data.", "").replace(".", "__")
+                django_lookup = f"form_data__{json_key}"
+            else:
+                django_lookup = field_path.replace(".", "__")
+
+            # Dynamic query generation logic based on expanded operators
+            if operator == "=":
+                # Check if value is a string to decide between case-insensitive 'iexact' vs strict default '='
+                if isinstance(value, str):
+                    clause_query &= Q(**{f"{django_lookup}__iexact": value})
+                else:
+                    clause_query &= Q(**{django_lookup: value})
+                    
+            elif operator == "!=":
+                if isinstance(value, str):
+                    clause_query &= ~Q(**{f"{django_lookup}__iexact": value})
+                else:
+                    clause_query &= ~Q(**{django_lookup: value})
+                    
+            elif operator in ["contains", "like"]:
+                clause_query &= Q(**{f"{django_lookup}__contains": value})
+                
+            elif operator in ["icontains", "ilike"]:
+                clause_query &= Q(**{f"{django_lookup}__icontains": value})
+                
+            elif operator == "iexact":
+                clause_query &= Q(**{f"{django_lookup}__iexact": value})
+                
+            else:
+                # Map typical SQL relational math operators to Django lookups
+                lookup_map = {
+                    ">": f"{django_lookup}__gt",
+                    "<": f"{django_lookup}__lt",
+                    ">=": f"{django_lookup}__gte",
+                    "<=": f"{django_lookup}__lte"
+                }
+                lookup = lookup_map.get(operator, django_lookup)
                 clause_query &= Q(**{lookup: value})
 
         return clause_query
@@ -359,6 +451,133 @@ class FormDataView(viewsets.ViewSet):
         return created_on
 
     def create(self, request, *args, **kwargs):
+        """Create new form data coming from mobile app"""
+        if not request.data:
+            return Response(
+                {"success": False, "message": "Request body is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logging.info("== incoming data ==")
+        logging.info(request.data)
+        data = self._normalize_request_data(request)
+        logging.info("== normalized data ==")
+        logging.info(data)
+
+        try:
+            def to_bool(val, default=False):
+                if val is None:
+                    return default
+                return str(val).lower() in ("1", "true", "yes")
+
+            uuid = (data.get("uuid") or "").strip()
+            if not uuid:
+                raise ValueError("uuid is required")
+
+            form_id = data.get("form")
+            if not form_id:
+                raise ValueError("form is required")
+
+            if not FormDefinition.objects.filter(pk=form_id).exists():
+                raise ValueError("Invalid form")
+
+            data["form_data"] = self._parse_form_data(data.get("form_data"))
+            created_on = self._parse_created_at(data)
+            deleted = to_bool(data.get("deleted"), default=False)
+
+            file_snapshots = (
+                snapshot_uploaded_files(request.FILES) if request.FILES else []
+            )
+
+            # --- SEEN_BY DISTINCT UNION LOGIC START ---
+            incoming_seen_by = data.get("seen_by") or ""
+            
+            # Split incoming string by commas and strip surrounding whitespaces
+            incoming_users = [u.strip() for u in incoming_seen_by.split(",") if u.strip()]
+
+            # Look up existing record to check its current db seen_by value
+            existing_instance = FormData.objects.filter(uuid=uuid).first()
+            if existing_instance and existing_instance.seen_by:
+                db_users = [u.strip() for u in existing_instance.seen_by.split(",") if u.strip()]
+            else:
+                db_users = []
+
+            # Perform a unique distinct union using a Python set (maintains uniqueness)
+            distinct_union_set = set(db_users + incoming_users)
+            
+            # Re-serialize into a clean comma-separated string without duplicate components
+            final_seen_by = ",".join(sorted(list(distinct_union_set)))
+            # ---- SEEN_BY DISTINCT UNION LOGIC END ----
+
+            now = timezone.now()
+            defaults = {
+                "form_data": data["form_data"],
+                "original_uuid": data.get("original_uuid", uuid),
+                "parent_id": data.get("parent_uuid"),
+                "title": data.get("title", ""),
+                "created_by_name": data.get("created_by_name", ""),
+                "form_id": form_id,
+                "gps": data.get("gps"),
+                "created_at": created_on,
+                "created_by": request.user if request.user.is_authenticated else None,
+                "updated_at": now,
+                "last_updated_at": now,
+                "submitted_at": now,
+                "deleted": deleted,
+                "synced": 1,
+                "seen_by": final_seen_by,  # Insert the computed unique union string here
+            }
+
+            with transaction.atomic():
+                instance, created_flag = FormData.objects.update_or_create(
+                    uuid=uuid,
+                    defaults=defaults,
+                )
+                if file_snapshots:
+                    transaction.on_commit(
+                        lambda: save_formdata_files_task.delay(
+                            instance.pk,
+                            file_snapshots,
+                            request.user.pk if request.user.is_authenticated else None,
+                        )
+                    )
+
+            logging.info("== inserted/updated form data ==")
+            logging.info(
+                {"id": instance.id, "uuid": instance.uuid, "created": created_flag}
+            )
+
+            instance.refresh_from_db()
+
+            if getattr(instance.form, "response", None):
+                response_payload = {
+                    "uuid": instance.uuid,
+                    "synced": 1,
+                    "message": instance.form.response,
+                }
+            else:
+                response_payload = {
+                    "uuid": instance.uuid,
+                    "synced": 1,
+                    "message": (
+                        "Form data created successfully"
+                        if created_flag
+                        else "Form data updated successfully"
+                    ),
+                }
+
+            return Response(
+                {"success": True, "data": response_payload},
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+    def create1(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
             return Response(

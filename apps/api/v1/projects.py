@@ -125,7 +125,11 @@ class ProjectView(viewsets.ViewSet):
 
                     # response
                     return Response(
-                        {"error": False, "message": "Your request has approved"},
+                        {
+                                "error": False, 
+                                "message": "Your request has approved",
+                                "project": project_data   
+                        },
                         status=status.HTTP_200_OK,
                     )
                 else:
@@ -135,7 +139,11 @@ class ProjectView(viewsets.ViewSet):
 
                         # response
                         return Response(
-                            {"error": False, "message": "Your request has approved"},
+                        {
+                                "error": False, 
+                                "message": "Your request has approved",
+                                "project": project_data   
+                        },
                             status=status.HTTP_200_OK,
                         )
                     else:
@@ -151,11 +159,24 @@ class ProjectView(viewsets.ViewSet):
                             },
                             status=status.HTTP_200_OK,
                         )
-        except:
+                        
+        except Exception as e:
+            import traceback
+            traceback.print_exc() 
+            
             return Response(
-                {"error": True, "message": "Project does not exist"},
-                status=status.HTTP_200_OK,
+                {
+                    "error": True, 
+                    "message": f"An error occurred: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR, # Return 500 for actual server errors
             )
+            
+        # except:
+        #     return Response(
+        #         {"error": True, "message": "Project does not exist"},
+        #         status=status.HTTP_200_OK,
+        #     )
 
     def join(self, request, pk=None):
         """Request access to project"""
@@ -167,12 +188,12 @@ class ProjectView(viewsets.ViewSet):
 
         try:
             project = Project.objects.get(id=pk)
+            # Return project details
+            project_data = ProjectSerializer(project).data
 
             # check if user is already a member
             if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
 
-                # Return project details
-                project_data = ProjectSerializer(project).data
 
                 # response
                 return Response(
@@ -186,21 +207,22 @@ class ProjectView(viewsets.ViewSet):
             else:
                 # first check if is private
                 if project.access == "private":
-                    ProjectMember.objects.create(project=project, member=request.user, active=True, credibility_score=50)
+                    ProjectMember.objects.update_or_create(project=project, member=request.user, active=True, credibility_score=50)
 
                     # response
                     return Response(
-                        {"error": False, "message": "Your request has approved"},
+                        {
+                                "error": False, 
+                                "message": "Your request has approved",
+                                "project": project_data   
+                        },
                         status=status.HTTP_200_OK,
                     )
 
                 else:
                     # check if project is auto_join is true
                     if project.auto_join:
-                        ProjectMember.objects.create(project=project, member=request.user, active=True, credibility_score=50)
-
-                        # project data
-                        project_data = ProjectSerializer(project).data
+                        ProjectMember.objects.update_or_create(project=project, member=request.user, active=True, credibility_score=50)
 
                         # response
                         return Response(
@@ -212,7 +234,7 @@ class ProjectView(viewsets.ViewSet):
                             status=status.HTTP_200_OK,
                         )
                     else:
-                        ProjectMember.objects.create(project=project, member=request.user, active=False, credibility_score=50)
+                        ProjectMember.objects.update_or_create(project=project, member=request.user, active=False, credibility_score=50)
 
                         # TODO: send notification to project owner
 
@@ -224,12 +246,18 @@ class ProjectView(viewsets.ViewSet):
                             },
                             status=status.HTTP_200_OK,
                         )
-        except:
+                        
+        except Exception as e:
+            import traceback
+            traceback.print_exc() 
+            
             return Response(
-                {"error": True, "message": "Project does not exist"},
-                status=status.HTTP_200_OK,
+                {
+                    "error": True, 
+                    "message": f"An error occurred: {str(e)}"
+                },
+                status=status.HTTP_200_OK, # Return 500 for actual server errors
             )
-
 
     def unsubscribe(self, request, pk=None):
         """Unsubscribe from project"""
