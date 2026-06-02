@@ -187,12 +187,12 @@ class ProjectView(viewsets.ViewSet):
 
         try:
             project = Project.objects.get(id=pk)
+            # Return project details
+            project_data = ProjectSerializer(project).data
 
             # check if user is already a member
             if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
 
-                # Return project details
-                project_data = ProjectSerializer(project).data
 
                 # response
                 return Response(
@@ -222,9 +222,6 @@ class ProjectView(viewsets.ViewSet):
                     # check if project is auto_join is true
                     if project.auto_join:
                         ProjectMember.objects.update_or_create(project=project, member=request.user, active=True, credibility_score=50)
-
-                        # project data
-                        project_data = ProjectSerializer(project).data
 
                         # response
                         return Response(
