@@ -99,7 +99,7 @@ class FormDataView(viewsets.ViewSet):
         if not is_member:
             raise PermissionError("You do not have access to this project")
 
-    def _parse_odk_filter_clause(self, filter_text, user):
+    def _parse_odk_filter_clause1(self, filter_text, user):
         """
         Parses ODK-style filter strings like:
         ${form_data.created_by} = 24 and ${form_data.region} = 'rukwa' and ${deleted} = 0
@@ -166,6 +166,98 @@ class FormDataView(viewsets.ViewSet):
             if operator == "!=":
                 clause_query &= ~Q(**{django_lookup: value})
             else:
+                clause_query &= Q(**{lookup: value})
+
+        return clause_query
+
+    def _parse_odk_filter_clause(self, filter_text, user):
+        """
+        Parses ODK-style filter strings with extended operators like:
+        ${form_data.name} icontains 'john' and ${form_data.region} iexact 'RUKWA'
+        """
+        if not filter_text or not filter_text.strip():
+            return Q()
+
+        # Handle special dynamic context substitutions
+        filter_text = filter_text.replace("current_user_id", str(user.id))
+        filter_text = filter_text.replace("current_user_username", f"'{user.username}'")
+
+        # Split multiple clauses separated by case-insensitive ' and '
+        clauses = re.split(r'\s+and\s+', filter_text, flags=re.IGNORECASE)
+        clause_query = Q()
+
+        for clause in clauses:
+            clause = clause.strip()
+            if not clause:
+                continue
+
+            # Expanded Regex: captures words like 'contains', 'icontains', 'iexact', 'like', 'ilike'
+            match = re.match(
+                r'^\$\{(?P<field>[^}]+)\}\s*(?P<operator>=|!=|>=|<=|>|<|contains|icontains|iexact|like|ilike)\s*(?P<value>.+)$', 
+                clause, 
+                flags=re.IGNORECASE
+            )
+            if not match:
+                logging.warning(f"Failed to parse ODK statement clause: {clause}")
+                continue
+
+            field_path = match.group('field').strip()
+            operator = match.group('operator').strip().lower()  # Normalize operator to lower-case
+            raw_value = match.group('value').strip()
+
+            # Strip string wrapper quotes
+            if (raw_value.startswith("'") and raw_value.endswith("'")) or \
+            (raw_value.startswith('"') and raw_value.endswith('"')):
+                value = raw_value[1:-1]
+            else:
+                # Cast string values to correct types dynamically
+                try:
+                    value = int(raw_value)
+                except ValueError:
+                    try:
+                        value = float(raw_value)
+                    except ValueError:
+                        value = raw_value
+
+            # Route json fields vs native database table columns
+            if field_path.startswith("form_data."):
+                json_key = field_path.replace("form_data.", "").replace(".", "__")
+                django_lookup = f"form_data__{json_key}"
+            else:
+                django_lookup = field_path.replace(".", "__")
+
+            # Dynamic query generation logic based on expanded operators
+            if operator == "=":
+                # Check if value is a string to decide between case-insensitive 'iexact' vs strict default '='
+                if isinstance(value, str):
+                    clause_query &= Q(**{f"{django_lookup}__iexact": value})
+                else:
+                    clause_query &= Q(**{django_lookup: value})
+                    
+            elif operator == "!=":
+                if isinstance(value, str):
+                    clause_query &= ~Q(**{f"{django_lookup}__iexact": value})
+                else:
+                    clause_query &= ~Q(**{django_lookup: value})
+                    
+            elif operator in ["contains", "like"]:
+                clause_query &= Q(**{f"{django_lookup}__contains": value})
+                
+            elif operator in ["icontains", "ilike"]:
+                clause_query &= Q(**{f"{django_lookup}__icontains": value})
+                
+            elif operator == "iexact":
+                clause_query &= Q(**{f"{django_lookup}__iexact": value})
+                
+            else:
+                # Map typical SQL relational math operators to Django lookups
+                lookup_map = {
+                    ">": f"{django_lookup}__gt",
+                    "<": f"{django_lookup}__lt",
+                    ">=": f"{django_lookup}__gte",
+                    "<=": f"{django_lookup}__lte"
+                }
+                lookup = lookup_map.get(operator, django_lookup)
                 clause_query &= Q(**{lookup: value})
 
         return clause_query

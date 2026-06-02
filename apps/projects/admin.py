@@ -97,7 +97,7 @@ class FormDefinitionAdmin(admin.ModelAdmin):
         ),
         (
             "Form Definition Details",
-            {"fields": ("xlsform", "form_defn", "description", "children")},
+            {"fields": ("xlsform", "form_defn", "description", "children","permitted_groups")},
         ),
         (
             "Audit Information",
