@@ -258,7 +258,7 @@ class ProjectView(viewsets.ViewSet):
                     "error": True, 
                     "message": f"An error occurred: {str(e)}"
                 },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR, # Return 500 for actual server errors
+                status=status.HTTP_200_OK, # Return 500 for actual server errors
             )
 
     def unsubscribe(self, request, pk=None):
