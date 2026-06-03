@@ -450,7 +450,7 @@ class FormDataView(viewsets.ViewSet):
 
         return created_on
 
-    def create(self, request, *args, **kwargs):
+    def create1(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
             return Response(
@@ -577,7 +577,7 @@ class FormDataView(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
             
-    def create1(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
             return Response(
