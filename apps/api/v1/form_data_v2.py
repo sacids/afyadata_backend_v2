@@ -167,6 +167,14 @@ class FormDataView(viewsets.ViewSet):
                 clause_query &= ~Q(**{django_lookup: value})
             else:
                 clause_query &= Q(**{lookup: value})
+            
+            logging.info('== parsed clause ==')
+            logging.info({
+                "field_path": field_path,
+                "django_lookup": lookup,
+                "operator": operator,
+                "value": value,
+            })
 
         return clause_query
 
