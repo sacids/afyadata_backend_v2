@@ -167,6 +167,14 @@ class FormDataView(viewsets.ViewSet):
                 clause_query &= ~Q(**{django_lookup: value})
             else:
                 clause_query &= Q(**{lookup: value})
+            
+            logging.info('== parsed clause ==')
+            logging.info({
+                "field_path": field_path,
+                "django_lookup": lookup,
+                "operator": operator,
+                "value": value,
+            })
 
         return clause_query
 
@@ -259,6 +267,16 @@ class FormDataView(viewsets.ViewSet):
                 }
                 lookup = lookup_map.get(operator, django_lookup)
                 clause_query &= Q(**{lookup: value})
+                
+                
+            
+        logging.info('== parsed clause ==')
+        logging.info({
+            "field_path": field_path,
+            "django_lookup": lookup,
+            "operator": operator,
+            "value": value,
+        })
 
         return clause_query
 
@@ -450,7 +468,7 @@ class FormDataView(viewsets.ViewSet):
 
         return created_on
 
-    def create(self, request, *args, **kwargs):
+    def create1(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
             return Response(
@@ -577,7 +595,7 @@ class FormDataView(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
             
-    def create1(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
             return Response(
