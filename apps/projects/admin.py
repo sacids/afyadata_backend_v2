@@ -97,6 +97,7 @@ class FormDefinitionAdmin(admin.ModelAdmin):
                     "code",
                     "icon_type",
                     "form_role",
+                    "allow_ohkr",
                     "sort_order",
                 )
             },
