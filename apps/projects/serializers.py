@@ -23,6 +23,37 @@ class ProjectMemberSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class KnowledgeBaseSerializer(serializers.ModelSerializer):
+    photo_url = serializers.SerializerMethodField()
+    created_by = serializers.StringRelatedField(read_only=True)
+    updated_by = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = KnowledgeBase
+        fields = [
+            "id",
+            "project",
+            "title",
+            "description",
+            "photo",
+            "photo_url",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = fields
+
+    def get_photo_url(self, obj):
+        if not obj.photo:
+            return ""
+
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(obj.photo.url)
+        return obj.photo.url
+
+
 class FormAttachmentSerializer(serializers.ModelSerializer):
     """Serializer for form attachment"""
 

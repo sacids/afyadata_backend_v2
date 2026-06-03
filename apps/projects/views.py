@@ -8,7 +8,7 @@ from datetime import datetime
 from datetime import datetime, date
 from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.sites.shortcuts import get_current_site
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.views import generic
@@ -40,10 +40,11 @@ from . import utils
 
 from .models import Project, ProjectMember, FormDefinition, FormData
 from .forms import *
-from apps.ohkr.models import ClinicalSign, FormReaction, ReactionAction
+from apps.ohkr.models import ClinicalSign, FormReaction, OHKRScore, ReactionAction
 from apps.esb.models import FormPayloadConfig
 from apps.accounts.utils import is_admin_user
 from apps.chat.models import Conversation, Message
+from apps.workflows.models import FormDataWorkflow, WorkflowActionLog
 
 
 from django.urls import reverse
@@ -218,6 +219,7 @@ def build_project_workspace_links(user, project_pk):
 
     links["Data"] = reverse_lazy("projects:data", kwargs={"pk": project_pk})
     links["QR"] = reverse_lazy("projects:qrmanager", kwargs={"pk": project_pk})
+    links["Knowledge Base"] = reverse_lazy("projects:knowledge-base", kwargs={"pk": project_pk})
     return links
 
 
@@ -1035,18 +1037,21 @@ class SurveyAPIConfig(PermissionRequiredMixin, generic.TemplateView):
 
 class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
     """Survey Reference Data"""
+    template_name = "surveys/reference_data.html"
     permission_required = "projects.change_formdefinition"
-    def get(self, request, *args, **kwargs):
-        # survey
-        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
 
-        # context
+    def get_context(self, survey, ohkr_score_form=None):
         context = {
             "title": f"{survey.title} - Reference Data",
             "survey": survey,
+            "ohkr_score_form": ohkr_score_form or OHKRScoreForm(survey=survey),
+            "ohkr_scores": (
+                OHKRScore.objects.filter(specie__form=survey)
+                .select_related("disease", "specie", "clinical_sign")
+                .order_by("disease__name", "specie__name", "clinical_sign__name")
+            ),
         }
 
-        # breadcrumbs
         context["breadcrumbs"] = [
             {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
             {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
@@ -1055,18 +1060,50 @@ class SurveyReferenceDataView(PermissionRequiredMixin, generic.TemplateView):
         ]
 
         # Add links to context
-        context["links"] = build_form_management_links(request.user, survey)
+        context["links"] = build_form_management_links(self.request.user, survey)
+        return context
 
-        # render view
-        return render(request, "surveys/reference_data.html", context=context)
+    def get(self, request, *args, **kwargs):
+        survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        return render(request, self.template_name, context=self.get_context(survey))
     
     def post(self, request, *args, **kwargs):
-        # survey
         survey = get_accessible_survey_or_404(request.user, kwargs["pk"])
+        action = request.POST.get("action")
 
-        # success response
-        return HttpResponse(
-            '<div class="bg-teal-100 rounded-b text-teal-900 rounded-sm text-sm px-4 py-4">OHKR file created</div>'
+        if action == "add-ohkr-score":
+            form = OHKRScoreForm(request.POST, survey=survey)
+            if form.is_valid():
+                score = form.save()
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "success_msg": "OHKR score added successfully.",
+                        "score": {
+                            "id": str(score.pk),
+                            "disease": score.disease.name,
+                            "specie": score.specie.name if score.specie else "",
+                            "clinical_sign": score.clinical_sign.name if score.clinical_sign else "",
+                            "value": score.score,
+                        },
+                    }
+                )
+
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error_msg": "Please correct the OHKR score errors.",
+                    "errors": {
+                        field: [str(error) for error in errors]
+                        for field, errors in form.errors.items()
+                    },
+                },
+                status=400,
+            )
+
+        return JsonResponse(
+            {"success": False, "error_msg": "Unsupported reference data action."},
+            status=400,
         )
 
 
@@ -1269,7 +1306,7 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
         header_keys = list(tbl_header_dict.keys())
 
         # Headers: add UUID column first
-        cols = ["UUID", "Submitted"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
+        cols = ["UUID", "Submitted", "Workflow State"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
 
         # get data
         adata = FormData.objects.filter(form_id=cur_form.id).order_by("-submitted_at", "-created_at")
@@ -1295,7 +1332,13 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
                 else ""
             )
 
-            row = [row_uuid, row_created_at] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id]
+            #check if attended from workflow data
+            attended = 'Submitted'
+            workflow_data = FormDataWorkflow.objects.filter(form_data=item).order_by("-created_at").first()
+            if workflow_data:
+                attended = workflow_data.workflow_state
+
+            row = [row_uuid, row_created_at, attended] + [item.form_data.get(k) for k in name_keys] + [row_gps, row_response_id]
             arr_data.append(row)
 
         return JsonResponse(
@@ -1506,6 +1549,97 @@ class SurveyDataMessagesView(PermissionRequiredMixin, generic.View):
             {
                 "success": True,
                 "message": self.serialize_message(message),
+            }
+        )
+
+
+class SurveyDataWorkflowView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.view_formdefinition"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(SurveyDataWorkflowView, self).dispatch(*args, **kwargs)
+
+    def get_form_data(self):
+        form_data = get_object_or_404(FormData, uuid=self.kwargs["data_id"])
+        get_accessible_project_or_404(self.request.user, form_data.form.project.pk)
+        return form_data
+
+    def serialize_user(self, user):
+        if not user:
+            return ""
+        return user.get_full_name().strip() or user.username
+
+    def serialize_state(self, state):
+        if not state:
+            return None
+        return {
+            "id": str(state.id),
+            "name": state.name,
+            "code": state.code,
+            "color": state.color or "",
+            "is_initial": state.is_initial,
+            "is_final": state.is_final,
+        }
+
+    def serialize_log(self, log):
+        return {
+            "id": str(log.id),
+            "action_name": log.action_name,
+            "from_state": self.serialize_state(log.from_state),
+            "to_state": self.serialize_state(log.to_state),
+            "action_by": self.serialize_user(log.action_by),
+            "metadata": log.metadata or {},
+            "created_at": log.created_at.strftime("%d %b %Y, %H:%M") if log.created_at else "",
+        }
+
+    def get(self, request, *args, **kwargs):
+        form_data = self.get_form_data()
+        workflow = (
+            FormDataWorkflow.objects.filter(form_data=form_data)
+            .select_related("assigned_group", "assigned_to")
+            .first()
+        )
+
+        if not workflow:
+            return JsonResponse(
+                {
+                    "has_workflow": False,
+                    "message": "No workflow has been initialized for this submission.",
+                    "logs": [],
+                }
+            )
+
+        workflow_definition = getattr(form_data.form, "workflow", None)
+        current_state = None
+        if workflow_definition:
+            current_state = workflow_definition.states.filter(
+                code=workflow.workflow_state
+            ).first()
+
+        logs = (
+            WorkflowActionLog.objects.filter(transition_form_data=form_data)
+            .select_related("from_state", "to_state", "action_by")
+            .order_by("-created_at")
+        )
+
+        return JsonResponse(
+            {
+                "has_workflow": True,
+                "workflow_state": workflow.workflow_state,
+                "state": self.serialize_state(current_state),
+                "assigned_group": workflow.assigned_group.name if workflow.assigned_group else "",
+                "assigned_to": self.serialize_user(workflow.assigned_to),
+                "is_locked": workflow.is_locked,
+                "is_closed": workflow.is_closed,
+                "is_overdue": workflow.is_overdue,
+                "escalation_level": workflow.escalation_level,
+                "reopened_count": workflow.reopened_count,
+                "due_at": workflow.due_at.strftime("%d %b %Y, %H:%M") if workflow.due_at else "",
+                "metadata": workflow.metadata or {},
+                "created_at": workflow.created_at.strftime("%d %b %Y, %H:%M") if workflow.created_at else "",
+                "updated_at": workflow.updated_at.strftime("%d %b %Y, %H:%M") if workflow.updated_at else "",
+                "logs": [self.serialize_log(log) for log in logs],
             }
         )
 
@@ -1880,3 +2014,151 @@ class ProjectQRCodeScanView(View):
         qr_code.save()
         
         return JsonResponse({'success': True, 'scan_count': qr_code.scan_count})
+
+
+class ProjectKnowledgeBaseListView(PermissionRequiredMixin, generic.TemplateView):
+    template_name = "projects/knowledge_base.html"
+    permission_required = "projects.view_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseListView, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        context = {
+            "title": f"{project.title} - Knowledge Base",
+            "project": project,
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+                {"name": project.title, "url": reverse_lazy("projects:show", kwargs={"pk": project.pk})},
+                {"name": "Knowledge Base", "url": "#"},
+            ],
+            "links": build_project_workspace_links(request.user, project.pk),
+        }
+        return render(request, self.template_name, context)
+
+
+class ProjectKnowledgeBaseCreateView(PermissionRequiredMixin, generic.TemplateView):
+    template_name = "projects/knowledge_base_form.html"
+    permission_required = "projects.add_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseCreateView, self).dispatch(*args, **kwargs)
+
+    def get_context(self, request, project, form=None):
+        return {
+            "title": "Create Knowledge Base",
+            "project": project,
+            "form": form or KnowledgeBaseForm(),
+            "submit_label": "Create",
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+                {"name": project.title, "url": reverse_lazy("projects:show", kwargs={"pk": project.pk})},
+                {"name": "Knowledge Base", "url": reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})},
+                {"name": "Create", "url": "#"},
+            ],
+            "links": build_project_workspace_links(request.user, project.pk),
+        }
+
+    def get(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        return render(request, self.template_name, self.get_context(request, project))
+
+    def post(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        form = KnowledgeBaseForm(request.POST, request.FILES)
+        if form.is_valid():
+            knowledge_base = form.save(commit=False)
+            knowledge_base.project = project
+            knowledge_base.created_by = request.user
+            knowledge_base.updated_by = request.user
+            knowledge_base.save()
+            messages.success(request, "Knowledge base created successfully.")
+            return HttpResponseRedirect(
+                reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
+            )
+
+        messages.error(request, "Please correct the knowledge base errors below.")
+        return render(request, self.template_name, self.get_context(request, project, form=form))
+
+
+class ProjectKnowledgeBaseUpdateView(PermissionRequiredMixin, generic.TemplateView):
+    template_name = "projects/knowledge_base_form.html"
+    permission_required = "projects.change_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseUpdateView, self).dispatch(*args, **kwargs)
+
+    def get_knowledge_base(self, project):
+        return get_object_or_404(KnowledgeBase, pk=self.kwargs["kb_pk"], project=project)
+
+    def get_context(self, request, project, knowledge_base, form=None):
+        return {
+            "title": "Edit Knowledge Base",
+            "project": project,
+            "knowledge_base": knowledge_base,
+            "form": form or KnowledgeBaseForm(instance=knowledge_base),
+            "submit_label": "Update",
+            "breadcrumbs": [
+                {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
+                {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
+                {"name": project.title, "url": reverse_lazy("projects:show", kwargs={"pk": project.pk})},
+                {"name": "Knowledge Base", "url": reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})},
+                {"name": knowledge_base.title, "url": "#"},
+            ],
+            "links": build_project_workspace_links(request.user, project.pk),
+        }
+
+    def get(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        knowledge_base = self.get_knowledge_base(project)
+        return render(
+            request,
+            self.template_name,
+            self.get_context(request, project, knowledge_base),
+        )
+
+    def post(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        knowledge_base = self.get_knowledge_base(project)
+        form = KnowledgeBaseForm(request.POST, request.FILES, instance=knowledge_base)
+        if form.is_valid():
+            knowledge_base = form.save(commit=False)
+            knowledge_base.updated_by = request.user
+            knowledge_base.save()
+            messages.success(request, "Knowledge base updated successfully.")
+            return HttpResponseRedirect(
+                reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
+            )
+
+        messages.error(request, "Please correct the knowledge base errors below.")
+        return render(
+            request,
+            self.template_name,
+            self.get_context(request, project, knowledge_base, form=form),
+        )
+
+
+class ProjectKnowledgeBaseDeleteView(PermissionRequiredMixin, generic.View):
+    permission_required = "projects.delete_knowledgebase"
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super(ProjectKnowledgeBaseDeleteView, self).dispatch(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        knowledge_base = get_object_or_404(
+            KnowledgeBase,
+            pk=kwargs["kb_pk"],
+            project=project,
+        )
+        knowledge_base.delete()
+        return JsonResponse(
+            {"error": False, "success_msg": "Knowledge base deleted successfully."}
+        )

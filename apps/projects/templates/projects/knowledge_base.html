@@ -1,0 +1,144 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block extra-css %}
+<style>
+    #datatable_knowledge_base_wrapper .dataTables_filter {
+        display: none !important;
+    }
+
+    #datatable_knowledge_base thead tr:nth-child(2) {
+        display: none !important;
+    }
+
+    #datatable_knowledge_base thead input,
+    #datatable_knowledge_base thead select {
+        display: none !important;
+    }
+</style>
+{% endblock extra-css %}
+
+{% block content %}
+<main class="bg-white h-full">
+    <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        {% if perms.projects.add_knowledgebase %}
+            {% url 'projects:knowledge-base-create' project.pk as create_knowledge_base_url %}
+        {% endif %}
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {% include 'partials/list_header.html' with header_title="Knowledge Base" header_subtitle="Search and manage project guidance, notes, and response knowledge." search_id="knowledge_base_search" search_placeholder="Search knowledge base..." export_button_id="knowledge_base_export" primary_action_url=create_knowledge_base_url primary_action_label="Create" primary_action_icon="bx bx-plus" %}
+
+            {% if messages %}
+            <div class="px-5 pt-4">
+                <div class="space-y-2">
+                    {% for message in messages %}
+                    <div class="rounded-xl border px-4 py-3 text-sm {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="p-4">
+                <div class="relative overflow-x-auto">
+                    <div id="message_wrp" class="mb-3" hx-preserve></div>
+
+                    <table id="datatable_knowledge_base" class="w-full text-xs text-left text-gray-700 border-collapse">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra-js %}
+<script language="javascript">
+    $(document).on('draw.dt', function () {
+        if (window.htmx) {
+            htmx.process(document.body);
+        }
+    });
+
+    $(document).ready(function () {
+        AjaxDatatableViewUtils.initialize_table(
+            $('#datatable_knowledge_base'),
+            "{% url 'projects:dt-knowledge-base' project.pk %}",
+            {
+                processing: false,
+                autoWidth: false,
+                scrollX: false,
+                dom: `
+                    <"flex justify-between items-center py-3 text-sm"
+                        <"flex gap-2 items-center">
+                        <"flex items-center"p>
+                    >
+                    t
+                `,
+                buttons: [
+                    {
+                        extend: 'csvHtml5',
+                        text: 'Export',
+                        filename: 'Project-Knowledge-Base-csv',
+                        className: 'buttons-csv hidden'
+                    },
+                ],
+                pageLength: 13,
+                responsive: false,
+                language: {
+                    search: "",
+                    info: "_PAGE_ of _PAGES_",
+                    emptyTable: "No knowledge base entries found for this project.",
+                },
+            }, {
+        },);
+
+        $('#knowledge_base_search').on('keyup', function () {
+            $('#datatable_knowledge_base').DataTable().search(this.value).draw();
+        });
+
+        $('#knowledge_base_export').on('click', function () {
+            $('#datatable_knowledge_base').DataTable().button('.buttons-csv').trigger();
+        });
+
+        $(document).on('click', '.knowledge-base-delete', function () {
+            const url = $(this).data('url');
+            const title = $(this).data('title');
+
+            Swal.fire({
+                title: 'Delete knowledge base?',
+                text: `This will permanently remove ${title}.`,
+                icon: 'error',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: '#991b1b',
+                cancelButtonColor: '#475569',
+                confirmButtonText: 'Yes, delete'
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.error === false) {
+                            Swal.fire('Deleted', data.success_msg, 'success');
+                            $('#datatable_knowledge_base').DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Error', data.error_msg || 'Failed to delete knowledge base', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Error', 'Failed to delete knowledge base', 'error');
+                    });
+            });
+        });
+    });
+</script>
+{% endblock extra-js %}

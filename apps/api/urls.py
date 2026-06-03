@@ -41,6 +41,8 @@ urlpatterns = [
     path('v1/project/<str:pk>/join/', ProjectView.as_view({'post': 'join'}), name='project-join'),
     path('v1/project/unsubscribe', ProjectView.as_view({'post': 'unsubscribe'})),
     path('v1/project/create', ProjectView.as_view({'post': 'create'})),
+    path('v1/project/<str:project_id>/knowledge-base', KnowledgeBaseView.as_view({'get': 'lists'})),
+    path('v1/project/<str:project_id>/knowledge-base/<str:pk>', KnowledgeBaseView.as_view({'get': 'detail'})),
     
     
     

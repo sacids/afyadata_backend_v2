@@ -40,6 +40,7 @@ urlpatterns = [
     path('forms/<str:pk>/data/export', views.SurveyDataExportView.as_view(), name="form-data-export"),
     path('forms/<str:data_id>/data/instance', views.SurveyDataInstanceView.as_view(), name="form-data-instance"),
     path('forms/<str:data_id>/data/messages', views.SurveyDataMessagesView.as_view(), name="form-data-messages"),
+    path('forms/<str:data_id>/data/workflow', views.SurveyDataWorkflowView.as_view(), name="form-data-workflow"),
 
     path('forms/<str:pk>/data/charts', views.ChartsDataView.as_view(), name='form-data-charts'),
     path('forms/<str:pk>/data/map', views.MapDataView.as_view(), name='form-data-map'),
@@ -49,8 +50,6 @@ urlpatterns = [
     path('projects-datatable', ajax_datatable_views.ProjectAjaxDatatableView.as_view(), name="dt-projects"),
     path('members-datatable/<str:pk>', ajax_datatable_views.MembersAjaxDatatableView.as_view(), name="dt-members"),
     path('forms-datatable/<str:pk>', ajax_datatable_views.FormsAjaxDatatableView.as_view(), name="dt-forms"),
-    
-    
     
      # QR Manager
     path('<str:pk>/qr-manager/', views.ProjectQRManagerView.as_view(), name='qrmanager'),
@@ -63,11 +62,14 @@ urlpatterns = [
     
     # QR Code scan tracking
     path('<str:pk>/qr-codes/<str:qr_code_id>/scan/', views.ProjectQRCodeScanView.as_view(), name='qr-scan'),
-    
-    
+
+    # Knowledge Base CRUD operations
+    path('<str:pk>/knowledge-base/', views.ProjectKnowledgeBaseListView.as_view(), name='knowledge-base'),
+    path('<str:pk>/knowledge-base/create/', views.ProjectKnowledgeBaseCreateView.as_view(), name='knowledge-base-create'),
+    path('<str:pk>/knowledge-base/<str:kb_pk>/edit/', views.ProjectKnowledgeBaseUpdateView.as_view(), name='knowledge-base-edit'),
+    path('<str:pk>/knowledge-base/<str:kb_pk>/delete/', views.ProjectKnowledgeBaseDeleteView.as_view(), name='knowledge-base-delete'),
 
     path('reference-data-datatable/<str:pk>', ajax_datatable_views.FormReferenceDataAjaxDatatableView.as_view(), name="dt-form-reference-data"),
+    path('knowledge-base-datatable/<str:pk>', ajax_datatable_views.KnowledgeBaseAjaxDatatableView.as_view(), name="dt-knowledge-base"),
     
 ]
-
-
