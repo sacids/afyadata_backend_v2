@@ -123,6 +123,7 @@ def predict_disease_task(formdata_id):
         )
 
         # TODO: 1. Save to ohkr predicted disease model
+        
         # TODO: 2. Send sms to CAW
         logger.info(f"OHKR prediction result for FormData {formdata_id}: {result}")
 

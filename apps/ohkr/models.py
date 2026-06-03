@@ -191,6 +191,23 @@ class OHKRResponse(models.Model):
         verbose_name_plural = "4. OHKR Responses"
 
 
+class OHKRDetectedDisease(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    form_data_id = models.UUIDField()
+    disease = models.ForeignKey(Disease, related_name="detected_diseases", on_delete=models.CASCADE)
+    location = models.CharField(max_length=150, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return f"{self.disease.name} detected in FormData {self.form_data_id}"
+
+    class Meta:
+        db_table = "ohkr_detected_diseases"
+        managed = True
+        verbose_name = "OHKR Detected Disease"
+        verbose_name_plural = "5. OHKR Detected Diseases"
+
+
 class ReactionAction(models.Model):
     ACTION_TYPES = [
         ("chat_response", "Chat Response"),
