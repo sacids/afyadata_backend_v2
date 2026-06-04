@@ -7,6 +7,7 @@ from apps.esb.utils import build_payload, push_payload
 from apps.ohkr.ohkr_service import OHKRService
 from apps.ohkr.models import ReferenceData, OHKRDetectedDisease
 from apps.services.messaging import MessagingService
+from .utils import get_permitted_users_for_created_by
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,7 @@ def predict_disease_task(formdata_id):
         form_data = FormData.objects.get(pk=formdata_id)
         payload = form_data.form_data or {} # submitted form data as json
         created_by = form_data.created_by # user submitted data
+        form_id = form_data.form.pk
 
         species_name = payload.get("species")
         symptoms = payload.get("symptoms", [])
@@ -143,12 +145,21 @@ def predict_disease_task(formdata_id):
             phone = created_by.profile.phone if hasattr(created_by, "profile") else "unknown"
             disease_list = ", ".join([f"{d['title']} (score: {d['score']})" for d in diseases])
 
-            #message
-            message = f"Cher Afyadata, le système a identifié la ou les maladies suivantes {disease_list} à partir des signes cliniques soumis par {name} {phone} avec le formulaire ID {form_data.id}. Veuillez examiner les signes cliniques dans AfyaData et investiguer le cas dans son site (localisation). Merci."
+            #recipients
+            recipients = get_permitted_users_for_created_by(form_id, created_by.pk)
 
-            #recipient number - TODO: get from config or DB
-            recipient = "+224621014124" # TODO: get CAW recipient number from config or DB
-            messaging_service.send_sms(recipient, message)
+            if recipients:
+                for recipient in recipients:
+                    #name 
+                    recipient_name = recipient.get_full_name()
+                    #phone
+                    recipient_phone = recipient.profile.phone if hasattr(recipient, "profile") else "unknown"
+
+                    if recipient_phone != "unknown":
+                        personalized_message = f"Cher {recipient_name}, le système a identifié la ou les maladies suivantes {disease_list} à partir des signes cliniques soumis par {name} {phone} avec le formulaire ID {form_data.id}. Veuillez examiner les signes cliniques dans AfyaData et investiguer le cas dans son site (localisation). Merci."
+                        messaging_service.send_sms(recipient_phone, personalized_message)
+                    else:
+                        logger.warning(f"Recipient {recipient.pk} does not have a phone number. Skipping SMS notification.")
             
         return result
 

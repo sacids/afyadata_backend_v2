@@ -5,6 +5,7 @@ from django.dispatch import receiver
 from .models import FormData
 from .tasks import push_formdata_payload_task, predict_disease_task
 
+
 @receiver(post_save, sender=FormData)
 def push_data_on_create(sender, instance: FormData, created: bool, **kwargs):
     if instance.deleted == 1:
