@@ -178,7 +178,7 @@ class FormDataView(viewsets.ViewSet):
 
         return clause_query
 
-    def _parse_odk_filter_clause(self, filter_text, user):
+    def _parse_odk_filter_clause2(self, filter_text, user):
         """
         Parses ODK-style filter strings with extended operators like:
         ${form_data.name} icontains 'john' and ${form_data.region} iexact 'RUKWA'
@@ -289,6 +289,141 @@ class FormDataView(viewsets.ViewSet):
 
         return clause_query
 
+    def _parse_odk_filter_clause(self, filter_text, user):
+        """
+        Parses ODK-style filter strings with extended operators like:
+        ${form_data.name} icontains 'john' or ${created_by} in (23, 49)
+        """
+        if not filter_text or not filter_text.strip():
+            return Q()
+
+        # Handle special dynamic context substitutions
+        filter_text = filter_text.replace("current_user_id", str(user.id))
+        filter_text = filter_text.replace("current_user_username", f"'{user.username}'")
+
+        # Split multiple clauses separated by case-insensitive ' and '
+        clauses = re.split(r'\s+and\s+', filter_text, flags=re.IGNORECASE)
+        clause_query = Q()
+
+        for clause in clauses:
+            clause = clause.strip()
+            if not clause:
+                continue
+
+            # ADDED 'in' to the operator group match
+            match = re.match(
+                r'^\$\{(?P<field>[^}]+)\}\s*(?P<operator>=|!=|>=|<=|>|<|contains|icontains|iexact|like|ilike|in)\s*(?P<value>.+)$', 
+                clause, 
+                flags=re.IGNORECASE
+            )
+            if not match:
+                logging.warning(f"Failed to parse ODK statement clause: {clause}")
+                continue
+
+            field_path = match.group('field').strip()
+            operator = match.group('operator').strip().lower()  # Normalize operator to lower-case
+            raw_value = match.group('value').strip()
+
+            # --- VALUE PARSING LOGIC ---
+            if operator == "in":
+                # Strip wrapping parentheses if provided: (23, 49) -> 23, 49
+                cleaned_val = raw_value.strip()
+                if cleaned_val.startswith('(') and cleaned_val.endswith(')'):
+                    cleaned_val = cleaned_val[1:-1]
+                
+                # Split elements by comma, strip quotes, and cast to integers if digit-only
+                value = []
+                for item in cleaned_val.split(','):
+                    item = item.strip().strip("'").strip('"')
+                    if not item:
+                        continue
+                    try:
+                        value.append(int(item))
+                    except ValueError:
+                        try:
+                            value.append(float(item))
+                        except ValueError:
+                            value.append(item)
+            else:
+                # Standard scalar value cleanup (Strip string wrapper quotes)
+                if (raw_value.startswith("'") and raw_value.endswith("'")) or \
+                   (raw_value.startswith('"') and raw_value.endswith('"')):
+                    value = raw_value[1:-1]
+                else:
+                    # Cast string values to correct types dynamically
+                    try:
+                        value = int(raw_value)
+                    except ValueError:
+                        try:
+                            value = float(raw_value)
+                        except ValueError:
+                            value = raw_value
+
+            # --- ROUTING DJANGO LOOKUPS ---
+            if field_path.startswith("form_data."):
+                json_key = field_path.replace("form_data.", "").replace(".", "__")
+                django_lookup = f"form_data__{json_key}"
+            else:
+                django_lookup = field_path.replace(".", "__")
+
+            actual_lookup = django_lookup
+
+            # Dynamic query generation logic based on expanded operators
+            if operator == "=":
+                if isinstance(value, str):
+                    actual_lookup = f"{django_lookup}__iexact"
+                    clause_query &= Q(**{actual_lookup: value})
+                else:
+                    clause_query &= Q(**{django_lookup: value})
+                    
+            elif operator == "!=":
+                if isinstance(value, str):
+                    actual_lookup = f"~{django_lookup}__iexact"
+                    clause_query &= ~Q(**{f"{django_lookup}__iexact": value})
+                else:
+                    actual_lookup = f"~{django_lookup}"
+                    clause_query &= ~Q(**{django_lookup: value})
+                    
+            elif operator in ["contains", "like"]:
+                actual_lookup = f"{django_lookup}__contains"
+                clause_query &= Q(**{actual_lookup: value})
+                
+            elif operator in ["icontains", "ilike"]:
+                actual_lookup = f"{django_lookup}__icontains"
+                clause_query &= Q(**{actual_lookup: value})
+                
+            elif operator == "iexact":
+                actual_lookup = f"{django_lookup}__iexact"
+                clause_query &= Q(**{actual_lookup: value})
+                
+            elif operator == "in":
+                # ADDED: Handle mapping to Django's __in field lookup
+                actual_lookup = f"{django_lookup}__in"
+                clause_query &= Q(**{actual_lookup: value})
+                
+            else:
+                # Map typical SQL relational math operators to Django lookups
+                lookup_map = {
+                    ">": f"{django_lookup}__gt",
+                    "<": f"{django_lookup}__lt",
+                    ">=": f"{django_lookup}__gte",
+                    "<=": f"{django_lookup}__lte"
+                }
+                actual_lookup = lookup_map.get(operator, django_lookup)
+                clause_query &= Q(**{actual_lookup: value})
+                
+            # Log individual sub-clauses inside the loop safely
+            logging.info('== parsed individual clause ==')
+            logging.info({
+                "field_path": field_path,
+                "django_lookup": actual_lookup,
+                "operator": operator,
+                "value": value,
+            })
+            print(f"   --> Combined Subclause Check: {clause_query}")
+
+        return clause_query
+    
     def _build_global_permissions_query(self, user, project_id):
         """
         Builds a comprehensive matrix of allowed records:
