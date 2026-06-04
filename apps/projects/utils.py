@@ -246,6 +246,47 @@ def get_table_header_name(jform):
     return names
 
 
+def get_field_option_maps(jform, lang=None):
+    option_maps = {}
+    if not isinstance(jform, dict):
+        return option_maps
+
+    for page in jform.get("pages", []):
+        if page.get("type") != "group":
+            continue
+
+        fields = page.get("fields", [])
+        if isinstance(fields, dict):
+            fields = [fields]
+
+        for field_group in fields:
+            if not isinstance(field_group, dict):
+                continue
+
+            for field_key, field_config in field_group.items():
+                options = field_config.get("options", [])
+                if not options:
+                    continue
+
+                option_map = {
+                    str(option.get("name")): get_localized_label(
+                        option,
+                        lang=lang,
+                        jform=jform,
+                    )
+                    or str(option.get("name"))
+                    for option in options
+                    if option.get("name") is not None
+                }
+                option_maps[field_key] = option_map
+
+                field_name = field_config.get("name")
+                if field_name:
+                    option_maps[field_name] = option_map
+
+    return option_maps
+
+
 def get_table_config(jForm):
     """
     Extract table configuration from form definition.

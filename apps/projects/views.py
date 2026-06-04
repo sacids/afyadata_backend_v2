@@ -19,6 +19,7 @@ from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.shortcuts import render
 from django.contrib import messages
+from django.conf import settings
 from django.utils.safestring import mark_safe
 from django.db import transaction
 from django.contrib.auth.models import Group
@@ -1380,6 +1381,15 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
             for file in form_data.files.all()
             if getattr(file, "file", None)
         ]
+        if form_data.photo:
+            attachments.append(
+                {
+                    "id": "form-data-photo",
+                    "name": form_data.photo.name.split("/")[-1],
+                    "url": form_data.photo.url,
+                    "type": "image",
+                }
+            )
 
         cur_data_json = {
             "id": form_data.form.id,
@@ -1389,6 +1399,7 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
             "form_code": form_data.form.code,
             "form_data": form_data.form_data,
             "attachments": attachments,
+            "media_url": settings.MEDIA_URL,
         }
 
         # get form
@@ -1823,6 +1834,7 @@ def form_definition(request, *args, **kwargs):
             lang = None
 
         tbl_header_dict = utils.get_table_header(data, lang=lang)
+        option_maps = utils.get_field_option_maps(data, lang=lang)
         form_title = utils.get_localized_form_title(data, lang=lang) or cur_form.title
         page_headers = utils.get_page_headers(data, lang=lang)
         resolved_language = lang or utils.get_form_language(data)
@@ -1831,6 +1843,7 @@ def form_definition(request, *args, **kwargs):
             {
                 "data": data,
                 "cols": tbl_header_dict,
+                "option_maps": option_maps,
                 "form_title": form_title,
                 "page_headers": page_headers,
                 "language": resolved_language,

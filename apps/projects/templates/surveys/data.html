@@ -153,7 +153,21 @@
                                             <div class="border-b border-stone-200 md:[&:nth-last-child(-n+2)]:border-b-0 md:[&:nth-child(odd)]:border-r md:border-stone-200">
                                                 <div class="px-5 py-4">
                                                     <p class="text-[11px] font-semibold uppercase text-stone-500" x-text="entry.label"></p>
-                                                    <p class="mt-2 text-sm capitalize leading-6 text-stone-900 break-words" x-text="entry.value"></p>
+                                                    <template x-if="entry.imageUrls.length > 0">
+                                                        <div class="mt-3 flex flex-wrap gap-3">
+                                                            <template x-for="imageUrl in entry.imageUrls" :key="imageUrl">
+                                                                <button
+                                                                    type="button"
+                                                                    @click="openAttachmentPreview({ name: entry.label, url: imageUrl, type: 'image' })"
+                                                                    class="group block overflow-hidden rounded-xl border border-stone-200 bg-stone-50 transition hover:border-red-200">
+                                                                    <img :src="imageUrl" :alt="entry.label" class="h-32 w-44 object-cover transition group-hover:scale-105">
+                                                                </button>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="entry.imageUrls.length === 0">
+                                                        <p class="mt-2 text-sm capitalize leading-6 text-stone-900 break-words" x-text="entry.value"></p>
+                                                    </template>
                                                 </div>
                                             </div>
                                         </template>
@@ -330,7 +344,23 @@
                                                     <template x-for="entry in workflowFormDataEntries()" :key="entry.key">
                                                         <div class="grid gap-2 px-5 py-3 sm:grid-cols-3">
                                                             <div class="text-xs font-medium text-stone-500" x-text="entry.label"></div>
-                                                            <div class="text-sm text-stone-900 sm:col-span-2 break-words" x-text="entry.value"></div>
+                                                            <div class="text-sm text-stone-900 sm:col-span-2 break-words">
+                                                                <template x-if="entry.imageUrls.length > 0">
+                                                                    <div class="flex flex-wrap gap-3">
+                                                                        <template x-for="imageUrl in entry.imageUrls" :key="imageUrl">
+                                                                            <button
+                                                                                type="button"
+                                                                                @click="openAttachmentPreview({ name: entry.label, url: imageUrl, type: 'image' })"
+                                                                                class="group block overflow-hidden rounded-xl border border-stone-200 bg-stone-50 transition hover:border-red-200">
+                                                                                <img :src="imageUrl" :alt="entry.label" class="h-28 w-40 object-cover transition group-hover:scale-105">
+                                                                            </button>
+                                                                        </template>
+                                                                    </div>
+                                                                </template>
+                                                                <template x-if="entry.imageUrls.length === 0">
+                                                                    <span x-text="entry.value"></span>
+                                                                </template>
+                                                            </div>
                                                         </div>
                                                     </template>
                                                 </div>

@@ -16,6 +16,7 @@
             forms: forms,
             data_instance: current_data.form_data,
             attachments: current_data.attachments || [],
+            mediaUrl: current_data.media_url || '/media/',
             tabId: 'information',
             viewMode: '',
             messageThread: [],
@@ -37,6 +38,7 @@
             selectedLanguage: "",
             activeLanguage: "",
             pageHeaders: {},
+            optionMaps: {},
 
             form_cols: [],
             form_data: [],
@@ -63,7 +65,8 @@
                 return Object.entries(this.data_instance || {}).map(([key, value]) => ({
                     key,
                     label: this.form_defn[key] || this.prettyHeader(key),
-                    value: value ?? '-',
+                    value: this.formatFieldValue(key, value),
+                    imageUrls: this.imageUrlsFromValue(value),
                 }));
             },
 
@@ -205,8 +208,73 @@
                 return Object.entries(data).map(([key, value]) => ({
                     key,
                     label: this.form_defn[key] || this.prettyHeader(key),
-                    value: this.formatDisplayValue(value),
+                    value: this.formatFieldValue(key, value),
+                    imageUrls: this.imageUrlsFromValue(value),
                 }));
+            },
+
+            imageUrlsFromValue(value) {
+                if (Array.isArray(value)) {
+                    return value
+                        .map(item => this.imageUrlFromValue(item))
+                        .filter(Boolean);
+                }
+
+                const imageUrl = this.imageUrlFromValue(value);
+                return imageUrl ? [imageUrl] : [];
+            },
+
+            imageUrlFromValue(value) {
+                if (typeof value !== 'string') return '';
+
+                const path = value.trim();
+                if (!path || !this.isImagePath(path)) return '';
+
+                if (/^https?:\/\//i.test(path) || path.startsWith('/')) {
+                    return path;
+                }
+
+                if (path.startsWith('media/')) {
+                    return `/${path}`;
+                }
+
+                const mediaUrl = this.mediaUrl.endsWith('/') ? this.mediaUrl : `${this.mediaUrl}/`;
+                return `${mediaUrl}${path.replace(/^\/+/, '')}`;
+            },
+
+            isImagePath(value) {
+                return /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?.*)?$/i.test(String(value || '').trim());
+            },
+
+            formatFieldValue(key, value) {
+                const optionMap = this.optionMaps?.[key] || {};
+                const codes = this.normalizeFieldCodes(value);
+
+                if (Object.keys(optionMap).length && codes.length) {
+                    return codes.map(code => optionMap[String(code)] || code).join(', ');
+                }
+
+                return this.formatDisplayValue(value);
+            },
+
+            normalizeFieldCodes(value) {
+                if (value === null || value === undefined || value === '') return [];
+                if (Array.isArray(value)) return value;
+                if (typeof value !== 'string') return [value];
+
+                const trimmed = value.trim();
+                if (!trimmed) return [];
+
+                if (trimmed.startsWith('[')) {
+                    try {
+                        const parsed = JSON.parse(trimmed);
+                        return Array.isArray(parsed) ? parsed : [value];
+                    } catch (error) {
+                        return [value];
+                    }
+                }
+
+                return trimmed.includes(' ') ? trimmed.split(/\s+/) : [trimmed];
             },
 
             formatDisplayValue(value) {
@@ -432,6 +500,7 @@
                 const data = await response.json();
 
                 this.form_defn = data.cols || {};
+                this.optionMaps = data.option_maps || {};
                 this.pageHeaders = data.page_headers || {};
                 this.availableLanguages = data.languages || [];
                 this.activeLanguage = data.language || "";
