@@ -594,4 +594,3 @@ class KnowledgeBase(models.Model):
         return self.title
 
 
-
