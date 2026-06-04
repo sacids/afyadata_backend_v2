@@ -99,85 +99,6 @@ class FormDataView(viewsets.ViewSet):
         if not is_member:
             raise PermissionError("You do not have access to this project")
 
-    def _parse_odk_filter_clause1(self, filter_text, user):
-        """
-        Parses ODK-style filter strings like:
-        ${form_data.created_by} = 24 and ${form_data.region} = 'rukwa' and ${deleted} = 0
-        """
-        if not filter_text or not filter_text.strip():
-            return Q()
-
-        # Handle special dynamic context substitutions
-        filter_text = filter_text.replace("current_user_id", str(user.id))
-        filter_text = filter_text.replace("current_user_username", f"'{user.username}'")
-
-        # Split multiple clauses separated by case-insensitive ' and '
-        clauses = re.split(r'\s+and\s+', filter_text, flags=re.IGNORECASE)
-        clause_query = Q()
-
-        for clause in clauses:
-            clause = clause.strip()
-            if not clause:
-                continue
-
-            # Regex mapping: ${field_name} operator value
-            match = re.match(r'^\$\{(?P<field>[^}]+)\}\s*(?P<operator>=|!=|>=|<=|>|<)\s*(?P<value>.+)$', clause)
-            if not match:
-                logging.warning(f"Failed to parse ODK statement clause: {clause}")
-                continue
-
-            field_path = match.group('field').strip()
-            operator = match.group('operator').strip()
-            raw_value = match.group('value').strip()
-
-            # Strip string wrapper quotes
-            if (raw_value.startswith("'") and raw_value.endswith("'")) or \
-               (raw_value.startswith('"') and raw_value.endswith('"')):
-                value = raw_value[1:-1]
-            else:
-                # Cast string values to correct types dynamically
-                try:
-                    value = int(raw_value)
-                except ValueError:
-                    try:
-                        value = float(raw_value)
-                    except ValueError:
-                        value = raw_value
-
-            # Route json fields vs native database table columns
-            if field_path.startswith("form_data."):
-                json_key = field_path.replace("form_data.", "").replace(".", "__")
-                django_lookup = f"form_data__{json_key}"
-            else:
-                django_lookup = field_path.replace(".", "__")
-
-            # Map typical SQL relational operators to Django lookups
-            lookup_map = {
-                "=": django_lookup,
-                "!=": f"{django_lookup}__ne",
-                ">": f"{django_lookup}__gt",
-                "<": f"{django_lookup}__lt",
-                ">=": f"{django_lookup}__gte",
-                "<=": f"{django_lookup}__lte"
-            }
-            
-            lookup = lookup_map.get(operator, django_lookup)
-            
-            if operator == "!=":
-                clause_query &= ~Q(**{django_lookup: value})
-            else:
-                clause_query &= Q(**{lookup: value})
-            
-            logging.info('== parsed clause ==')
-            logging.info({
-                "field_path": field_path,
-                "django_lookup": lookup,
-                "operator": operator,
-                "value": value,
-            })
-
-        return clause_query
-
     def _parse_odk_filter_clause(self, filter_text, user):
         """
         Parses ODK-style filter strings with extended operators like:
@@ -234,28 +155,36 @@ class FormDataView(viewsets.ViewSet):
             else:
                 django_lookup = field_path.replace(".", "__")
 
+            # Initialize a tracking variable for safe logging
+            actual_lookup = django_lookup
+
             # Dynamic query generation logic based on expanded operators
             if operator == "=":
-                # Check if value is a string to decide between case-insensitive 'iexact' vs strict default '='
                 if isinstance(value, str):
-                    clause_query &= Q(**{f"{django_lookup}__iexact": value})
+                    actual_lookup = f"{django_lookup}__iexact"
+                    clause_query &= Q(**{actual_lookup: value})
                 else:
                     clause_query &= Q(**{django_lookup: value})
                     
             elif operator == "!=":
                 if isinstance(value, str):
+                    actual_lookup = f"~{django_lookup}__iexact"
                     clause_query &= ~Q(**{f"{django_lookup}__iexact": value})
                 else:
+                    actual_lookup = f"~{django_lookup}"
                     clause_query &= ~Q(**{django_lookup: value})
                     
             elif operator in ["contains", "like"]:
-                clause_query &= Q(**{f"{django_lookup}__contains": value})
+                actual_lookup = f"{django_lookup}__contains"
+                clause_query &= Q(**{actual_lookup: value})
                 
             elif operator in ["icontains", "ilike"]:
-                clause_query &= Q(**{f"{django_lookup}__icontains": value})
+                actual_lookup = f"{django_lookup}__icontains"
+                clause_query &= Q(**{actual_lookup: value})
                 
             elif operator == "iexact":
-                clause_query &= Q(**{f"{django_lookup}__iexact": value})
+                actual_lookup = f"{django_lookup}__iexact"
+                clause_query &= Q(**{actual_lookup: value})
                 
             else:
                 # Map typical SQL relational math operators to Django lookups
@@ -265,21 +194,19 @@ class FormDataView(viewsets.ViewSet):
                     ">=": f"{django_lookup}__gte",
                     "<=": f"{django_lookup}__lte"
                 }
-                lookup = lookup_map.get(operator, django_lookup)
-                clause_query &= Q(**{lookup: value})
+                actual_lookup = lookup_map.get(operator, django_lookup)
+                clause_query &= Q(**{actual_lookup: value})
                 
-                
-            
-        logging.info('== parsed clause ==')
-        logging.info({
-            "field_path": field_path,
-            "django_lookup": lookup,
-            "operator": operator,
-            "value": value,
-        })
+            logging.info('== parsed clause ==')
+            logging.info({
+                "field_path": field_path,
+                "django_lookup": actual_lookup,
+                "operator": operator,
+                "value": value,
+            })
 
         return clause_query
-
+    
     def _build_global_permissions_query(self, user, project_id):
         """
         Builds a comprehensive matrix of allowed records:
@@ -315,6 +242,7 @@ class FormDataView(viewsets.ViewSet):
         # Build combined logical permission tree
         global_or_query = Q()
         for form_uuid, text_list in filters_by_form.items():
+            print(f"=== building permissions for form_id: {form_uuid} with filters: {text_list} ===")
             # Multiple filters targeting the exact same form_id are joined via AND
             form_and_query = Q(form_id=form_uuid)
             for filter_text in text_list:
@@ -324,6 +252,8 @@ class FormDataView(viewsets.ViewSet):
             # Distinct forms permissions are joined via OR
             global_or_query |= form_and_query
 
+        print("=== final global permissions query ===")
+        print(global_or_query)
         return global_or_query
 
     def _build_queryset(self, request):
