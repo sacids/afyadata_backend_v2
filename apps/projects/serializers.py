@@ -7,15 +7,52 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
-class ProjectSerializer(serializers.ModelSerializer):
+class ProjectSerializer2(serializers.ModelSerializer):
     created_by = serializers.StringRelatedField(many=False)
     updated_by = serializers.StringRelatedField(many=False)
     tags = serializers.StringRelatedField(many=True)
+    
+    project_image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = "__all__"
+        
+    def get_project_image_url(self, obj):
+        request = self.context.get("request")
+
+        if not obj.project_image:
+            return None
+
+        if request:
+            return request.build_absolute_uri(obj.project_image.url)
+
+        return obj.project_image.url
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    created_by = serializers.StringRelatedField()
+    updated_by = serializers.StringRelatedField()
+    tags = serializers.StringRelatedField(many=True)
+
+    project_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
         fields = "__all__"
 
+    def get_project_image_url(self, obj):
+        request = self.context.get("request")
+
+        if obj.project_image and hasattr(obj.project_image, "url"):
+            url = obj.project_image.url
+
+            if request:
+                return request.build_absolute_uri(url)
+
+            return url
+
+        return None
 
 class ProjectMemberSerializer(serializers.ModelSerializer):
     class Meta:

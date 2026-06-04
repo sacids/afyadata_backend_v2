@@ -44,7 +44,7 @@ class FormDataFilterInline(admin.StackedInline):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ["title", "code", "access", "auto_join", "active", "created_at"]
+    list_display = ["title", "code", "access","project_color", "project_image", "auto_join", "active", "created_at"]
     ordering = ("id",)
     readonly_fields = ("created_at", "updated_at")
     inlines = [ProjectMemberInline]

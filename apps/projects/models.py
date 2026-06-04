@@ -86,6 +86,8 @@ class Project(models.Model):
     accept_data = models.BooleanField(default=True)  # accept data or not
     active = models.BooleanField(default=True)  # active or not
     description = models.TextField(null=True, blank=True)
+    project_image = models.ImageField(upload_to="project_images/", null=True, blank=True)
+    project_color = models.CharField(max_length=7, default="#C92A2A")  # Default to a red color
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(

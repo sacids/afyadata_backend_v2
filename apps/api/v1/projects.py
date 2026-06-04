@@ -189,7 +189,7 @@ class ProjectView(viewsets.ViewSet):
         try:
             project = Project.objects.get(id=pk)
             # Return project details
-            project_data = ProjectSerializer(project).data
+            project_data = ProjectSerializer(project, context={"request": request}).data
 
             # check if user is already a member
             if ProjectMember.objects.filter(project=project, member=request.user, active=True).exists():
