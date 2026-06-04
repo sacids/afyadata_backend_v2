@@ -8,6 +8,7 @@ from .models import *
 
 
 
+
 def xor_cipher(data, key):
     # Standard XOR logic: cycle the key to match data length
     return "".join(chr(ord(c) ^ ord(key[i % len(key)])) for i, c in enumerate(data))
@@ -113,8 +114,6 @@ def generate_qr_image_data(qr_string, size=300):
     img_str = base64.b64encode(buffer.getvalue()).decode()
     
     return f"data:image/png;base64,{img_str}"
-
-
 
 
 

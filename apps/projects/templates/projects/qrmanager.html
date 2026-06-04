@@ -318,6 +318,13 @@
 
 {% block extra-js %}
 <script>
+    const qrUpdateUrlTemplate = "{% url 'projects:qr-update' project.pk '__qr_code_id__' %}";
+    const qrDeleteUrlTemplate = "{% url 'projects:qr-delete' project.pk '__qr_code_id__' %}";
+
+    function buildQrUrl(template, id) {
+        return template.replace('__qr_code_id__', encodeURIComponent(id));
+    }
+
     function selectQRCode(qrCodeId) {
         window.location.href = `{% url 'projects:qrmanager' project.pk %}?qr_code_id=${qrCodeId}`;
     }
@@ -335,7 +342,7 @@
 
     function openEditModal(id, name, description, isActive, expiresAt) {
         document.getElementById('modalTitle').textContent = 'Edit QR Code';
-        document.getElementById('qrForm').action = `{% url 'projects:qr-update' project.pk '${id}' %}`;
+        document.getElementById('qrForm').action = buildQrUrl(qrUpdateUrlTemplate, id);
         document.getElementById('qrName').value = name;
         document.getElementById('qrDescription').value = description || '';
         document.getElementById('qrExpiresAt').value = expiresAt || '';
@@ -351,7 +358,7 @@
 
     function confirmDelete(id, name) {
         document.getElementById('deleteName').textContent = name;
-        document.getElementById('deleteForm').action = `{% url 'projects:qr-delete' project.pk '${id}' %}`;
+        document.getElementById('deleteForm').action = buildQrUrl(qrDeleteUrlTemplate, id);
         document.getElementById('deleteModal').classList.remove('hidden');
         document.getElementById('deleteModal').classList.add('flex');
     }

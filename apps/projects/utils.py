@@ -7,14 +7,16 @@ import string
 import logging
 import uuid
 import tempfile
+import re
 from datetime import date, datetime
 from django.http import JsonResponse
 import os
+import requests
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile, File
 from django.conf import settings
 
-from .models import FormDefinition, FormData, MatchingConfiguration, ProjectQRCode
+from .models import FormDefinition, FormData, MatchingConfiguration, ProjectQRCode, FormDataFilter
 from django.utils.dateformat import DateFormat
 
 from django.db.models import Q, F
@@ -32,8 +34,9 @@ from django.contrib.gis.measure import D
 from django.utils import timezone
 from datetime import timedelta
 
-
-import requests
+#Users
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 
 class FormDataAjaxDatatableView(AjaxDatatableView):
@@ -649,16 +652,14 @@ def push_project_to_hub(project):
 
 
 
-
-
 # MATCHING LOGIC
-
 def calculate_jaccard(list1, list2):
     if not list1 or not list2: return 0
     set1, set2 = set(list1), set(list2)
     intersection = len(set1.intersection(set2))
     union = len(set1.union(set2))
     return intersection / union if union > 0 else 0
+
 
 def find_incident_match(new_instance):
     """
@@ -702,3 +703,52 @@ def find_incident_match(new_instance):
             return candidate.uuid # Return the original_uuid to link them
             
     return None
+
+
+# Form Data Filters
+def filter_has_created_by_value(filter_text: str, user_id: int) -> bool:
+    if not filter_text:
+        return False
+
+    # Handle: ${created_by} = ?
+    equal_match = re.search(
+        r"\$\{created_by\}\s*=\s*(\d+)",
+        filter_text,
+        re.IGNORECASE,
+    )
+
+    if equal_match:
+        return int(equal_match.group(1)) == user_id
+
+    # Handle: ${created_by} in ()
+    in_match = re.search(
+        r"\$\{created_by\}\s+in\s*\(([^)]+)\)",
+        filter_text,
+        re.IGNORECASE,
+    )
+
+    if in_match:
+        allowed_ids = [
+            int(value.strip())
+            for value in in_match.group(1).split(",")
+            if value.strip().isdigit()
+        ]
+
+        return user_id in allowed_ids
+
+    return False
+
+
+def get_permitted_users_for_created_by(form, created_by_id):
+    filters = FormDataFilter.objects.filter(
+        form=form,
+        filter_text__icontains="${created_by}",
+    ).prefetch_related("permitted_users")
+
+    permitted_users = User.objects.none()
+
+    for data_filter in filters:
+        if filter_has_created_by_value(data_filter.filter_text, created_by_id):
+            permitted_users |= data_filter.permitted_users.all()
+
+    return permitted_users.distinct()
