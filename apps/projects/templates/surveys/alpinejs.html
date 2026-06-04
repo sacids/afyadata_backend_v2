@@ -200,6 +200,22 @@
                 return JSON.stringify(metadata, null, 2);
             },
 
+            workflowFormDataEntries() {
+                const data = this.workflowData?.form_data?.data || {};
+                return Object.entries(data).map(([key, value]) => ({
+                    key,
+                    label: this.form_defn[key] || this.prettyHeader(key),
+                    value: this.formatDisplayValue(value),
+                }));
+            },
+
+            formatDisplayValue(value) {
+                if (value === null || value === undefined || value === '') return '-';
+                if (Array.isArray(value)) return value.map(item => this.formatDisplayValue(item)).join(', ');
+                if (typeof value === 'object') return JSON.stringify(value, null, 2);
+                return value;
+            },
+
             contrastText(color) {
                 const normalized = String(color || '').trim();
                 if (!normalized.startsWith('#') || ![4, 7].includes(normalized.length)) {

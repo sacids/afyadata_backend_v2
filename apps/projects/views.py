@@ -1593,11 +1593,26 @@ class SurveyDataWorkflowView(PermissionRequiredMixin, generic.View):
             "created_at": log.created_at.strftime("%d %b %Y, %H:%M") if log.created_at else "",
         }
 
+    def serialize_form_data(self, form_data):
+        if not form_data:
+            return None
+
+        form_definition = form_data.form
+        return {
+            "uuid": str(form_data.uuid),
+            "title": form_data.title or "",
+            "form_title": form_definition.title if form_definition else "",
+            "form_code": form_definition.code if form_definition else "",
+            "submitted_at": form_data.submitted_at.strftime("%d %b %Y, %H:%M") if form_data.submitted_at else "",
+            "created_at": form_data.created_at.strftime("%d %b %Y, %H:%M") if form_data.created_at else "",
+            "data": form_data.form_data or {},
+        }
+
     def get(self, request, *args, **kwargs):
         form_data = self.get_form_data()
         workflow = (
             FormDataWorkflow.objects.filter(form_data=form_data)
-            .select_related("assigned_group", "assigned_to")
+            .select_related("assigned_group", "assigned_to", "form_data", "form_data__form")
             .first()
         )
 
@@ -1637,6 +1652,7 @@ class SurveyDataWorkflowView(PermissionRequiredMixin, generic.View):
                 "reopened_count": workflow.reopened_count,
                 "due_at": workflow.due_at.strftime("%d %b %Y, %H:%M") if workflow.due_at else "",
                 "metadata": workflow.metadata or {},
+                "form_data": self.serialize_form_data(workflow.form_data),
                 "created_at": workflow.created_at.strftime("%d %b %Y, %H:%M") if workflow.created_at else "",
                 "updated_at": workflow.updated_at.strftime("%d %b %Y, %H:%M") if workflow.updated_at else "",
                 "logs": [self.serialize_log(log) for log in logs],

@@ -307,6 +307,36 @@
                                             </div>
                                         </div>
 
+                                        <template x-if="workflowData.form_data && workflowFormDataEntries().length > 0">
+                                            <div class="rounded-2xl border border-stone-200 bg-white">
+                                                <div class="flex flex-col gap-2 border-b border-stone-200 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+                                                    <div>
+                                                        <h4 class="text-sm font-semibold text-stone-800">Form Data</h4>
+                                                        <p class="mt-1 text-xs text-stone-500">
+                                                            <span x-text="workflowData.form_data.form_title || '-'"></span>
+                                                            <span x-show="workflowData.form_data.submitted_at"> &middot; </span>
+                                                            <span x-show="workflowData.form_data.submitted_at" x-text="workflowData.form_data.submitted_at"></span>
+                                                        </p>
+                                                    </div>
+                                                    <a
+                                                        :href="`/projects/forms/${workflowData.form_data.uuid}/data/instance`"
+                                                        class="inline-flex items-center gap-1.5 rounded-md border border-stone-200 px-3 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-50">
+                                                        <i class='bx bx-show'></i>
+                                                        <span>Open</span>
+                                                    </a>
+                                                </div>
+
+                                                <div class="divide-y divide-stone-100">
+                                                    <template x-for="entry in workflowFormDataEntries()" :key="entry.key">
+                                                        <div class="grid gap-2 px-5 py-3 sm:grid-cols-3">
+                                                            <div class="text-xs font-medium text-stone-500" x-text="entry.label"></div>
+                                                            <div class="text-sm text-stone-900 sm:col-span-2 break-words" x-text="entry.value"></div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+
                                         <div class="rounded-2xl border border-stone-200 bg-white">
                                             <div class="border-b border-stone-200 px-5 py-4">
                                                 <h4 class="text-sm font-semibold text-stone-800">Action History</h4>
