@@ -2,6 +2,7 @@ import json
 import logging
 import requests
 
+from decouple import config
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ class MessagingService:
     SENDER_ADDRESS = "tel:+224622731178"
 
     def __init__(self):
-        self.orange_token = settings.ORANGE_TOKEN
+        self.orange_token = config("ORANGE_TOKEN", default="")
 
     def create_token(self):
         """create and return an access token from Orange API"""
@@ -32,8 +33,8 @@ class MessagingService:
             timeout=30,
         )
 
-        logger.debug("Orange token status: %s", response.status_code)
-        logger.debug("Orange token response: %s", response.text)
+        logger.info("Orange token status: %s", response.status_code)
+        logger.info("Orange token response: %s", response.text)
 
         if response.status_code != 200:
             raise Exception(f"Failed to get Orange token: {response.text}")
@@ -74,8 +75,8 @@ class MessagingService:
             timeout=30,
         )
 
-        logger.debug("Orange SMS status: %s", response.status_code)
-        logger.debug("Orange SMS response: %s", response.text)
+        logger.info("Orange SMS status: %s", response.status_code)
+        logger.info("Orange SMS response: %s", response.text)
 
         response_data = response.json() if response.text else {}
 

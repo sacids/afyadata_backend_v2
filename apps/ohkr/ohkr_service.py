@@ -42,7 +42,7 @@ class OHKRService:
 
         if not specie:
             return {
-                "status": "0",
+                "status": False,
                 "data": "Invalid or inactive specie"
             }
 
@@ -56,7 +56,7 @@ class OHKRService:
 
         if not clinical_sign_ids:
             return {
-                "status": "0",
+                "status": False,
                 "data": "No matching clinical signs found"
             }
 
@@ -74,7 +74,7 @@ class OHKRService:
 
         if not disease_total_map:
             return {
-                "status": "0",
+                "status": False,
                 "data": "No disease score mapping found for this specie"
             }
 
@@ -92,7 +92,7 @@ class OHKRService:
 
         if not matched_scores:
             return {
-                "status": "0",
+                "status": False,
                 "data": "No match found"
             }
 
@@ -119,6 +119,6 @@ class OHKRService:
             })
 
         return {
-            "status": "1",
+            "status": True,
             "data": results
         }

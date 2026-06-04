@@ -193,9 +193,10 @@ class OHKRResponse(models.Model):
 
 class OHKRDetectedDisease(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    form_data_id = models.UUIDField()
+    form_data = models.ForeignKey("projects.FormData", related_name="detected_diseases", on_delete=models.CASCADE)
     disease = models.ForeignKey(Disease, related_name="detected_diseases", on_delete=models.CASCADE)
     location = models.CharField(max_length=150, null=True, blank=True)
+    score = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):

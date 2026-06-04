@@ -5,7 +5,8 @@ from apps.projects.models import FormData, FormDataFile, ProjectMember
 from apps.projects.utils import save_uploaded_file_snapshots
 from apps.esb.utils import build_payload, push_payload
 from apps.ohkr.ohkr_service import OHKRService
-from apps.ohkr.models import ReferenceData
+from apps.ohkr.models import ReferenceData, OHKRDetectedDisease
+from apps.services.messaging import MessagingService
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +94,8 @@ def push_formdata_payload_task(self, formdata_id):
 def predict_disease_task(formdata_id):
     try:
         form_data = FormData.objects.get(pk=formdata_id)
-
-        payload = form_data.data or {}
+        payload = form_data.form_data or {} # submitted form data as json
+        created_by = form_data.created_by # user submitted data
 
         species_name = payload.get("species")
         symptoms = payload.get("symptoms", [])
@@ -122,11 +123,33 @@ def predict_disease_task(formdata_id):
             clinical_sign_codes=symptoms,
         )
 
-        # TODO: 1. Save to ohkr predicted disease model
-        
-        # TODO: 2. Send sms to CAW
-        logger.info(f"OHKR prediction result for FormData {formdata_id}: {result}")
+        # TODO: Handle the result - save to DB, send SMS, etc. => top 3 diseases with score
+        if result.get("status") == True:
+            diseases = result.get("data", [])
+            # 1. Save to ohkr predicted disease model
+            for disease in diseases:
+                logger.info(f"Saving detected disease {disease['title']} with score {disease['score']} for FormData {formdata_id}")
+                # Save to DB
+                OHKRDetectedDisease.objects.create(
+                    form_data=form_data,
+                    disease_id=disease["disease_id"],
+                    location=payload.get("location", "unknown"),
+                    score=disease["score"],
+                )
 
+            # 2. Send SMS to CAW - TODO: integrate with SMS service and CAW contact info
+            messaging_service = MessagingService()
+            name = created_by.get_full_name()
+            phone = created_by.profile.phone if hasattr(created_by, "profile") else "unknown"
+            disease_list = ", ".join([f"{d['title']} (score: {d['score']})" for d in diseases])
+
+            #message
+            message = f"Cher Afyadata, le système a identifié la ou les maladies suivantes {disease_list} à partir des signes cliniques soumis par {name} {phone} avec le formulaire ID {form_data.id}. Veuillez examiner les signes cliniques dans AfyaData et investiguer le cas dans son site (localisation). Merci."
+
+            #recipient number - TODO: get from config or DB
+            recipient = "+224621014124" # TODO: get CAW recipient number from config or DB
+            messaging_service.send_sms(recipient, message)
+            
         return result
 
     except FormData.DoesNotExist:
