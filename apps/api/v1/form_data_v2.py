@@ -1,6 +1,7 @@
 import logging
 import json
 import re
+from django.core.exceptions import EmptyResultSet
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from django.db import transaction
@@ -477,6 +478,12 @@ class FormDataView(viewsets.ViewSet):
         logging.info(f"Global permissions query matrix: {global_or_query}")
         return global_or_query
 
+    def _log_queryset_sql(self, queryset):
+        try:
+            logging.info(f"Final Queryset SQL: {queryset.query}")
+        except EmptyResultSet:
+            logging.info("Final Queryset SQL optimized to EmptyResultSet")
+
     def _build_queryset(self, request):
         project_id = self._get_project_id(request)
         self._validate_project_access(request.user, project_id)
@@ -505,11 +512,10 @@ class FormDataView(viewsets.ViewSet):
         # Enforce global security matrix constraint rule
         permissions_query = self._build_global_permissions_query(request.user, project_id)
         queryset = queryset.filter(permissions_query)
-        
-        # Print and log the complete SQL query structure execution
-        print("=== Final Queryset Query Structure ===")
-        print(queryset.query)
-        logging.info(f"Final Queryset SQL: {queryset.query}")
+
+        # Query compilation can raise EmptyResultSet for valid impossible filters
+        # such as Q(pk__in=[]). Keep that as an empty queryset, not a 500.
+        self._log_queryset_sql(queryset)
 
         return queryset.order_by("updated_at", "created_at", "id")
 
