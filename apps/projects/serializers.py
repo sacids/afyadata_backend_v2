@@ -121,8 +121,34 @@ class FormDefnMetaSerializer(serializers.ModelSerializer):
         fields = ["id", "version", "short_title", "attachments"]
 
 
+class FormDataFileSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FormDataFile
+        fields = [
+            "id",
+            "file",
+            "file_url",
+            "file_type",
+            "original_name",
+            "field_name",
+            "created_at",
+            "response_json",
+        ]
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if obj.file:
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
+
+
 class FormDataSerializer(serializers.ModelSerializer):
-    """Serializer for form data"""
+    files = FormDataFileSerializer(many=True, read_only=True)
+
     class Meta:
         model = FormData
         fields = "__all__"
