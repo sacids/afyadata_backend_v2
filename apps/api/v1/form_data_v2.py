@@ -35,14 +35,22 @@ class FormDataView(viewsets.ViewSet):
     def lists(self, request):
         """Get all form data"""
         form_data = FormData.objects.order_by("created_at").all()
-        serializer = FormDataSerializer(form_data, many=True)
+        serializer = FormDataSerializer(
+            form_data,
+            many=True,
+            context={"request": request}
+        )
         return Response(serializer.data)
 
     def detail(self, request, pk=None):
         """Get form data information"""
         try:
             form_data = FormData.objects.get(pk=pk)
-            serializer = FormDataSerializer(form_data)
+            serializer = FormDataSerializer(
+                form_data,
+                many=True,
+                context={"request": request}
+            )
             return Response(serializer.data)
         except:
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -547,7 +555,11 @@ class FormDataView(viewsets.ViewSet):
         try:
             queryset = self._build_queryset(request)
             page_results, headers = self._paginate_queryset(queryset, request)
-            serializer = FormDataSerializer(page_results, many=True)
+            serializer = FormDataSerializer(
+                page_results,
+                many=True,
+                context={"request": request}
+            )
             return Response(serializer.data, headers=headers, status=status.HTTP_200_OK)
         except ValueError as exc:
             return Response(
