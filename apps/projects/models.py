@@ -73,6 +73,19 @@ class Project(models.Model):
         ("private", "Private"),
         ("public", "Public"),
     )
+    
+    PROJECT_COLOR_CHOICES = [
+        ("#C92A2A", "Deep Red"),
+        ("#4C6EF5", "Indigo"),
+        ("#0CA678", "Teal"),
+        ("#5F3DC4", "Slate Blue"),
+        ("#2B8A3E", "Forest Green"),
+        ("#1971C2", "Ocean Blue"),
+        ("#E67700", "Burnt Orange"),
+        ("#862E9C", "Plum"),
+        ("#186A73", "Petrol Blue"),
+        ("#5C940D", "Olive"),
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(
@@ -87,7 +100,12 @@ class Project(models.Model):
     active = models.BooleanField(default=True)  # active or not
     description = models.TextField(null=True, blank=True)
     project_image = models.ImageField(upload_to="project_images/", null=True, blank=True)
-    project_color = models.CharField(max_length=7, default="#C92A2A")  # Default to a red color
+    project_color = models.CharField(
+        max_length=7,
+        choices=PROJECT_COLOR_CHOICES,
+        default="#C92A2A",
+        help_text="Primary theme color for this project"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
