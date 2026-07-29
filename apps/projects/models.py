@@ -172,6 +172,7 @@ class FormDefinition(models.Model):
         ROOT = "ROOT", "Root"
         CHILD = "CHILD", "Child"
         WORKFLOW = "WORKFLOW", "Workflow"
+        CHANGE = "CHANGE", "Change Request"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, related_name="forms", on_delete=models.CASCADE)
