@@ -22,8 +22,8 @@ from apps.accounts.utils import is_admin_user
 class FormDataView(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    default_page_size = 50
-    max_page_size = 200
+    default_page_size = 200
+    max_page_size = 500
 
     """API List for Form Data"""
 
