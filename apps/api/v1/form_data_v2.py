@@ -18,12 +18,38 @@ from apps.projects.utils import snapshot_uploaded_files
 from apps.projects.tasks import save_formdata_files_task
 from apps.accounts.utils import is_admin_user
 
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+
+
+class FormDataPagination(PageNumberPagination):
+    page_size = 200                    # same as your current default
+    page_size_query_param = "page_size"
+    max_page_size = 500
+    page_query_param = "page"
+
+    def get_paginated_response(self, data):
+        """
+        Standard DRF body + the extra headers your mobile client already reads.
+        """
+        response = Response({
+            "count": self.page.paginator.count,
+            "next": self.get_next_link(),
+            "previous": self.get_previous_link(),
+            "results": data,
+        })
+
+        # Keep the headers so existing HEAD / header-based code continues to work
+        response["X-Total-Count"] = str(self.page.paginator.count)
+        response["X-Page"] = str(self.page.number)
+        response["X-Page-Size"] = str(self.get_page_size(self.request))
+        return response
+
 
 class FormDataView(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    default_page_size = 200
-    max_page_size = 500
+    pagination_class = FormDataPagination
 
     """API List for Form Data"""
 
@@ -54,20 +80,6 @@ class FormDataView(viewsets.ViewSet):
             return Response(serializer.data)
         except:
             return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def _parse_positive_int(self, value, field_name, default=None):
-        if value in (None, ""):
-            return default
-
-        try:
-            parsed = int(value)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"{field_name} must be an integer") from exc
-
-        if parsed < 1:
-            raise ValueError(f"{field_name} must be greater than 0")
-
-        return parsed
 
     def _parse_modified_after(self, value):
         if not value:
@@ -107,196 +119,6 @@ class FormDataView(viewsets.ViewSet):
         ).exists()
         if not is_member:
             raise PermissionError("You do not have access to this project")
-
-    def _parse_odk_filter_clause1(self, filter_text, user):
-        """
-        Parses ODK-style filter strings like:
-        ${form_data.created_by} = 24 and ${form_data.region} = 'rukwa' and ${deleted} = 0
-        """
-        if not filter_text or not filter_text.strip():
-            return Q()
-
-        # Handle special dynamic context substitutions
-        filter_text = filter_text.replace("current_user_id", str(user.id))
-        filter_text = filter_text.replace("current_user_username", f"'{user.username}'")
-
-        # Split multiple clauses separated by case-insensitive ' and '
-        clauses = re.split(r'\s+and\s+', filter_text, flags=re.IGNORECASE)
-        clause_query = Q()
-
-        for clause in clauses:
-            clause = clause.strip()
-            if not clause:
-                continue
-
-            # Regex mapping: ${field_name} operator value
-            match = re.match(r'^\$\{(?P<field>[^}]+)\}\s*(?P<operator>=|!=|>=|<=|>|<)\s*(?P<value>.+)$', clause)
-            if not match:
-                logging.warning(f"Failed to parse ODK statement clause: {clause}")
-                continue
-
-            field_path = match.group('field').strip()
-            operator = match.group('operator').strip()
-            raw_value = match.group('value').strip()
-
-            # Strip string wrapper quotes
-            if (raw_value.startswith("'") and raw_value.endswith("'")) or \
-               (raw_value.startswith('"') and raw_value.endswith('"')):
-                value = raw_value[1:-1]
-            else:
-                # Cast string values to correct types dynamically
-                try:
-                    value = int(raw_value)
-                except ValueError:
-                    try:
-                        value = float(raw_value)
-                    except ValueError:
-                        value = raw_value
-
-            # Route json fields vs native database table columns
-            if field_path.startswith("form_data."):
-                json_key = field_path.replace("form_data.", "").replace(".", "__")
-                django_lookup = f"form_data__{json_key}"
-            else:
-                django_lookup = field_path.replace(".", "__")
-
-            # Map typical SQL relational operators to Django lookups
-            lookup_map = {
-                "=": django_lookup,
-                "!=": f"{django_lookup}__ne",
-                ">": f"{django_lookup}__gt",
-                "<": f"{django_lookup}__lt",
-                ">=": f"{django_lookup}__gte",
-                "<=": f"{django_lookup}__lte"
-            }
-            
-            lookup = lookup_map.get(operator, django_lookup)
-            
-            if operator == "!=":
-                clause_query &= ~Q(**{django_lookup: value})
-            else:
-                clause_query &= Q(**{lookup: value})
-            
-            logging.info('== parsed clause ==')
-            logging.info({
-                "field_path": field_path,
-                "django_lookup": lookup,
-                "operator": operator,
-                "value": value,
-            })
-
-        return clause_query
-
-    def _parse_odk_filter_clause2(self, filter_text, user):
-        """
-        Parses ODK-style filter strings with extended operators like:
-        ${form_data.name} icontains 'john' and ${form_data.region} iexact 'RUKWA'
-        """
-        if not filter_text or not filter_text.strip():
-            return Q()
-
-        # Handle special dynamic context substitutions
-        filter_text = filter_text.replace("current_user_id", str(user.id))
-        filter_text = filter_text.replace("current_user_username", f"'{user.username}'")
-
-        # Split multiple clauses separated by case-insensitive ' and '
-        clauses = re.split(r'\s+and\s+', filter_text, flags=re.IGNORECASE)
-        clause_query = Q()
-
-        for clause in clauses:
-            clause = clause.strip()
-            if not clause:
-                continue
-
-            # Expanded Regex: captures words like 'contains', 'icontains', 'iexact', 'like', 'ilike'
-            match = re.match(
-                r'^\$\{(?P<field>[^}]+)\}\s*(?P<operator>=|!=|>=|<=|>|<|contains|icontains|iexact|like|ilike)\s*(?P<value>.+)$', 
-                clause, 
-                flags=re.IGNORECASE
-            )
-            if not match:
-                logging.warning(f"Failed to parse ODK statement clause: {clause}")
-                continue
-
-            field_path = match.group('field').strip()
-            operator = match.group('operator').strip().lower()  # Normalize operator to lower-case
-            raw_value = match.group('value').strip()
-
-            # Strip string wrapper quotes
-            if (raw_value.startswith("'") and raw_value.endswith("'")) or \
-            (raw_value.startswith('"') and raw_value.endswith('"')):
-                value = raw_value[1:-1]
-            else:
-                # Cast string values to correct types dynamically
-                try:
-                    value = int(raw_value)
-                except ValueError:
-                    try:
-                        value = float(raw_value)
-                    except ValueError:
-                        value = raw_value
-
-            # Route json fields vs native database table columns
-            if field_path.startswith("form_data."):
-                json_key = field_path.replace("form_data.", "").replace(".", "__")
-                django_lookup = f"form_data__{json_key}"
-            else:
-                django_lookup = field_path.replace(".", "__")
-
-            # Initialize tracking variable for safe logging scope to fix the 500 error
-            actual_lookup = django_lookup
-
-            # Dynamic query generation logic based on expanded operators
-            if operator == "=":
-                # Check if value is a string to decide between case-insensitive 'iexact' vs strict default '='
-                if isinstance(value, str):
-                    actual_lookup = f"{django_lookup}__iexact"
-                    clause_query &= Q(**{actual_lookup: value})
-                else:
-                    clause_query &= Q(**{django_lookup: value})
-                    
-            elif operator == "!=":
-                if isinstance(value, str):
-                    actual_lookup = f"~{django_lookup}__iexact"
-                    clause_query &= ~Q(**{f"{django_lookup}__iexact": value})
-                else:
-                    actual_lookup = f"~{django_lookup}"
-                    clause_query &= ~Q(**{django_lookup: value})
-                    
-            elif operator in ["contains", "like"]:
-                actual_lookup = f"{django_lookup}__contains"
-                clause_query &= Q(**{actual_lookup: value})
-                
-            elif operator in ["icontains", "ilike"]:
-                actual_lookup = f"{django_lookup}__icontains"
-                clause_query &= Q(**{actual_lookup: value})
-                
-            elif operator == "iexact":
-                actual_lookup = f"{django_lookup}__iexact"
-                clause_query &= Q(**{actual_lookup: value})
-                
-            else:
-                # Map typical SQL relational math operators to Django lookups
-                lookup_map = {
-                    ">": f"{django_lookup}__gt",
-                    "<": f"{django_lookup}__lt",
-                    ">=": f"{django_lookup}__gte",
-                    "<=": f"{django_lookup}__lte"
-                }
-                actual_lookup = lookup_map.get(operator, django_lookup)
-                clause_query &= Q(**{actual_lookup: value})
-                
-            # Log individual sub-clauses inside the loop safely
-            logging.info('== parsed individual clause ==')
-            logging.info({
-                "field_path": field_path,
-                "django_lookup": actual_lookup,
-                "operator": operator,
-                "value": value,
-            })
-            print(f"   --> Combined Subclause Check: {clause_query}")
-
-        return clause_query
 
     def _parse_odk_filter_clause(self, filter_text, user):
         """
@@ -509,7 +331,7 @@ class FormDataView(viewsets.ViewSet):
         # Apply data synchronization modifiers
         sync_filters = Q()
         if modified_after is not None:
-            sync_filters |= Q(updated_at__gt=modified_after) | Q(last_updated_at__gt=modified_after)
+            sync_filters |=  Q(last_updated_at__gt=modified_after)
         if uuids:
             sync_filters |= Q(uuid__in=uuids)
 
@@ -527,40 +349,22 @@ class FormDataView(viewsets.ViewSet):
 
         return queryset.order_by("updated_at", "created_at", "id")
 
-    def _paginate_queryset(self, queryset, request):
-        page = self._parse_positive_int(
-            request.query_params.get("page"),
-            "page",
-            default=1,
-        )
-        page_size = self._parse_positive_int(
-            request.query_params.get("page_size"),
-            "page_size",
-            default=self.default_page_size,
-        )
-        page_size = min(page_size, self.max_page_size)
-        offset = (page - 1) * page_size
-
-        total_count = queryset.count()
-        results = queryset[offset : offset + page_size]
-
-        return results, {
-            "X-Total-Count": str(total_count),
-            "X-Page": str(page),
-            "X-Page-Size": str(page_size),
-        }
-
     def retrieve(self, request):
-        """Get project-scoped form data for mobile sync."""
+        """Get project-scoped form data for mobile sync (paginated)."""
         try:
             queryset = self._build_queryset(request)
-            page_results, headers = self._paginate_queryset(queryset, request)
+
+            # DRF pagination
+            paginator = self.pagination_class()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
             serializer = FormDataSerializer(
-                page_results,
+                page,
                 many=True,
-                context={"request": request}
+                context={"request": request},
             )
-            return Response(serializer.data, headers=headers, status=status.HTTP_200_OK)
+            return paginator.get_paginated_response(serializer.data)
+
         except ValueError as exc:
             return Response(
                 {"success": False, "message": str(exc)},
@@ -574,13 +378,23 @@ class FormDataView(viewsets.ViewSet):
         except Exception:
             logging.exception("Failed to retrieve form data")
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+      
     def head(self, request):
         """Return form data sync metadata without a response body."""
         try:
             queryset = self._build_queryset(request)
-            _, headers = self._paginate_queryset(queryset, request)
+
+            paginator = self.pagination_class()
+            # Force pagination so we get count / page info
+            paginator.paginate_queryset(queryset, request, view=self)
+
+            headers = {
+                "X-Total-Count": str(paginator.page.paginator.count),
+                "X-Page": str(paginator.page.number),
+                "X-Page-Size": str(paginator.get_page_size(request)),
+            }
             return Response(headers=headers, status=status.HTTP_200_OK)
+
         except ValueError as exc:
             return Response(
                 {"success": False, "message": str(exc)},
@@ -594,7 +408,7 @@ class FormDataView(viewsets.ViewSet):
         except Exception:
             logging.exception("Failed to retrieve form data headers")
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+      
     def _normalize_request_data(self, request):
         raw_data = request.data
         if hasattr(raw_data, "dict"):
@@ -640,134 +454,7 @@ class FormDataView(viewsets.ViewSet):
             )
 
         return created_on
-
-    def create1(self, request, *args, **kwargs):
-        """Create new form data coming from mobile app"""
-        if not request.data:
-            return Response(
-                {"success": False, "message": "Request body is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        logging.info("== incoming data ==")
-        logging.info(request.data)
-        data = self._normalize_request_data(request)
-        logging.info("== normalized data ==")
-        logging.info(data)
-
-        try:
-            def to_bool(val, default=False):
-                if val is None:
-                    return default
-                return str(val).lower() in ("1", "true", "yes")
-
-            uuid = (data.get("uuid") or "").strip()
-            if not uuid:
-                raise ValueError("uuid is required")
-
-            form_id = data.get("form")
-            if not form_id:
-                raise ValueError("form is required")
-
-            if not FormDefinition.objects.filter(pk=form_id).exists():
-                raise ValueError("Invalid form")
-
-            data["form_data"] = self._parse_form_data(data.get("form_data"))
-            created_on = self._parse_created_at(data)
-            deleted = to_bool(data.get("deleted"), default=False)
-
-            file_snapshots = (
-                snapshot_uploaded_files(request.FILES) if request.FILES else []
-            )
-
-            # --- SEEN_BY DISTINCT UNION LOGIC START ---
-            incoming_seen_by = data.get("seen_by") or ""
-            
-            # Split incoming string by commas and strip surrounding whitespaces
-            incoming_users = [u.strip() for u in incoming_seen_by.split(",") if u.strip()]
-
-            # Look up existing record to check its current db seen_by value
-            existing_instance = FormData.objects.filter(uuid=uuid).first()
-            if existing_instance and existing_instance.seen_by:
-                db_users = [u.strip() for u in existing_instance.seen_by.split(",") if u.strip()]
-            else:
-                db_users = []
-
-            # Perform a unique distinct union using a Python set (maintains uniqueness)
-            distinct_union_set = set(db_users + incoming_users)
-            
-            # Re-serialize into a clean comma-separated string without duplicate components
-            final_seen_by = ",".join(sorted(list(distinct_union_set)))
-            # ---- SEEN_BY DISTINCT UNION LOGIC END ----
-
-            now = timezone.now()
-            defaults = {
-                "form_data": data["form_data"],
-                "original_uuid": data.get("original_uuid", uuid),
-                "parent_id": data.get("parent_uuid"),
-                "title": data.get("title", ""),
-                "created_by_name": data.get("created_by_name", ""),
-                "form_id": form_id,
-                "gps": data.get("gps"),
-                "created_at": created_on,
-                "created_by": request.user if request.user.is_authenticated else None,
-                "updated_at": now,
-                "last_updated_at": now,
-                "submitted_at": now,
-                "deleted": deleted,
-                "synced": 1,
-                "seen_by": final_seen_by,  # Insert the computed unique union string here
-            }
-
-            with transaction.atomic():
-                instance, created_flag = FormData.objects.update_or_create(
-                    uuid=uuid,
-                    defaults=defaults,
-                )
-                if file_snapshots:
-                    transaction.on_commit(
-                        lambda: save_formdata_files_task.delay(
-                            instance.pk,
-                            file_snapshots,
-                            request.user.pk if request.user.is_authenticated else None,
-                        )
-                    )
-
-            logging.info("== inserted/updated form data ==")
-            logging.info(
-                {"id": instance.id, "uuid": instance.uuid, "created": created_flag}
-            )
-
-            instance.refresh_from_db()
-
-            if getattr(instance.form, "response", None):
-                response_payload = {
-                    "uuid": instance.uuid,
-                    "synced": 1,
-                    "message": instance.form.response,
-                }
-            else:
-                response_payload = {
-                    "uuid": instance.uuid,
-                    "synced": 1,
-                    "message": (
-                        "Form data created successfully"
-                        if created_flag
-                        else "Form data updated successfully"
-                    ),
-                }
-
-            return Response(
-                {"success": True, "data": response_payload},
-                status=status.HTTP_201_CREATED,
-            )
-
-        except Exception as e:
-            return Response(
-                {"success": False, "message": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-            
+         
     def create(self, request, *args, **kwargs):
         """Create new form data coming from mobile app"""
         if not request.data:
@@ -845,23 +532,38 @@ class FormDataView(viewsets.ViewSet):
             )
 
             instance.refresh_from_db()
-
-            if getattr(instance.form, "response", None):
-                response_payload = {
-                    "uuid": instance.uuid,
-                    "synced": 1,
-                    "message": instance.form.response,
-                }
-            else:
-                response_payload = {
-                    "uuid": instance.uuid,
-                    "synced": 1,
-                    "message": (
+            
+            response_payload = {
+                "uuid": instance.uuid,
+                "synced": 1,
+                "submitted_at": instance.updated_at.isoformat(),  # or instance.submitted_at
+                "message": (
+                    instance.form.response
+                    if getattr(instance.form, "response", None)
+                    else (
                         "Form data created successfully"
                         if created_flag
                         else "Form data updated successfully"
-                    ),
-                }
+                    )
+                ),
+            }
+
+            # if getattr(instance.form, "response", None):
+            #     response_payload = {
+            #         "uuid": instance.uuid,
+            #         "synced": 1,
+            #         "message": instance.form.response,
+            #     }
+            # else:
+            #     response_payload = {
+            #         "uuid": instance.uuid,
+            #         "synced": 1,
+            #         "message": (
+            #             "Form data created successfully"
+            #             if created_flag
+            #             else "Form data updated successfully"
+            #         ),
+            #     }
 
             return Response(
                 {"success": True, "data": response_payload},

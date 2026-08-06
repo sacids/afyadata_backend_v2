@@ -28,6 +28,9 @@ User = get_user_model()
 from .qr_utils import generate_qr_string
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 # class User(AbstractUser):
 #     # Override username field with no validators
 #     username = models.CharField(
@@ -364,21 +367,104 @@ class FormData(models.Model):
     @property
     def int_updated_at(self):
         return self.updated_at.strftime("%Y%m%d%H%M%S")
-    
-    
+     
     def save(self, *args, **kwargs):
         """
-        Override save to handle workflow initialization on first submission.
+        Override save to handle:
+        1. Base FormData saving and atomic transaction wrapping.
+        2. Workflow initialization on first submission.
+        3. Form role 'CHANGE' processing to clone parent, apply updates, and mark parent deleted.
         """
         is_new = self.pk is None
         
-        # Wrap in transaction to ensure both FormData and FormDataWorkflow are saved
+        # Wrap in transaction to ensure all operations succeed or roll back together
         with transaction.atomic():
             super().save(*args, **kwargs)
 
-            # Only attempt to initialize workflow for new submissions
+            # 1. Only attempt to initialize workflow for new submissions
             if is_new:
                 self.initialize_workflow_if_enabled()
+
+            # 2. Process CHANGE form logic
+            self._handle_change_form_role()
+
+    def _handle_change_form_role(self):
+        """
+        Processes CHANGE role form submissions.
+        Creates a copy of the parent instance, applies field and JSON updates from the
+        CHANGE record, sets the parent as deleted, and saves the newly updated instance.
+        """
+        try:
+            # Step 1: Check Form Role
+            if not self.form or self.form.form_role != FormDefinition.FormRole.CHANGE:
+                return
+
+            # Step 2: Get Parent Instance UUID
+            if not self.parent_id:
+                logger.warning(
+                    f"FormData {self.pk} (UUID: {self.uuid}) has form_role 'CHANGE' but parent_id is missing."
+                )
+                return
+
+            # Step 3: Fetch Parent Instance
+            parent_instance = FormData.objects.filter(uuid=self.parent_id).first()
+            if not parent_instance:
+                logger.error(
+                    f"Parent FormData with UUID '{self.parent_id}' not found for CHANGE record {self.pk}."
+                )
+                return
+
+            # Step 3a: Duplicate the parent instance using Django ORM cloning
+            new_instance = FormData.objects.get(pk=parent_instance.pk)
+            new_instance.pk = None  # Reset primary key to create a new DB record
+            new_instance.id = None  # Reset explicit id field if applicable
+
+            # Assign new UUID and update timestamps/creators
+            new_instance.uuid = str(uuid.uuid4())
+            new_instance.created_at = timezone.now()
+            new_instance.created_by = self.created_by or parent_instance.created_by
+            new_instance.deleted = 0
+
+            # Step 3b: Soft-delete original parent instance
+            parent_instance.deleted = 1
+            parent_instance.save(update_fields=["deleted", "updated_at"])
+
+            # Step 4: Parse CHANGE form's data and update the new instance
+            change_data = self.form_data or {}
+            
+            # Deep copy parent JSON form_data to avoid modifying the original dictionary reference
+            updated_form_data = dict(parent_instance.form_data or {})
+
+            for key, value in change_data.items():
+                if key.startswith("form_data__"):
+                    # Strip prefix and update/add key in the nested JSON form_data dictionary
+                    json_field_name = key[len("form_data__"):]
+                    updated_form_data[json_field_name] = value
+                else:
+                    # Update model field directly if it exists on the model
+                    if hasattr(new_instance, key):
+                        setattr(new_instance, key, value)
+                    else:
+                        logger.debug(
+                            f"Field '{key}' in CHANGE record form_data does not exist on FormData model. Skipping direct field update."
+                        )
+
+            # Assign updated JSON back to new instance
+            new_instance.form_data = updated_form_data
+
+            # Step 5: Save the new updated instance
+            new_instance.save()
+
+            logger.info(
+                f"Successfully applied CHANGE record {self.uuid} to parent {parent_instance.uuid}. "
+                f"New version created with UUID {new_instance.uuid}."
+            )
+
+        except Exception as e:
+            logger.exception(
+                f"Error processing CHANGE form hook for FormData record {self.pk} (UUID: {self.uuid}): {str(e)}"
+            )
+            raise e
 
     def initialize_workflow_if_enabled(self):
         """
