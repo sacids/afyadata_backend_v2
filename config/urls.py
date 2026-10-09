@@ -28,6 +28,8 @@ import apps.api.urls
 import apps.workflows.urls
 from apps.accounts.views import LoginView, AppListView, AppDownloadView
 
+handler404 = "config.views.custom_404"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("", LoginView.as_view(), name="login"),
