@@ -375,11 +375,12 @@ class WebFormDefinitionService:
             return float(value)
         return value
 
-    def validate_and_save(self, post_data, uploaded_files):
+    def _clean_submission_payload(self, post_data, uploaded_files, existing_data=None):
         errors = {}
         cleaned_data = {}
         file_payloads = []
         raw_data = {}
+        existing_data = existing_data or {}
 
         for field in self.fields():
             if field["is_note"]:
@@ -397,10 +398,13 @@ class WebFormDefinitionService:
 
             if field["is_file"]:
                 file_obj = uploaded_files.get(name)
-                if field["required"] and not file_obj:
+                existing_file = existing_data.get(name)
+                if field["required"] and not file_obj and not existing_file:
                     errors[name] = "This field is required."
                 if file_obj:
                     file_payloads.append((field, file_obj))
+                elif existing_file:
+                    cleaned_data[name] = existing_file
                 continue
 
             if field["is_select_multiple"]:
@@ -440,6 +444,16 @@ class WebFormDefinitionService:
             if cleaned_value != "":
                 cleaned_data[name] = cleaned_value
 
+        if errors:
+            return None, None, errors
+
+        return cleaned_data, file_payloads, {}
+
+    def validate_and_save(self, post_data, uploaded_files):
+        cleaned_data, file_payloads, errors = self._clean_submission_payload(
+            post_data,
+            uploaded_files,
+        )
         if errors:
             return None, errors
 
@@ -486,6 +500,47 @@ class WebFormDefinitionService:
                     last_updated_at=update_time,
                 )
                 instance.form_data = cleaned_data
+
+        return instance, {}
+
+    def validate_and_update(self, instance, post_data, uploaded_files):
+        cleaned_data, file_payloads, errors = self._clean_submission_payload(
+            post_data,
+            uploaded_files,
+            existing_data=instance.form_data,
+        )
+        if errors:
+            return None, errors
+
+        now = timezone.now()
+        with transaction.atomic():
+            for field, file_obj in file_payloads:
+                saved_path = self._save_file(file_obj)
+                cleaned_data[field["name"]] = saved_path
+                FormDataFile.objects.create(
+                    form_data=instance,
+                    file=saved_path,
+                    file_type=infer_uploaded_file_type(
+                        content_type=getattr(file_obj, "content_type", None),
+                        filename=getattr(file_obj, "name", None),
+                    ),
+                    original_name=getattr(file_obj, "name", ""),
+                    field_name=field["name"],
+                    uploaded_by=self.user if getattr(self.user, "is_authenticated", False) else None,
+                )
+
+            update_values = {
+                "title": self._submission_title(cleaned_data, now),
+                "form_data": cleaned_data,
+                "updated_at": now,
+                "last_updated_at": now,
+                "updated_by": self.user if getattr(self.user, "is_authenticated", False) else None,
+                "last_updated_by": self.user if getattr(self.user, "is_authenticated", False) else None,
+                "synced": 0,
+            }
+            FormData.objects.filter(pk=instance.pk).update(**update_values)
+            for key, value in update_values.items():
+                setattr(instance, key, value)
 
         return instance, {}
 

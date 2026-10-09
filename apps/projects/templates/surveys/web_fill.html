@@ -18,14 +18,16 @@
         <div class="mb-6 flex flex-col gap-3 border-b border-stone-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.14em] text-red-800">{{ project.title }}</p>
-                <h1 class="mt-2 text-2xl font-semibold text-stone-950">{{ form.title }}</h1>
+                <h1 class="mt-2 text-2xl font-semibold text-stone-950">
+                    {% if is_edit %}Edit {{ form.title }}{% else %}{{ form.title }}{% endif %}
+                </h1>
                 {% if form.description %}
                     <p class="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{{ form.description }}</p>
                 {% endif %}
             </div>
-            <a href="{% url 'projects:forms' project.pk %}"
+            <a href="{% if is_edit %}{% url 'projects:form-data-instance' instance.uuid %}{% else %}{% url 'projects:forms' project.pk %}{% endif %}"
                 class="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">
-                Back to Forms
+                {% if is_edit %}Back to Data{% else %}Back to Forms{% endif %}
             </a>
         </div>
 
@@ -214,7 +216,7 @@
                         type="submit"
                         x-show="currentPage === pageCount - 1"
                         class="inline-flex items-center rounded-md bg-red-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-800">
-                        Submit Form
+                        {% if is_edit %}Update Form{% else %}Submit Form{% endif %}
                     </button>
                 </div>
             </div>
