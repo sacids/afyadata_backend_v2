@@ -602,15 +602,55 @@ class ProjectQRCodeForm(forms.ModelForm):
 
 class KnowledgeBaseForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
+        project = kwargs.pop("project", None)
         super(KnowledgeBaseForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_show_labels = True
         self.helper.label_class = "text-gray-700 text-xs font-medium"
+        form_queryset = FormDefinition.objects.none()
+        if project:
+            form_queryset = FormDefinition.objects.filter(project=project).order_by("title")
+        elif self.instance and self.instance.pk and self.instance.project_id:
+            form_queryset = FormDefinition.objects.filter(project=self.instance.project).order_by("title")
+        self.fields["form"].queryset = form_queryset
+        self.fields["form"].empty_label = "Project-wide knowledge"
+
+        disease_queryset = Disease.objects.filter(active=True)
+        if self.instance and self.instance.pk and self.instance.disease_id:
+            disease_queryset = disease_queryset | Disease.objects.filter(pk=self.instance.disease_id)
+        self.fields["disease"].queryset = disease_queryset.distinct().order_by("name")
+        self.fields["disease"].empty_label = "No disease linked"
 
     class Meta:
         model = KnowledgeBase
-        fields = ["title", "photo", "description"]
+        fields = [
+            "content_type",
+            "form",
+            "disease",
+            "title",
+            "photo",
+            "description",
+            "language_code",
+            "display_order",
+            "visible_in_mobile",
+            "active",
+        ]
         widgets = {
+            "content_type": forms.Select(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                }
+            ),
+            "form": forms.Select(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                }
+            ),
+            "disease": forms.Select(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                }
+            ),
             "title": forms.TextInput(
                 attrs={
                     "class": "w-full font-normal text-sm rounded-md",
@@ -630,6 +670,24 @@ class KnowledgeBaseForm(forms.ModelForm):
                     "placeholder": "Write guidance, response notes, or supporting project knowledge...",
                 }
             ),
+            "language_code": forms.TextInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "placeholder": "Example: en, sw, fr",
+                }
+            ),
+            "display_order": forms.NumberInput(
+                attrs={
+                    "class": "w-full font-normal text-sm rounded-md",
+                    "min": 0,
+                }
+            ),
+            "visible_in_mobile": forms.CheckboxInput(
+                attrs={"class": "rounded border-stone-300 text-red-800 focus:ring-red-700"}
+            ),
+            "active": forms.CheckboxInput(
+                attrs={"class": "rounded border-stone-300 text-red-800 focus:ring-red-700"}
+            ),
         }
 
     def clean_title(self):
@@ -637,3 +695,11 @@ class KnowledgeBaseForm(forms.ModelForm):
         if not title:
             raise forms.ValidationError("Title is required.")
         return title
+
+    def clean(self):
+        cleaned_data = super().clean()
+        content_type = cleaned_data.get("content_type")
+        disease = cleaned_data.get("disease")
+        if content_type != "ohkr" and disease:
+            self.add_error("disease", "Disease can only be linked to OHKR knowledge.")
+        return cleaned_data

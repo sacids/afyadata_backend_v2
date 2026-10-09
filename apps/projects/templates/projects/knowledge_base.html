@@ -22,12 +22,8 @@
 {% block content %}
 <main class="bg-white h-full">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
-        {% if perms.projects.add_knowledgebase %}
-            {% url 'projects:knowledge-base-create' project.pk as create_knowledge_base_url %}
-        {% endif %}
-
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            {% include 'partials/list_header.html' with header_title="Knowledge Base" header_subtitle="Search and manage project guidance, notes, and response knowledge." search_id="knowledge_base_search" search_placeholder="Search knowledge base..." export_button_id="knowledge_base_export" primary_action_url=create_knowledge_base_url primary_action_label="Create" primary_action_icon="bx bx-plus" %}
+            {% include 'partials/list_header.html' with header_title=content_type_label header_subtitle="Search and manage project guidance, notes, and response knowledge for the mobile app." search_id="knowledge_base_search" search_placeholder="Search knowledge base..." export_button_id="knowledge_base_export" primary_action_url=create_knowledge_base_url primary_action_label="Create" primary_action_icon="bx bx-plus" %}
 
             {% if messages %}
             <div class="px-5 pt-4">
@@ -93,6 +89,7 @@
                     emptyTable: "No knowledge base entries found for this project.",
                 },
             }, {
+                content_type: "{{ content_type|default:'' }}",
         },);
 
         $('#knowledge_base_search').on('keyup', function () {

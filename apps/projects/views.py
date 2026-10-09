@@ -2055,14 +2055,24 @@ class ProjectKnowledgeBaseListView(PermissionRequiredMixin, generic.TemplateView
 
     def get(self, request, *args, **kwargs):
         project = get_accessible_project_or_404(request.user, kwargs["pk"])
+        content_type = request.GET.get("content_type", "")
+        title_suffix = "OHKR Knowledge" if content_type == "ohkr" else "Knowledge Base"
+        create_url = None
+        if request.user.has_perm("projects.add_knowledgebase"):
+            create_url = reverse_lazy("projects:knowledge-base-create", kwargs={"pk": project.pk})
+        if create_url and content_type:
+            create_url = f"{create_url}?content_type={content_type}"
         context = {
-            "title": f"{project.title} - Knowledge Base",
+            "title": f"{project.title} - {title_suffix}",
             "project": project,
+            "content_type": content_type,
+            "content_type_label": title_suffix,
+            "create_knowledge_base_url": create_url,
             "breadcrumbs": [
                 {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
                 {"name": "Projects Directory", "url": reverse_lazy("projects:lists")},
                 {"name": project.title, "url": reverse_lazy("projects:show", kwargs={"pk": project.pk})},
-                {"name": "Knowledge Base", "url": "#"},
+                {"name": title_suffix, "url": "#"},
             ],
             "links": build_project_workspace_links(request.user, project.pk),
         }
@@ -2078,10 +2088,13 @@ class ProjectKnowledgeBaseCreateView(PermissionRequiredMixin, generic.TemplateVi
         return super(ProjectKnowledgeBaseCreateView, self).dispatch(*args, **kwargs)
 
     def get_context(self, request, project, form=None):
+        content_type = request.GET.get("content_type") or request.POST.get("content_type") or ""
+        initial = {"content_type": content_type} if content_type else None
         return {
-            "title": "Create Knowledge Base",
+            "title": "Create OHKR Knowledge" if content_type == "ohkr" else "Create Knowledge Base",
             "project": project,
-            "form": form or KnowledgeBaseForm(),
+            "form": form or KnowledgeBaseForm(project=project, initial=initial),
+            "content_type": content_type,
             "submit_label": "Create",
             "breadcrumbs": [
                 {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
@@ -2099,7 +2112,7 @@ class ProjectKnowledgeBaseCreateView(PermissionRequiredMixin, generic.TemplateVi
 
     def post(self, request, *args, **kwargs):
         project = get_accessible_project_or_404(request.user, kwargs["pk"])
-        form = KnowledgeBaseForm(request.POST, request.FILES)
+        form = KnowledgeBaseForm(request.POST, request.FILES, project=project)
         if form.is_valid():
             knowledge_base = form.save(commit=False)
             knowledge_base.project = project
@@ -2107,9 +2120,10 @@ class ProjectKnowledgeBaseCreateView(PermissionRequiredMixin, generic.TemplateVi
             knowledge_base.updated_by = request.user
             knowledge_base.save()
             messages.success(request, "Knowledge base created successfully.")
-            return HttpResponseRedirect(
-                reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
-            )
+            redirect_url = reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
+            if knowledge_base.content_type == "ohkr":
+                redirect_url = f"{redirect_url}?content_type=ohkr"
+            return HttpResponseRedirect(redirect_url)
 
         messages.error(request, "Please correct the knowledge base errors below.")
         return render(request, self.template_name, self.get_context(request, project, form=form))
@@ -2131,7 +2145,7 @@ class ProjectKnowledgeBaseUpdateView(PermissionRequiredMixin, generic.TemplateVi
             "title": "Edit Knowledge Base",
             "project": project,
             "knowledge_base": knowledge_base,
-            "form": form or KnowledgeBaseForm(instance=knowledge_base),
+            "form": form or KnowledgeBaseForm(instance=knowledge_base, project=project),
             "submit_label": "Update",
             "breadcrumbs": [
                 {"name": "Dashboard", "url": reverse_lazy("dashboard:summaries")},
@@ -2155,15 +2169,21 @@ class ProjectKnowledgeBaseUpdateView(PermissionRequiredMixin, generic.TemplateVi
     def post(self, request, *args, **kwargs):
         project = get_accessible_project_or_404(request.user, kwargs["pk"])
         knowledge_base = self.get_knowledge_base(project)
-        form = KnowledgeBaseForm(request.POST, request.FILES, instance=knowledge_base)
+        form = KnowledgeBaseForm(
+            request.POST,
+            request.FILES,
+            instance=knowledge_base,
+            project=project,
+        )
         if form.is_valid():
             knowledge_base = form.save(commit=False)
             knowledge_base.updated_by = request.user
             knowledge_base.save()
             messages.success(request, "Knowledge base updated successfully.")
-            return HttpResponseRedirect(
-                reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
-            )
+            redirect_url = reverse_lazy("projects:knowledge-base", kwargs={"pk": project.pk})
+            if knowledge_base.content_type == "ohkr":
+                redirect_url = f"{redirect_url}?content_type=ohkr"
+            return HttpResponseRedirect(redirect_url)
 
         messages.error(request, "Please correct the knowledge base errors below.")
         return render(

@@ -53,8 +53,56 @@
             </div>
             {% endif %}
 
-            <form method="post" enctype="multipart/form-data" class="space-y-5 px-5 py-5">
+            <form method="post" enctype="multipart/form-data" class="space-y-5 px-5 py-5"
+                x-data="{ contentType: '{{ form.content_type.value|default:'general' }}' }">
                 {% csrf_token %}
+
+                <div class="grid gap-5 md:grid-cols-2">
+                    <div>
+                        <label for="{{ form.content_type.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Content Type</label>
+                        <select name="{{ form.content_type.html_name }}" id="{{ form.content_type.id_for_label }}"
+                            x-model="contentType"
+                            class="w-full font-normal text-sm rounded-md">
+                            {% for value, label in form.fields.content_type.choices %}
+                                <option value="{{ value }}" {% if form.content_type.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.content_type.errors %}
+                            <p class="mt-2 text-xs text-red-700">{{ form.content_type.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.form.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Form Scope</label>
+                        {{ form.form }}
+                        {% if form.form.errors %}
+                            <p class="mt-2 text-xs text-red-700">{{ form.form.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4"
+                    x-show="contentType === 'ohkr'"
+                    x-cloak>
+                    <div class="mb-4">
+                        <h3 class="text-sm font-semibold text-emerald-950">OHKR Details</h3>
+                        <p class="mt-1 text-xs text-emerald-800">Use this when the content should appear as disease or clinical guidance in the mobile app.</p>
+                    </div>
+                    <div>
+                        <label for="{{ form.disease.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Linked Disease</label>
+                        <select name="{{ form.disease.html_name }}" id="{{ form.disease.id_for_label }}"
+                            x-bind:disabled="contentType !== 'ohkr'"
+                            x-effect="if (contentType !== 'ohkr') $el.value = ''"
+                            class="w-full font-normal text-sm rounded-md">
+                            {% for value, label in form.fields.disease.choices %}
+                                <option value="{{ value }}" {% if form.disease.value|stringformat:'s' == value|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.disease.errors %}
+                            <p class="mt-2 text-xs text-red-700">{{ form.disease.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                </div>
 
                 <div>
                     <label for="{{ form.title.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Title</label>
@@ -83,6 +131,46 @@
                         <p class="mt-2 text-xs text-red-700">{{ form.description.errors|striptags }}</p>
                     {% endif %}
                 </div>
+
+                <details class="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                    <summary class="cursor-pointer text-sm font-semibold text-stone-900">Publishing settings</summary>
+                    <div class="mt-4 space-y-5">
+                        <div class="grid gap-5 md:grid-cols-2">
+                            <div>
+                                <label for="{{ form.language_code.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Language Code</label>
+                                {{ form.language_code }}
+                                {% if form.language_code.errors %}
+                                    <p class="mt-2 text-xs text-red-700">{{ form.language_code.errors|striptags }}</p>
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <label for="{{ form.display_order.id_for_label }}" class="mb-2 block text-xs font-semibold uppercase text-stone-500">Display Order</label>
+                                {{ form.display_order }}
+                                {% if form.display_order.errors %}
+                                    <p class="mt-2 text-xs text-red-700">{{ form.display_order.errors|striptags }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="flex items-start gap-3 text-sm text-stone-700">
+                                {{ form.visible_in_mobile }}
+                                <span>
+                                    <span class="block font-medium text-stone-900">Visible in mobile app</span>
+                                    <span class="mt-1 block text-xs text-stone-500">Show this content in the project knowledge section.</span>
+                                </span>
+                            </label>
+                            <label class="flex items-start gap-3 text-sm text-stone-700">
+                                {{ form.active }}
+                                <span>
+                                    <span class="block font-medium text-stone-900">Active</span>
+                                    <span class="mt-1 block text-xs text-stone-500">Inactive content is hidden from mobile knowledge responses.</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </details>
 
                 {% if form.non_field_errors %}
                     <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

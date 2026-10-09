@@ -333,9 +333,27 @@ class KnowledgeBaseView(viewsets.ViewSet):
 
         knowledge_base = (
             KnowledgeBase.objects.filter(project_id=project_id)
-            .select_related("project", "created_by", "updated_by")
-            .order_by("-updated_at", "title")
+            .select_related("project", "form", "disease", "created_by", "updated_by")
         )
+        content_type = request.query_params.get("content_type")
+        if content_type:
+            knowledge_base = knowledge_base.filter(content_type=content_type)
+
+        form_id = request.query_params.get("form_id")
+        if form_id:
+            knowledge_base = knowledge_base.filter(Q(form_id=form_id) | Q(form__isnull=True))
+
+        mobile = request.query_params.get("mobile")
+        if str(mobile or "").lower() in {"1", "true", "yes"}:
+            knowledge_base = knowledge_base.filter(active=True, visible_in_mobile=True)
+
+        language_code = request.query_params.get("language_code")
+        if language_code:
+            knowledge_base = knowledge_base.filter(
+                Q(language_code__iexact=language_code) | Q(language_code__isnull=True) | Q(language_code="")
+            )
+
+        knowledge_base = knowledge_base.order_by("display_order", "-updated_at", "title")
         serializer = KnowledgeBaseSerializer(
             knowledge_base,
             many=True,
@@ -360,7 +378,7 @@ class KnowledgeBaseView(viewsets.ViewSet):
         knowledge_base = KnowledgeBase.objects.filter(
             project_id=project_id,
             pk=pk,
-        ).select_related("project", "created_by", "updated_by").first()
+        ).select_related("project", "form", "disease", "created_by", "updated_by").first()
         if not knowledge_base:
             return Response(
                 {"success": False, "message": "Knowledge base does not exist"},

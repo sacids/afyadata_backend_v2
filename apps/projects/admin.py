@@ -17,8 +17,10 @@ class TagAdmin(admin.ModelAdmin):
 
 @admin.register(KnowledgeBase)
 class KnowledgeBaseAdmin(admin.ModelAdmin):
-    list_display = ["title"]
-    ordering = ("title",)
+    list_display = ["title", "project", "form", "content_type", "disease", "visible_in_mobile", "active", "display_order"]
+    list_filter = ["content_type", "visible_in_mobile", "active", "project", "form"]
+    search_fields = ["title", "description", "form__title", "disease__name", "project__title"]
+    ordering = ("project", "form", "display_order", "title")
 
 
 class ProjectMemberInline(admin.TabularInline):
@@ -421,8 +423,6 @@ class FormDataFilterAdmin(admin.ModelAdmin):
     list_filter = ('form__project', 'form')
     search_fields = ('name', 'filter_text', 'description')
     filter_horizontal = ('permitted_groups', 'permitted_users')   
-
-
 
 
 

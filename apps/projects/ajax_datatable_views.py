@@ -394,10 +394,36 @@ class KnowledgeBaseAjaxDatatableView(AjaxDatatableView):
             "searchable": True,
         },
         {
+            "name": "content_type",
+            "title": "Type",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "form",
+            "title": "Form",
+            "foreign_field": "form__title",
+            "visible": True,
+            "searchable": True,
+        },
+        {
+            "name": "disease",
+            "title": "Disease",
+            "foreign_field": "disease__name",
+            "visible": True,
+            "searchable": True,
+        },
+        {
             "name": "description",
             "title": "Description",
             "visible": True,
             "searchable": True,
+        },
+        {
+            "name": "visible_in_mobile",
+            "title": "Mobile",
+            "visible": True,
+            "searchable": False,
         },
         {
             "name": "created_by",
@@ -435,9 +461,15 @@ class KnowledgeBaseAjaxDatatableView(AjaxDatatableView):
         if not project_queryset.exists():
             return KnowledgeBase.objects.none()
 
-        return KnowledgeBase.objects.filter(project_id=project_pk).select_related(
+        queryset = KnowledgeBase.objects.filter(project_id=project_pk).select_related(
             "created_by",
+            "disease",
+            "form",
         )
+        content_type = request.GET.get("content_type") if request is not None else ""
+        if content_type:
+            queryset = queryset.filter(content_type=content_type)
+        return queryset
 
     def customize_row(self, row, obj):
         description = strip_tags(obj.description or "No description added yet.").strip()
@@ -463,6 +495,24 @@ class KnowledgeBaseAjaxDatatableView(AjaxDatatableView):
         )
         row["description"] = (
             f'<div class="max-w-xl whitespace-normal text-xs leading-5 text-stone-600">{short_description}</div>'
+        )
+        row["content_type"] = (
+            f'<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">{obj.get_content_type_display()}</span>'
+        )
+        row["form"] = (
+            f'<span class="text-xs text-stone-600">{escape(obj.form.title) if obj.form else "Project-wide"}</span>'
+        )
+        row["disease"] = (
+            f'<span class="text-xs text-stone-600">{escape(obj.disease.name) if obj.disease else "N/A"}</span>'
+        )
+        row["visible_in_mobile"] = (
+            '<span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium '
+            + (
+                "bg-emerald-100 text-emerald-700"
+                if obj.visible_in_mobile and obj.active
+                else "bg-stone-100 text-stone-600"
+            )
+            + f'">{"Visible" if obj.visible_in_mobile and obj.active else "Hidden"}</span>'
         )
         row["created_by"] = (
             obj.created_by.get_full_name().strip() or obj.created_by.username
