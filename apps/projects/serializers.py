@@ -64,16 +64,29 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
     photo_url = serializers.SerializerMethodField()
     created_by = serializers.StringRelatedField(read_only=True)
     updated_by = serializers.StringRelatedField(read_only=True)
+    content_type_label = serializers.CharField(source="get_content_type_display", read_only=True)
+    form_title = serializers.CharField(source="form.title", read_only=True, default="")
+    disease_name = serializers.CharField(source="disease.name", read_only=True, default="")
 
     class Meta:
         model = KnowledgeBase
         fields = [
             "id",
             "project",
+            "form",
+            "form_title",
+            "content_type",
+            "content_type_label",
+            "disease",
+            "disease_name",
             "title",
             "description",
             "photo",
             "photo_url",
+            "language_code",
+            "display_order",
+            "visible_in_mobile",
+            "active",
             "created_at",
             "updated_at",
             "created_by",

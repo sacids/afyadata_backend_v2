@@ -661,8 +661,33 @@ class MatchingConfiguration(models.Model):
 class KnowledgeBase(models.Model):
     """Model definition for knowledge base"""
 
+    CONTENT_TYPE_CHOICES = (
+        ("general", "General"),
+        ("ohkr", "OHKR"),
+        ("response", "Response Guidance"),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey("Project", on_delete=models.CASCADE, related_name="project_kb")
+    form = models.ForeignKey(
+        "FormDefinition",
+        on_delete=models.CASCADE,
+        related_name="knowledge_base",
+        null=True,
+        blank=True,
+    )
+    content_type = models.CharField(
+        max_length=20,
+        choices=CONTENT_TYPE_CHOICES,
+        default="general",
+    )
+    disease = models.ForeignKey(
+        "ohkr.Disease",
+        on_delete=models.SET_NULL,
+        related_name="project_knowledge",
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=255)
     photo = models.FileField(
         upload_to="assets/uploads/photo/",
@@ -671,6 +696,10 @@ class KnowledgeBase(models.Model):
         blank=True,
     )
     description = models.TextField(null=True, blank=True)
+    language_code = models.CharField(max_length=10, null=True, blank=True)
+    visible_in_mobile = models.BooleanField(default=True)
+    active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -690,7 +719,11 @@ class KnowledgeBase(models.Model):
 
     class Meta:
         """Meta definition for knowledge base."""
-        indexes = [models.Index(fields=["title"])]
+        indexes = [
+            models.Index(fields=["title"]),
+            models.Index(fields=["project", "content_type", "visible_in_mobile", "active"]),
+            models.Index(fields=["project", "form", "content_type"]),
+        ]
         db_table = "ad_knowledge_base"
         managed = True
         app_label = "projects"
@@ -699,5 +732,3 @@ class KnowledgeBase(models.Model):
 
     def __str__(self):
         return self.title
-
-
