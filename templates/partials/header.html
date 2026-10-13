@@ -4,13 +4,14 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex min-h-[64px] items-center justify-between gap-4">
             <div class="flex items-center gap-8">
-                <a href="{% url 'dashboard:summaries' %}" class="flex flex-col items-start">
+                <a href="{% if request.user.is_authenticated %}{% url 'dashboard:summaries' %}{% else %}{% url 'auth:login' %}{% endif %}" class="flex flex-col items-start">
                     <img class="h-8 w-auto" src="{% static 'images/logo_C.png' %}" alt="Afyadata">
                     <div class="hidden sm:block mt-1">
                         <div class="text-[11px] text-stone-500">Community Surveillance Platform</div>
                     </div>
                 </a>
 
+                {% if request.user.is_authenticated %}
                 <div class="hidden md:flex md:items-center md:gap-6">
                     <a href="{% url 'dashboard:summaries' %}"
                         class="relative px-1 py-2 text-sm font-semibold transition {% if current_namespace == 'dashboard' %}text-stone-950{% else %}text-stone-600 hover:text-stone-900{% endif %}">
@@ -42,9 +43,11 @@
                         </a>
                     {% endif %}
                 </div>
+                {% endif %}
             </div>
 
             <div class="hidden md:flex md:items-center md:gap-3">
+                {% if request.user.is_authenticated %}
                 <div class="relative">
                     <button @click="userMenuOpen = !userMenuOpen" type="button"
                         class="flex items-center gap-3 rounded-full border border-stone-200 bg-white pl-2 pr-3 py-1.5 shadow-sm transition hover:border-stone-300 hover:bg-stone-100">
@@ -77,8 +80,15 @@
                         </div>
                     </div>
                 </div>
+                {% else %}
+                    <a href="{% url 'auth:login' %}"
+                       class="inline-flex items-center justify-center rounded-md bg-red-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800">
+                        Sign In
+                    </a>
+                {% endif %}
             </div>
 
+            {% if request.user.is_authenticated %}
             <button @click="mobileMenuOpen = !mobileMenuOpen" type="button"
                 class="inline-flex items-center justify-center rounded-xl border border-stone-200 bg-white p-2 text-stone-600 shadow-sm transition hover:bg-stone-100 hover:text-stone-800 md:hidden"
                 :aria-expanded="mobileMenuOpen.toString()" aria-controls="mobile-menu">
@@ -86,9 +96,16 @@
                 <i x-show="!mobileMenuOpen" class='bx bx-menu text-2xl'></i>
                 <i x-show="mobileMenuOpen" class='bx bx-x text-2xl'></i>
             </button>
+            {% else %}
+                <a href="{% url 'auth:login' %}"
+                   class="inline-flex items-center justify-center rounded-md bg-red-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-800 md:hidden">
+                    Sign In
+                </a>
+            {% endif %}
         </div>
     </div>
 
+    {% if request.user.is_authenticated %}
     <div x-show="mobileMenuOpen" x-transition class="border-t border-stone-200 bg-white md:hidden" id="mobile-menu" style="display: none;">
         <div class="space-y-1 px-4 py-4">
             <a href="{% url 'dashboard:summaries' %}"
@@ -145,6 +162,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </nav>
 
 <header class="border-b border-stone-200 bg-gradient-to-b from-white to-stone-50/70">

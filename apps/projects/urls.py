@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views, utils
 from . import ajax_datatable_views
+from . import web_form_views
 
 
 app_name = 'projects'
@@ -29,6 +30,7 @@ urlpatterns = [
     path('forms/<str:pk>/api-config', views.SurveyAPIConfig.as_view(), name='form-api-config'),
     path('forms/<str:pk>/delete', views.SurveyDeleteView.as_view(), name='delete-form'),
     path("forms/<str:pk>/definition", views.form_definition, name="form-definition"),
+    path("forms/<str:pk>/fill", web_form_views.WebFormFillView.as_view(), name="form-fill"),
 
     # OHKR {Reference Data + Form Reactions}
     path('forms/<str:pk>/reference-data', views.SurveyReferenceDataView.as_view(), name='form-reference-data'),
@@ -39,6 +41,7 @@ urlpatterns = [
     path('forms/<str:pk>/data', views.SurveyDataView.as_view(), name='form-data'),
     path('forms/<str:pk>/data/export', views.SurveyDataExportView.as_view(), name="form-data-export"),
     path('forms/<str:data_id>/data/instance', views.SurveyDataInstanceView.as_view(), name="form-data-instance"),
+    path('forms/<str:data_id>/data/edit', web_form_views.WebFormDataUpdateView.as_view(), name="form-data-edit"),
     path('forms/<str:data_id>/data/messages', views.SurveyDataMessagesView.as_view(), name="form-data-messages"),
     path('forms/<str:data_id>/data/workflow', views.SurveyDataWorkflowView.as_view(), name="form-data-workflow"),
 

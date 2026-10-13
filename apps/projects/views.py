@@ -1400,6 +1400,17 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
             "form_data": form_data.form_data,
             "attachments": attachments,
             "media_url": settings.MEDIA_URL,
+            "edit_url": reverse_lazy("projects:form-data-edit", kwargs={"data_id": form_data.uuid}),
+            "updated_by": (
+                form_data.updated_by.get_full_name().strip() or form_data.updated_by.username
+                if form_data.updated_by
+                else ""
+            ),
+            "last_updated_by": (
+                form_data.last_updated_by.get_full_name().strip() or form_data.last_updated_by.username
+                if form_data.last_updated_by
+                else ""
+            ),
         }
 
         # get form

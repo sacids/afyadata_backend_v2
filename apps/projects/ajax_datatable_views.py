@@ -288,6 +288,11 @@ class FormsAjaxDatatableView(ProjectDatatablePermissionMixin, AjaxDatatableView)
         )
 
         action_bits = []
+        action_bits.append(
+            '<a href="{}" title="Fill form" class="inline-flex items-center justify-center w-7 h-7 p-1 rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer">'
+            '<i class="bx bx-edit bx-xs"></i>'
+            '</a>'.format(reverse("projects:form-fill", kwargs={"pk": obj.id}))
+        )
         if self.request.user.has_perm("projects.change_formdefinition"):
             action_bits.extend(
                 [
