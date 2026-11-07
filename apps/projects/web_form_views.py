@@ -9,7 +9,7 @@ from django.views import View
 from apps.accounts.utils import is_admin_user
 
 from .models import FormData, FormDefinition, ProjectMember
-from .web_form_service import WebFormDefinitionService
+from .web_form_service import WebFormDefinitionService, related_child_forms
 
 
 def get_accessible_web_form_or_404(user, pk):
@@ -41,7 +41,16 @@ class WebFormFillView(View):
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
-    def get_context(self, request, form, service, errors=None, bound_data=None, instance=None):
+    def get_parent_instance(self, request, form):
+        parent_id = request.GET.get("parent_id")
+        if not parent_id:
+            return None
+        parent = get_accessible_web_form_data_or_404(request.user, parent_id)
+        if not related_child_forms(parent.form).filter(pk=form.pk, active=1).exists():
+            raise Http404("This form is not related to the parent submission")
+        return parent
+
+    def get_context(self, request, form, service, errors=None, bound_data=None, instance=None, parent_instance=None):
         pages = service.pages(bound_data=bound_data, errors=errors)
         first_error_page = 0
         for page in pages:
@@ -54,11 +63,16 @@ class WebFormFillView(View):
             "project": form.project,
             "form": form,
             "instance": instance,
+            "parent_instance": parent_instance,
             "is_edit": instance is not None,
             "pages": pages,
             "first_error_page": first_error_page,
             "page_count": len(pages),
             "errors": errors or {},
+            "messages": [
+                message for message in messages.get_messages(request)
+                if request.method != "GET" or message.level != messages.SUCCESS
+            ],
             "breadcrumbs": [
                 {"name": "Dashboard", "url": reverse("dashboard:summaries")},
                 {"name": "Projects Directory", "url": reverse("projects:lists")},
@@ -69,13 +83,15 @@ class WebFormFillView(View):
 
     def get(self, request, pk):
         form = get_accessible_web_form_or_404(request.user, pk)
+        parent = self.get_parent_instance(request, form)
         service = WebFormDefinitionService(form, user=request.user)
-        return render(request, self.template_name, self.get_context(request, form, service))
+        return render(request, self.template_name, self.get_context(request, form, service, parent_instance=parent))
 
     def post(self, request, pk):
         form = get_accessible_web_form_or_404(request.user, pk)
+        parent = self.get_parent_instance(request, form)
         service = WebFormDefinitionService(form, user=request.user)
-        instance, errors = service.validate_and_save(request.POST, request.FILES)
+        instance, errors = service.validate_and_save(request.POST, request.FILES, parent_instance=parent)
         if errors:
             messages.error(request, "Please correct the highlighted fields.")
             return render(
@@ -87,6 +103,7 @@ class WebFormFillView(View):
                     service,
                     errors=errors,
                     bound_data=request.POST,
+                    parent_instance=parent,
                 ),
                 status=400,
             )

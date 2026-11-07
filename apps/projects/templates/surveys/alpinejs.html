@@ -42,6 +42,10 @@
 
             form_cols: [],
             form_data: [],
+            tableLoading: false,
+            tableError: '',
+            tableColumns: [],
+            columnVisibilityByForm: {},
             dt: null,
             form_defn: {},
 
@@ -335,12 +339,41 @@
                 }
             },
 
+            visibleTableColumnCount() {
+                return this.tableColumns.filter(column => column.visible).length;
+            },
+
+            prepareTableColumns() {
+                const saved = this.columnVisibilityByForm[this.activeFormId] || [];
+                this.tableColumns = this.form_cols.map((label, index) => ({
+                    index, label, visible: saved[index] !== false,
+                }));
+                if (this.tableColumns.length && !this.visibleTableColumnCount()) {
+                    this.tableColumns[0].visible = true;
+                }
+            },
+
+            setTableColumnVisibility(index, visible) {
+                const column = this.tableColumns[index];
+                if (!column || (!visible && column.visible && this.visibleTableColumnCount() === 1)) return;
+                column.visible = visible;
+                this.columnVisibilityByForm[this.activeFormId] = this.tableColumns.map(item => item.visible);
+                if (this.dt) this.dt.column(index).visible(visible);
+            },
+
+            showAllTableColumns() {
+                this.tableColumns.forEach(column => { column.visible = true; });
+                this.columnVisibilityByForm[this.activeFormId] = this.tableColumns.map(() => true);
+                if (this.dt) this.dt.columns().visible(true);
+            },
+
             initDataTable() {
                 const $table = $('#datatable_form');
                 if (!$table.length) return;
 
                 // guard: avoid init with no columns
                 if (!Array.isArray(this.form_cols) || this.form_cols.length === 0) return;
+                this.prepareTableColumns();
 
                 // destroy safely but keep the table structure
                 if ($.fn.dataTable.isDataTable($table)) {
@@ -356,6 +389,7 @@
                 const columns = this.form_cols.map((_, idx) => ({
                     data: idx,
                     defaultContent: "",
+                    visible: this.tableColumns[idx].visible,
                 }));
 
                 this.dt = $table.DataTable({
@@ -461,27 +495,45 @@
                 this.activeFormId = form.id;
                 this.viewMode = 'table';
                 this.tabId = '';
+                this.tableLoading = true;
+                this.tableError = '';
+                this.title = form.title;
+                this.description = form.description || '';
+                const requestedFormId = form.id;
 
-                await this.loadFormDefinition(this.activeFormId, {
-                    fallbackTitle: form.title,
-                    fallbackDescription: form.description,
-                });
-
-                const query = new URLSearchParams({ parent_id: this.parentId });
-                if (this.selectedLanguage) {
-                    query.set('lang', this.selectedLanguage);
-                }
-
-                fetch(`/projects/forms/${this.activeFormId}/data?${query.toString()}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        this.description = data.form_title || this.description;
-                        this.form_cols = data.cols;
-                        this.form_data = data.data;
-
-                        //rebuild the table
-                        this.rebuildDataTable();
+                try {
+                    await this.loadFormDefinition(requestedFormId, {
+                        fallbackTitle: form.title,
+                        fallbackDescription: form.description,
                     });
+
+                    const query = new URLSearchParams({ parent_id: this.parentId });
+                    if (this.selectedLanguage) {
+                        query.set('lang', this.selectedLanguage);
+                    }
+
+                    const response = await fetch(`/projects/forms/${requestedFormId}/data?${query.toString()}`);
+                    if (!response.ok) throw new Error('Unable to load related submissions.');
+                    const data = await response.json();
+                    if (!Array.isArray(data.cols) || !Array.isArray(data.data)) {
+                        throw new Error('Unable to load related submissions.');
+                    }
+                    if (this.activeFormId !== requestedFormId || this.viewMode !== 'table') return;
+                    this.description = data.form_title || this.description;
+                    this.form_cols = data.cols;
+                    this.form_data = data.data;
+                    const child = this.forms.find(item => String(item.id) === String(requestedFormId));
+                    if (child) child.submission_count = data.data.length;
+                    this.tableLoading = false;
+                    await this.$nextTick();
+                    this.rebuildDataTable();
+                } catch (error) {
+                    if (this.activeFormId === requestedFormId && this.viewMode === 'table') {
+                        this.tableError = error.message || 'Unable to load related submissions.';
+                    }
+                } finally {
+                    if (this.activeFormId === requestedFormId) this.tableLoading = false;
+                }
             },
 
             exportData(form_id) {
@@ -497,6 +549,7 @@
                 this.activeFormId = form_id;
 
                 const response = await fetch(`/projects/forms/${form_id}/definition${this.buildLangQuery()}`);
+                if (!response.ok) throw new Error('Unable to load the form definition.');
                 const data = await response.json();
 
                 this.form_defn = data.cols || {};

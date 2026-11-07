@@ -21,13 +21,16 @@
                 <h1 class="mt-2 text-2xl font-semibold text-stone-950">
                     {% if is_edit %}Edit {{ form.title }}{% else %}{{ form.title }}{% endif %}
                 </h1>
+                {% if parent_instance %}
+                    <p class="mt-2 text-sm text-stone-600">For {{ parent_instance.form.title }}: {{ parent_instance.title|default:parent_instance.uuid }}</p>
+                {% endif %}
                 {% if form.description %}
                     <p class="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{{ form.description }}</p>
                 {% endif %}
             </div>
-            <a href="{% if is_edit %}{% url 'projects:form-data-instance' instance.uuid %}{% else %}{% url 'projects:forms' project.pk %}{% endif %}"
+            <a href="{% if parent_instance %}{% url 'projects:form-data-instance' parent_instance.uuid %}{% elif is_edit %}{% url 'projects:form-data-instance' instance.uuid %}{% else %}{% url 'projects:forms' project.pk %}{% endif %}"
                 class="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">
-                {% if is_edit %}Back to Data{% else %}Back to Forms{% endif %}
+                {% if parent_instance or is_edit %}Back to Data{% else %}Back to Forms{% endif %}
             </a>
         </div>
 
@@ -193,7 +196,7 @@
             {% endfor %}
 
             <div class="sticky bottom-0 flex flex-col gap-3 border-t border-stone-200 bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-                <a href="{% url 'projects:forms' project.pk %}"
+                <a href="{% if parent_instance %}{% url 'projects:form-data-instance' parent_instance.uuid %}{% else %}{% url 'projects:forms' project.pk %}{% endif %}"
                     class="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">
                     Cancel
                 </a>

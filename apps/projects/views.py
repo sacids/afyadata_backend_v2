@@ -4,6 +4,7 @@ import random
 import string
 import csv
 import uuid
+from urllib.parse import urlencode
 from datetime import datetime
 from datetime import datetime, date
 from django.core.serializers.json import DjangoJSONEncoder
@@ -38,6 +39,7 @@ from datetime import date, datetime
 from django.http import JsonResponse, HttpResponse
 from . import x2jform
 from . import utils
+from .web_form_service import parent_submission_for, related_child_forms
 
 from .models import Project, ProjectMember, FormDefinition, FormData
 from .forms import *
@@ -1310,7 +1312,7 @@ class SurveyDataView(PermissionRequiredMixin, generic.DetailView):
         cols = ["UUID", "Submitted", "Workflow State"] + [(tbl_header_dict[k] or k) for k in header_keys] + ["GPS", "ResponseID"]
 
         # get data
-        adata = FormData.objects.filter(form_id=cur_form.id).order_by("-submitted_at", "-created_at")
+        adata = FormData.objects.filter(form_id=cur_form.id, deleted=0).order_by("-submitted_at", "-created_at")
 
         if "parent_id" in request.GET and request.GET["parent_id"]:
             adata = adata.filter(parent_id=request.GET["parent_id"])
@@ -1417,26 +1419,25 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
         cur_form = FormDefinition.objects.get(id=form_data.form.pk)
 
         # get childrens
-        children_codes = [
-            int(c)
-            for c in (cur_form.children or "").split(",")
-            if c.strip().isdigit()
-        ]
-
-        children_forms = (
-            FormDefinition.objects.filter(
-                project=cur_form.project,
-                code__in=children_codes
-            ).order_by("code")
-            if children_codes
-            else FormDefinition.objects.none()
-        )
+        children_forms = related_child_forms(cur_form).annotate(
+            submission_count=Count(
+                "form_data",
+                filter=Q(form_data__parent_id=form_data.uuid, form_data__deleted=0),
+            )
+        ).order_by("code")
 
         children_forms_json = list(
             children_forms.values(
-                "id", "code", "title", "short_title", "description", "short_description"
+                "id", "code", "title", "short_title", "description", "short_description", "active", "submission_count"
             )
         )
+
+        for child in children_forms_json:
+            child["fill_url"] = (
+                reverse("projects:form-fill", kwargs={"pk": child["id"]})
+                + "?" + urlencode({"parent_id": form_data.uuid})
+                if child["active"] == 1 else ""
+            )
 
         context = {
             "title": cur_form.title,
@@ -1444,6 +1445,7 @@ class SurveyDataInstanceView(PermissionRequiredMixin, generic.TemplateView):
             "cur_form": cur_form,
             "project": cur_form.project,
             "children_forms_json": children_forms_json,
+            "parent_instance": parent_submission_for(form_data),
         }
 
         # breadcrumbs
