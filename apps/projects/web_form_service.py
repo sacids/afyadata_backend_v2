@@ -6,7 +6,7 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
-from .models import FormData, FormDataFile
+from .models import FormData, FormDataFile, FormDefinition
 from .utils import infer_uploaded_file_type, load_json
 
 
@@ -41,6 +41,21 @@ SKIPPED_FIELD_TYPES = {
     "hidden",
     "acknowledge",
 }
+
+
+def related_child_forms(parent_form):
+    codes = [int(code.strip()) for code in (parent_form.children or "").split(",") if code.strip().isdigit()]
+    return FormDefinition.objects.filter(project_id=parent_form.project_id, code__in=codes)
+
+
+def parent_submission_for(instance):
+    if not instance.parent_id:
+        return None
+    return FormData.objects.select_related("form").filter(
+        uuid=instance.parent_id,
+        deleted=0,
+        form__project_id=instance.form.project_id,
+    ).first()
 
 
 class WebFormDefinitionService:
@@ -449,7 +464,14 @@ class WebFormDefinitionService:
 
         return cleaned_data, file_payloads, {}
 
-    def validate_and_save(self, post_data, uploaded_files):
+    def validate_and_save(self, post_data, uploaded_files, parent_instance=None):
+        if parent_instance is not None and (
+            parent_instance.deleted
+            or not related_child_forms(parent_instance.form).filter(
+                pk=self.form_definition.pk, active=1
+            ).exists()
+        ):
+            raise ValueError("This form is not an active child of the parent submission's form.")
         cleaned_data, file_payloads, errors = self._clean_submission_payload(
             post_data,
             uploaded_files,
@@ -465,6 +487,7 @@ class WebFormDefinitionService:
                 uuid=instance_uuid,
                 original_uuid=instance_uuid,
                 form=self.form_definition,
+                parent_id=parent_instance.uuid if parent_instance is not None else None,
                 title=self._submission_title(cleaned_data, now),
                 form_data=cleaned_data,
                 created_at=now,

@@ -6,6 +6,29 @@
 
 <main class="bg-white min-h-screen" x-data="initData()">
     <div class="mx-auto max-w-7xl py-6 px-4 sm:px-6 lg:px-8">
+        {% if messages %}
+            <div class="mb-5 space-y-2" role="status">
+                {% for message in messages %}
+                    <div class="rounded-lg border px-4 py-3 text-sm {% if message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-red-200 bg-red-50 text-red-800{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% if parent_instance %}
+            <section class="mb-5 border-b border-gray-200 pb-4" aria-label="Parent submission">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-medium text-gray-500">Parent: {{ parent_instance.form.title }}</p>
+                        <p class="mt-1 break-words text-sm font-semibold text-gray-800">{{ parent_instance.title|default:parent_instance.uuid }}</p>
+                        <p class="mt-1 text-xs text-gray-500">Submitted {{ parent_instance.submitted_at|default:parent_instance.created_at|date:"d M Y, H:i" }}</p>
+                    </div>
+                    <a href="{% url 'projects:form-data-instance' parent_instance.uuid %}" class="inline-flex items-center gap-1 text-xs font-medium text-green-700 hover:underline">
+                        <i class="bx bx-link-external" aria-hidden="true"></i> View Parent
+                    </a>
+                </div>
+            </section>
+        {% endif %}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Left: Builder / filters -->
             <aside class="lg:col-span-2">
@@ -22,6 +45,12 @@
                         <p class="text-xs"
                             :class="activeFormId === currentData.id ? 'text-orange-600' : 'text-gray-500'"
                             x-text="currentData.form_code"></p>
+                        <a :href="currentData.edit_url" @click.stop
+                            class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-green-700 hover:underline">
+                            <i class="bx bx-edit-alt" aria-hidden="true"></i> Edit Data
+                        </a>
+                        <p x-show="currentData.last_updated_by || currentData.updated_by" class="mt-2 break-words text-xs text-gray-500"
+                            x-text="`Last updated by ${currentData.last_updated_by || currentData.updated_by || ''}`"></p>
                     </div>
                 </div>
 
@@ -38,6 +67,15 @@
 
                             <p class="text-xs" :class="activeFormId === val.id ? 'text-orange-600' : 'text-gray-500'"
                                 x-text="val.code"></p>
+                            <button type="button" @click.stop="loadTable(val.id)"
+                                class="mt-3 flex items-center gap-1 text-xs font-medium text-gray-700 hover:underline">
+                                <i class="bx bx-table" aria-hidden="true"></i>
+                                <span>View Data (<span x-text="val.submission_count || 0"></span>)</span>
+                            </button>
+                            <a x-show="val.fill_url" :href="val.fill_url" @click.stop
+                                class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-green-700 hover:underline">
+                                <i class="bx bx-plus" aria-hidden="true"></i> Fill Form
+                            </a>
                         </div>
                     </div>
                 </template>
@@ -46,7 +84,7 @@
             <!-- Right: chart -->
             <section class="lg:col-span-10">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
+                    <div class="px-5 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h2 class="text-sm font-semibold text-gray-800" x-text="title"></h2>
                             <p class="text-xs text-gray-500" x-text="description"></p>
@@ -92,7 +130,7 @@
                             </template>
 
                             <template x-if="viewMode && viewMode !== ''">
-                                <div class="flex items-center space-x-2">
+                                <div class="flex flex-wrap items-center gap-2">
                                     <button type="button" @click="loadTable(activeFormId)"
                                         :class="{'bg-orange-50 border-orange-400': viewMode === 'table', 'bg-white border-gray-200 hover:bg-gray-50': viewMode !== 'table'}"
                                         class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
@@ -115,6 +153,27 @@
                                         class="inline-flex items-center rounded-md border border-green-700 bg-white px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-700 hover:text-white">
                                         <i class='bx bxs-file-export px-1'></i> Export
                                     </button>
+                                    <details class="relative" x-show="viewMode === 'table' && tableColumns.length > 0 && !tableLoading && !tableError" @click.outside="$el.removeAttribute('open')" @keydown.escape="$el.removeAttribute('open')">
+                                        <summary class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">
+                                            <i class="bx bx-columns" aria-hidden="true"></i> Columns
+                                        </summary>
+                                        <div class="absolute right-0 z-20 mt-1 w-64 max-w-[80vw] rounded-md border border-gray-200 bg-white p-3 shadow-md">
+                                            <button type="button" @click="showAllTableColumns()" class="mb-2 inline-flex items-center gap-1 text-xs font-medium text-green-700 hover:underline">
+                                                <i class="bx bx-show" aria-hidden="true"></i> Show All
+                                            </button>
+                                            <div class="max-h-64 space-y-2 overflow-y-auto">
+                                                <template x-for="column in tableColumns" :key="column.index">
+                                                    <label class="flex items-start gap-2 break-words text-xs text-gray-700">
+                                                        <input type="checkbox" :checked="column.visible"
+                                                            :disabled="column.visible && visibleTableColumnCount() === 1"
+                                                            @change="setTableColumnVisibility(column.index, $event.target.checked)"
+                                                            class="mt-0.5 rounded border-gray-300">
+                                                        <span class="min-w-0" x-text="column.label"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </details>
                                 </div>
                             </template>
                         </div>
@@ -146,24 +205,6 @@
                                                 </button>
                                             </template>
                                         </div>
-                                    </div>
-
-                                    <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                                        <div>
-                                            <h3 class="text-sm font-semibold text-stone-800">Submission Details</h3>
-                                            <p class="mt-1 text-xs text-stone-500">
-                                                <template x-if="currentData.last_updated_by || currentData.updated_by">
-                                                    <span x-text="`Last updated by ${currentData.last_updated_by || currentData.updated_by}`"></span>
-                                                </template>
-                                                <template x-if="!(currentData.last_updated_by || currentData.updated_by)">
-                                                    <span>No web edits recorded yet.</span>
-                                                </template>
-                                            </p>
-                                        </div>
-                                        <a :href="currentData.edit_url"
-                                            class="inline-flex items-center justify-center rounded-md bg-red-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-red-800">
-                                            <i class='bx bx-edit-alt mr-2 text-base'></i> Edit Data
-                                        </a>
                                     </div>
 
                                     <div class="grid grid-cols-1 md:grid-cols-2">
@@ -424,7 +465,12 @@
 
                         <!-- TABLE VIEW -->
                         <div x-show="tabId === '' && viewMode === 'table'" x-transition>
-                            <div class="relative overflow-x-auto">
+                            <p x-show="tableLoading" role="status" class="py-4 text-sm text-gray-600">Loading submissions...</p>
+                            <div x-show="tableError" role="alert" class="mb-4 text-sm text-red-700">
+                                <span x-text="tableError"></span>
+                                <button type="button" @click="loadTable(activeFormId)" class="ml-2 underline">Retry</button>
+                            </div>
+                            <div x-show="!tableLoading && !tableError" class="relative overflow-x-auto">
                                 <table id="datatable_form"
                                     class="w-full text-xs text-left text-gray-700 border-collapse">
                                     <thead></thead>
