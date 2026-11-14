@@ -31,7 +31,7 @@ SECRET_KEY = config(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", default=True, cast=bool)
 
 # ALLOWED_HOSTS = config("ALLOWED_HOST", default="*", cast=lambda v: [s.strip() for s in v.split(",") if s.strip()])
 ALLOWED_HOSTS = ["*"]
@@ -166,8 +166,16 @@ USE_TZ = True
 STATICFILES_DIRS = ["assets"]
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-if HAS_WHITENOISE:
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if HAS_WHITENOISE
+            else "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+        )
+    },
+}
 
 # default content length for submission requests
 DEFAULT_CONTENT_LENGTH = 10000000

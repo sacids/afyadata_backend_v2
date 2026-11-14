@@ -12,6 +12,7 @@
 {% block content %}
 <main class="bg-white min-h-screen">
     <div
+        data-web-form-root
         x-data="webFormFill({{ first_error_page|default:0 }}, {{ page_count|default:0 }})"
         x-init="init()"
         class="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
@@ -244,5 +245,6 @@
 
 {% block extra-js %}
 {{ block.super }}
-<script src="{% static 'js/surveys/web_fill.js' %}?v=2"></script>
+<script src="{% static 'js/surveys/web_fill.js' %}"></script>
+{% include 'surveys/web_fill_script_guard.html' %}
 {% endblock extra-js %}

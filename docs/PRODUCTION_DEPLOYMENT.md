@@ -200,6 +200,31 @@ sudo supervisorctl start afyadata_worker
 ```
 
 
+### Updating Web-Form Assets
+
+Deploy templates, Python code, and static assets from the same commit. With
+`DEBUG=False`, Django uses the `STORAGES` staticfiles backend to generate
+content-hashed asset URLs. Updating a query string does not refresh an old file
+still present in the collected static directory.
+
+After pulling the release, use the application's virtual environment:
+
+```bash
+python manage.py collectstatic --noinput
+```
+
+Then restart the existing Gunicorn service/process manager. Ensure the web
+server's `/static/` alias points to this checkout's `STATIC_ROOT`. For the Docker
+stack, rebuild/recreate the application containers; `entrypoint.sh` collects the
+assets before starting Gunicorn.
+
+If the web form reports an outdated controller, inspect the loaded
+`web_fill.<content-hash>.js` response. It must contain `choiceFilterErrors`,
+`calculationErrors`, and `webFormFill.version = 3`. A plain file from an older
+release means the static directory, cache, or application deployment is still
+out of sync. The form deliberately blocks filling rather than running without
+its cascading-selection rules.
+
 ## Option 2: Production Docker Deployment
 
 Use the dedicated stack in `docker-compose.prod.yml`.

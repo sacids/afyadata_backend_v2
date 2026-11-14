@@ -607,3 +607,5 @@ function webFormFill(initialPage, pageCount) {
         },
     };
 }
+
+webFormFill.version = 3;

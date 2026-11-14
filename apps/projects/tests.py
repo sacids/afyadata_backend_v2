@@ -1,5 +1,7 @@
 from contextlib import nullcontext
 import json
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -7,10 +9,36 @@ from django.contrib import messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.http import Http404, QueryDict
 from django.test import RequestFactory, SimpleTestCase
+from django.core.management import call_command
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.templatetags.static import static
 
 from .web_form_service import WebFormDefinitionService, parent_submission_for, related_child_forms
 from .web_form_views import WebFormFillView
 from .web_form_calculations import CalculationError, calculation_value, compile_expression
+
+
+class WebFormStaticAssetTests(SimpleTestCase):
+    def test_production_assets_receive_new_urls_when_content_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source"
+            script = source / "js/surveys/web_fill.js"
+            script.parent.mkdir(parents=True)
+            script.write_text("function webFormFill() {}\nwebFormFill.version = 3;\n")
+            with self.settings(
+                DEBUG=False,
+                STATIC_ROOT=str(Path(directory) / "collected"),
+                STATICFILES_DIRS=[str(source)],
+                STATICFILES_FINDERS=["django.contrib.staticfiles.finders.FileSystemFinder"],
+            ):
+                call_command("collectstatic", interactive=False, verbosity=0)
+                first_url = static("js/surveys/web_fill.js")
+                self.assertRegex(first_url, r"web_fill\.[a-f0-9]{12}\.js$")
+                with staticfiles_storage.open(staticfiles_storage.stored_name("js/surveys/web_fill.js")) as asset:
+                    self.assertIn(b"webFormFill.version = 3", asset.read())
+                script.write_text("function webFormFill() {}\nwebFormFill.version = 4;\n")
+                call_command("collectstatic", clear=True, interactive=False, verbosity=0)
+                self.assertNotEqual(first_url, static("js/surveys/web_fill.js"))
 
 
 class ChildWebFormTests(SimpleTestCase):
