@@ -1,0 +1,23 @@
+<script>
+(function () {
+    if (typeof window.webFormFill === 'function' && window.webFormFill.version === 3) return;
+    const root = document.querySelector('[data-web-form-root]');
+    if (!root) return;
+    const backLink = root.querySelector('a');
+    const alert = document.createElement('div');
+    alert.setAttribute('role', 'alert');
+    alert.className = 'border border-red-200 bg-red-50 p-5 text-sm text-red-800';
+    const message = document.createElement('p');
+    message.textContent = 'The form could not load the current version. Reload the page. If this continues, contact the administrator.';
+    const reload = document.createElement('button');
+    reload.type = 'button';
+    reload.className = 'mt-3 border border-red-300 bg-white px-3 py-2 font-medium';
+    reload.textContent = 'Reload Page';
+    reload.addEventListener('click', function () { window.location.reload(); });
+    alert.append(message, reload);
+    root.removeAttribute('x-data');
+    root.removeAttribute('x-init');
+    root.replaceChildren(alert);
+    if (backLink) root.append(backLink.cloneNode(true));
+})();
+</script>
