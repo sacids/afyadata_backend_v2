@@ -174,6 +174,44 @@ class WebFormCalculationTests(SimpleTestCase):
         self.assertEqual(calculation_value(tree, {"count": 2}), "div if ${literal}2")
         self.assertEqual(calculation_value(tree, {"count": 0}), "none")
 
+    def test_boolean_conversion_handles_blank_and_invalid_numbers(self):
+        cases = [
+            ("if(number(${missing}), 1, 0)", {}, 0),
+            ("if(number(${amount}), 1, 0)", {"amount": "invalid"}, 0),
+            ("not(number(${missing}))", {}, True),
+            ("number(${missing}) and true()", {}, False),
+            ("number(${missing}) or false()", {}, False),
+            ("if(${items}, 1, 0)", {"items": []}, 0),
+            ("if(number(${amount}), 1, 0)", {"amount": "0"}, 0),
+            ("if(number(${amount}), 1, 0)", {"amount": "2"}, 1),
+        ]
+        for expression, values, expected in cases:
+            with self.subTest(expression=expression, values=values):
+                self.assertEqual(calculation_value(compile_expression(expression), values), expected)
+
+    def test_typed_equality_preserves_identifiers_and_converts_numbers(self):
+        cases = [
+            ("${amount} = 1", {"amount": "1.0"}, True),
+            ("${amount} != 1", {"amount": "1.0"}, False),
+            ("${amount} = 0", {"amount": ""}, False),
+            ("${code} = '01'", {"code": "01"}, True),
+            ("${code} = '1'", {"code": "01"}, False),
+            ("false() = number(${missing})", {}, True),
+            ("true() = number(${missing})", {}, False),
+        ]
+        for expression, values, expected in cases:
+            with self.subTest(expression=expression, values=values):
+                self.assertEqual(calculation_value(compile_expression(expression), values), expected)
+
+    def test_saved_calculation_uses_numeric_equality(self):
+        service = self.service([
+            {"type": "decimal", "name": "amount"},
+            {"type": "calculate", "name": "result", "calculation": "if(${amount} = 1, 'yes', 'no')"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("amount=1.0"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["result"], "yes")
+
     def test_unsupported_and_circular_calculations_block_saving(self):
         for expression in ["unknown(${value})", "${total} + 1"]:
             service = self.service([{"type": "calculate", "name": "total", "calculation": expression}])
@@ -325,3 +363,31 @@ class WebFormChoiceFilterTests(SimpleTestCase):
         cleaned, _, errors = service._clean_submission_payload(QueryDict("enabled=0&item=a"), {})
         self.assertEqual(errors, {})
         self.assertNotIn("item", cleaned)
+
+    def test_farm_hamlet_without_configured_choices_is_optional(self):
+        service = self.service([
+            {"type": "select_one", "name": "village", "options": [{"name": "D01W01V02"}, {"name": "D01W03V01"}]},
+            {"type": "select_one", "name": "hamlet", "choice_filter": "filter_three = ${village}",
+             "options": [{"name": "D01W03V01H01", "filter_three": "D01W03V01"}]},
+            {"type": "calculate", "name": "hamlet_id", "calculation": "int(substr(${hamlet}, 10))"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("village=D01W01V02"), {})
+        self.assertEqual(errors, {})
+        self.assertNotIn("hamlet_id", cleaned)
+        _, _, errors = service._clean_submission_payload(QueryDict("village=D01W01V02&hamlet=D01W03V01H01"), {})
+        self.assertIn("hamlet", errors)
+        cleaned, _, errors = service._clean_submission_payload(
+            QueryDict("village=D01W03V01&hamlet=D01W03V01H01"), {},
+        )
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["hamlet_id"], 1)
+
+    def test_numeric_metadata_filter_accepts_equivalent_decimal(self):
+        service = self.service([
+            {"type": "decimal", "name": "category"},
+            {"type": "select_one", "name": "item", "choice_filter": "category = ${category}",
+             "options": [{"name": "one", "category": 1}]},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("category=1.0&item=one"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["item"], "one")

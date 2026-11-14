@@ -125,6 +125,20 @@ def text(value):
     return str(value)
 
 
+def boolean(value):
+    if isinstance(value, (int, float)):
+        return value != 0 and (not isinstance(value, float) or not math.isnan(value))
+    return bool(value)
+
+
+def equal_values(left, right):
+    if isinstance(left, bool) or isinstance(right, bool):
+        return boolean(left) == boolean(right)
+    if isinstance(left, (int, float)) or isinstance(right, (int, float)):
+        return numeric(left) == numeric(right)
+    return text(left) == text(right)
+
+
 def evaluate_calculation(tree, values, attributes=None):
     kind, name = tree[:2]
     if kind == "literal":
@@ -137,18 +151,18 @@ def evaluate_calculation(tree, values, attributes=None):
     if kind == "call" and name == "choose":
         if len(args) != 3:
             raise CalculationError("if() requires three arguments.")
-        return evaluate_calculation(args[1 if evaluate_calculation(args[0], values, attributes) else 2], values, attributes)
+        condition = boolean(evaluate_calculation(args[0], values, attributes))
+        return evaluate_calculation(args[1 if condition else 2], values, attributes)
+    if kind == "op" and name in {"and", "or"}:
+        operands = (boolean(evaluate_calculation(arg, values, attributes)) for arg in args)
+        return all(operands) if name == "and" else any(operands)
     resolved = [evaluate_calculation(arg, values, attributes) for arg in args]
     try:
         if kind == "op":
-            if name == "and":
-                return all(resolved)
-            if name == "or":
-                return any(resolved)
             if name == "not":
-                return not resolved[0]
+                return not boolean(resolved[0])
             if name in {"=", "!="}:
-                equal = text(resolved[0]) == text(resolved[1])
+                equal = equal_values(resolved[0], resolved[1])
                 return equal if name == "=" else not equal
             a = numeric(resolved[0])
             b = numeric(resolved[1]) if len(resolved) > 1 else 0

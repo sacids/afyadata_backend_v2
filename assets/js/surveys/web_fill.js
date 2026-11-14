@@ -10,6 +10,7 @@ function webFormFill(initialPage, pageCount) {
         choiceFilterErrors: {},
 
         init() {
+            this.errors = JSON.parse(document.getElementById('web-form-errors')?.textContent || '{}');
             this.calculations = JSON.parse(document.getElementById('web-form-calculations')?.textContent || '[]');
             this.choiceFilters = JSON.parse(document.getElementById('web-form-choice-filters')?.textContent || '[]');
             this.refreshValues();
@@ -72,16 +73,23 @@ function webFormFill(initialPage, pageCount) {
                     }
                     controls.forEach(control => {
                         if (control.tagName === 'SELECT') {
-                            Array.from(control.options).forEach(option => {
-                                const available = option.value === '' || allowed.has(option.value);
-                                option.hidden = !available;
-                                option.disabled = !available;
-                                if (option.selected && option.value !== '' && (resetSelection || !available)) {
-                                    option.selected = false;
-                                    selectionCleared = true;
-                                }
-                            });
-                            if (!control.multiple && !Array.from(control.options).some(option => option.selected)) control.value = '';
+                            if (control.dataset.originalDisabled === undefined) control.dataset.originalDisabled = String(control.disabled);
+                            const selected = Array.from(control.selectedOptions).map(option => option.value).filter(Boolean);
+                            const options = filter.options.filter(option => allowed.has(String(option.value)));
+                            const signature = JSON.stringify(options.map(option => [String(option.value), option.label]));
+                            if (control.dataset.choiceOptions !== signature || resetSelection) {
+                                const fragment = document.createDocumentFragment();
+                                if (!control.multiple) fragment.append(new Option(options.length ? 'Select...' : 'No matching options', ''));
+                                options.forEach(option => {
+                                    const keepSelected = !resetSelection && selected.includes(String(option.value));
+                                    fragment.append(new Option(option.label, String(option.value), false, keepSelected));
+                                });
+                                control.replaceChildren(fragment);
+                                control.dataset.choiceOptions = signature;
+                            }
+                            selectionCleared = selected.some(value => resetSelection || !allowed.has(value));
+                            control.dataset.choiceNoOptions = String(options.length === 0);
+                            control.disabled = options.length === 0 || control.dataset.originalDisabled === 'true';
                         } else if (control.type === 'checkbox' || control.type === 'radio') {
                             if (control.dataset.originalDisabled === undefined) control.dataset.originalDisabled = String(control.disabled);
                             const available = allowed.has(control.value);
@@ -95,7 +103,7 @@ function webFormFill(initialPage, pageCount) {
                             }
                         }
                     });
-                    if (resetSelection || selectionCleared) this.clearFieldError(filter.name);
+                    if (previous && (resetSelection || selectionCleared)) this.clearFieldError(filter.name);
                     cleared = cleared || selectionCleared;
                 });
                 this.choiceFilterErrors = errors;
@@ -182,6 +190,22 @@ function webFormFill(initialPage, pageCount) {
             return String(value);
         },
 
+        calculationBoolean(value) {
+            if (typeof value === 'number') return value !== 0 && !Number.isNaN(value);
+            if (Array.isArray(value)) return value.length > 0;
+            return Boolean(value);
+        },
+
+        calculationEqual(left, right) {
+            if (typeof left === 'boolean' || typeof right === 'boolean') {
+                return this.calculationBoolean(left) === this.calculationBoolean(right);
+            }
+            if (typeof left === 'number' || typeof right === 'number') {
+                return this.calculationNumber(left) === this.calculationNumber(right);
+            }
+            return this.calculationText(left) === this.calculationText(right);
+        },
+
         evaluateCalculation(tree, data = this.values, attributes = {}) {
             const [kind, name, args] = tree;
             if (kind === 'literal') return name;
@@ -189,7 +213,12 @@ function webFormFill(initialPage, pageCount) {
             if (kind === 'attribute') return attributes[name] ?? '';
             if (kind === 'call' && name === 'choose') {
                 if (args.length !== 3) throw new Error('if() requires three arguments.');
-                return this.evaluateCalculation(args[this.evaluateCalculation(args[0], data, attributes) ? 1 : 2], data, attributes);
+                const condition = this.calculationBoolean(this.evaluateCalculation(args[0], data, attributes));
+                return this.evaluateCalculation(args[condition ? 1 : 2], data, attributes);
+            }
+            if (kind === 'op' && (name === 'and' || name === 'or')) {
+                const evaluate = arg => this.calculationBoolean(this.evaluateCalculation(arg, data, attributes));
+                return name === 'and' ? args.every(evaluate) : args.some(evaluate);
             }
             const values = args.map(arg => this.evaluateCalculation(arg, data, attributes));
             const a = this.calculationNumber(values[0]), b = this.calculationNumber(values[1]);
@@ -202,11 +231,9 @@ function webFormFill(initialPage, pageCount) {
                     case '%': return a % b;
                     case 'neg': return -a;
                     case 'pos': return a;
-                    case 'not': return !values[0];
-                    case 'and': return values.every(Boolean);
-                    case 'or': return values.some(Boolean);
-                    case '=': return this.calculationText(values[0]) === this.calculationText(values[1]);
-                    case '!=': return this.calculationText(values[0]) !== this.calculationText(values[1]);
+                    case 'not': return !this.calculationBoolean(values[0]);
+                    case '=': return this.calculationEqual(values[0], values[1]);
+                    case '!=': return !this.calculationEqual(values[0], values[1]);
                     case '<': return a < b;
                     case '<=': return a <= b;
                     case '>': return a > b;
@@ -252,7 +279,8 @@ function webFormFill(initialPage, pageCount) {
                 if (input.dataset.originalDisabled === undefined) {
                     input.dataset.originalDisabled = input.disabled ? 'true' : 'false';
                 }
-                input.disabled = !relevant || input.dataset.originalDisabled === 'true' || input.dataset.choiceFilteredOut === 'true';
+                input.disabled = !relevant || input.dataset.originalDisabled === 'true'
+                    || input.dataset.choiceFilteredOut === 'true' || input.dataset.choiceNoOptions === 'true';
             });
             if (!relevant) {
                 this.clearFieldError(wrapper.dataset.fieldName);
