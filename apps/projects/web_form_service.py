@@ -1,3 +1,4 @@
+import math
 import os
 import re
 import uuid
@@ -8,6 +9,9 @@ from django.utils import timezone
 
 from .models import FormData, FormDataFile, FormDefinition
 from .utils import infer_uploaded_file_type, load_json
+from .web_form_calculations import (
+    CalculationError, calculation_plan, calculation_value, compile_expression, evaluate_calculation,
+)
 
 
 INPUT_TYPE_MAP = {
@@ -37,7 +41,6 @@ FILE_FIELD_TYPES = {
 }
 
 SKIPPED_FIELD_TYPES = {
-    "calculate",
     "hidden",
     "acknowledge",
 }
@@ -142,6 +145,7 @@ class WebFormDefinitionService:
             {
                 "value": option.get("name"),
                 "label": self._option_label(option),
+                "attributes": dict(option),
             }
             for option in options
             if option.get("name") is not None
@@ -207,13 +211,25 @@ class WebFormDefinitionService:
         selected_values = self._field_values(name, bound_data)
         constraint = field.get("constraint") or field.get("body::constraint") or ""
         relevant = field.get("relevant") or ""
+        calculation = field.get("calculation") or field.get("body::calculation") or ""
+        choice_filter = field.get("choice_filter") or ""
+        filter_tree, filter_error = None, ""
+        if choice_filter:
+            try:
+                filter_tree = compile_expression(choice_filter, allow_attributes=True)
+            except CalculationError:
+                filter_error = "This field's choice filter is not supported. Please contact the form administrator."
         descriptor = {
             "name": name,
             "type": field_type,
             "label": self._label(field) or name.replace("_", " ").title(),
             "hint": self._hint(field),
             "required": self._is_required(field),
-            "readonly": self._is_readonly(field),
+            "readonly": self._is_readonly(field) or bool(calculation),
+            "calculation": calculation,
+            "choice_filter": choice_filter,
+            "choice_filter_tree": filter_tree,
+            "choice_filter_error": filter_error,
             "appearance": field.get("appearance") or "",
             "default": field.get("default") or "",
             "relevant": relevant,
@@ -242,7 +258,7 @@ class WebFormDefinitionService:
             fields = []
             for name, field in self._iter_field_items(page):
                 descriptor = self._field_descriptor(name, field, bound_data=bound_data)
-                if descriptor:
+                if descriptor and descriptor["type"] != "calculate":
                     descriptor["has_error"] = name in errors
                     fields.append(descriptor)
             if fields:
@@ -259,16 +275,46 @@ class WebFormDefinitionService:
         return rendered_pages
 
     def fields(self):
-        for page in self.pages():
-            yield from page["fields"]
+        for name, field in self._iter_field_items(self.definition):
+            descriptor = self._field_descriptor(name, field)
+            if descriptor:
+                yield descriptor
 
-    def _option_values(self, field):
-        return {str(option["value"]) for option in field["options"]}
+    def calculation_plan(self):
+        return calculation_plan(self.fields())
+
+    def choice_filters(self):
+        return [
+            {
+                "name": field["name"],
+                "tree": field["choice_filter_tree"],
+                "relevant": field["relevant"],
+                "error": field["choice_filter_error"],
+                "dependencies": list(dict.fromkeys(re.findall(r"\$\{([^}]+)\}", field["choice_filter"]))),
+                "options": field["options"],
+            }
+            for field in self.fields() if field["choice_filter"]
+        ]
+
+    def _option_values(self, field, data=None):
+        if field["choice_filter_error"]:
+            raise CalculationError(field["choice_filter_error"])
+
+        def matches(option):
+            if not field["choice_filter_tree"]:
+                return True
+            result = evaluate_calculation(field["choice_filter_tree"], data or {}, option["attributes"])
+            return False if isinstance(result, float) and not math.isfinite(result) else bool(result)
+
+        return {
+            str(option["value"]) for option in field["options"]
+            if matches(option)
+        }
 
     def _post_values(self, field, post_data):
         if field["is_select_multiple"]:
             return post_data.getlist(field["name"])
-        return post_data.get(field["name"], "")
+        return post_data.get(field["name"], field["default"])
 
     def _expression_value(self, value):
         if isinstance(value, list):
@@ -396,11 +442,27 @@ class WebFormDefinitionService:
         file_payloads = []
         raw_data = {}
         existing_data = existing_data or {}
+        fields = list(self.fields())
 
-        for field in self.fields():
+        for field in fields:
             if field["is_note"]:
                 continue
             raw_data[field["name"]] = self._post_values(field, post_data)
+
+        plan = self.calculation_plan()
+        for item in plan:
+            raw_data[item["name"]] = ""
+        for item in plan:
+            name = item["name"]
+            calculation_data = self._active_calculation_values(raw_data, fields)
+            if not self._evaluate_relevant(item["relevant"], calculation_data):
+                continue
+            try:
+                if item["error"]:
+                    raise CalculationError(item["error"])
+                raw_data[name] = calculation_value(item["tree"], calculation_data)
+            except CalculationError as exc:
+                errors[name] = str(exc)
 
         for field in self.fields():
             name = field["name"]
@@ -410,6 +472,14 @@ class WebFormDefinitionService:
 
             if not self._evaluate_relevant(field["relevant"], raw_data):
                 continue
+
+            allowed_options = set()
+            if field["is_select_one"] or field["is_select_multiple"]:
+                try:
+                    allowed_options = self._option_values(field, self._active_calculation_values(raw_data, fields))
+                except CalculationError:
+                    errors[name] = field["choice_filter_error"] or "Unable to evaluate this field's choice filter."
+                    continue
 
             if field["is_file"]:
                 file_obj = uploaded_files.get(name)
@@ -426,13 +496,13 @@ class WebFormDefinitionService:
                 values = post_data.getlist(name)
                 if field["required"] and not values:
                     errors[name] = "This field is required."
-                invalid_values = set(values) - self._option_values(field)
+                invalid_values = set(values) - allowed_options
                 if invalid_values:
                     errors[name] = "Select a valid option."
                 cleaned_data[name] = values
                 continue
 
-            value = post_data.get(name, "")
+            value = raw_data.get(name, "")
             if field["required"] and value in ("", None):
                 errors[name] = "This field is required."
                 continue
@@ -444,7 +514,7 @@ class WebFormDefinitionService:
                 continue
 
             if field["is_select_one"] and cleaned_value != "":
-                if str(cleaned_value) not in self._option_values(field):
+                if str(cleaned_value) not in allowed_options:
                     errors[name] = "Select a valid option."
                     continue
 
@@ -463,6 +533,22 @@ class WebFormDefinitionService:
             return None, None, errors
 
         return cleaned_data, file_payloads, {}
+
+    def _active_calculation_values(self, raw_data, fields):
+        values = dict(raw_data)
+        # A source can depend on another conditional source, so remove inactive
+        # values until the calculation context stops changing.
+        for _ in range(len(fields)):
+            inactive = [
+                field["name"] for field in fields
+                if values.get(field["name"], "") != ""
+                and not self._evaluate_relevant(field["relevant"], values)
+            ]
+            if not inactive:
+                break
+            for name in inactive:
+                values[name] = ""
+        return values
 
     def validate_and_save(self, post_data, uploaded_files, parent_instance=None):
         if parent_instance is not None and (

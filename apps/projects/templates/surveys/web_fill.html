@@ -77,6 +77,19 @@
             </div>
         {% endif %}
 
+        {{ calculations|json_script:"web-form-calculations" }}
+        {{ choice_filters|json_script:"web-form-choice-filters" }}
+        <div x-show="Object.keys(choiceFilterErrors).length" role="alert" class="mb-4 text-sm text-red-700" x-cloak>
+            <template x-for="(message, name) in choiceFilterErrors" :key="name">
+                <p x-text="`${name}: ${message}`"></p>
+            </template>
+        </div>
+        <div x-show="Object.keys(calculationErrors).length" role="alert" class="mb-4 text-sm text-red-700" x-cloak>
+            <template x-for="(message, name) in calculationErrors" :key="name">
+                <p x-text="`${name}: ${message}`"></p>
+            </template>
+        </div>
+        {% for error in calculation_errors %}<p role="alert" class="mb-4 text-sm text-red-700">{{ error }}</p>{% endfor %}
         <form x-ref="form" method="post" enctype="multipart/form-data" class="space-y-5" novalidate @submit="submitForm($event)">
             {% csrf_token %}
             {% for page in pages %}
@@ -149,7 +162,7 @@
                                     {% elif field.is_select_multiple %}
                                         <div class="grid gap-2 rounded-lg border border-stone-200 bg-stone-50 p-3 sm:grid-cols-2">
                                             {% for option in field.options %}
-                                                <label class="flex items-start gap-2 rounded-md bg-white px-3 py-2 text-sm text-stone-700">
+                                                <label data-choice-option class="flex items-start gap-2 rounded-md bg-white px-3 py-2 text-sm text-stone-700">
                                                     <input type="checkbox" name="{{ field.name }}" value="{{ option.value }}" class="mt-1 rounded border-stone-300 text-red-800 focus:ring-red-700" {% if field.readonly %}disabled{% endif %} {% if option.value in field.selected_values %}checked{% endif %}>
                                                     <span>{{ option.label }}</span>
                                                 </label>

@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+import json
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -9,6 +10,7 @@ from django.test import RequestFactory, SimpleTestCase
 
 from .web_form_service import WebFormDefinitionService, parent_submission_for, related_child_forms
 from .web_form_views import WebFormFillView
+from .web_form_calculations import CalculationError, calculation_value, compile_expression
 
 
 class ChildWebFormTests(SimpleTestCase):
@@ -61,6 +63,8 @@ class ChildWebFormTests(SimpleTestCase):
         self.form.project = SimpleNamespace(pk="project", title="Project")
         accessible.return_value = self.form
         service.return_value.pages.return_value = []
+        service.return_value.calculation_plan.return_value = []
+        service.return_value.choice_filters.return_value = []
         self.request.session = {}
         self.request._messages = FallbackStorage(self.request)
         messages.success(self.request, "Form submitted successfully.")
@@ -111,3 +115,213 @@ class ChildWebFormTests(SimpleTestCase):
         self.assertIs(instance, create.return_value)
         self.assertEqual(create.call_args.kwargs["parent_id"], "parent-record")
         self.assertIs(create.call_args.kwargs["form"], self.form)
+
+
+class WebFormCalculationTests(SimpleTestCase):
+    def service(self, fields):
+        definition = {"pages": [{"fields": [{field["name"]: field} for field in fields]}]}
+        form = SimpleNamespace(form_defn=json.dumps(definition))
+        return WebFormDefinitionService(form)
+
+    def test_actual_location_expressions(self):
+        for name, prefix in [("district", "D"), ("ward", "W123"), ("village", "V123456"), ("hamlet", "H123456789")]:
+            with self.subTest(name=name):
+                tree = compile_expression(f"int(substr(${{{name}}}, {len(prefix)}))")
+                self.assertEqual(calculation_value(tree, {name: prefix + "42"}), 42)
+
+    def test_hidden_calculations_are_saved_and_cannot_be_forged(self):
+        service = self.service([
+            {"type": "integer", "name": "young"},
+            {"type": "integer", "name": "adult"},
+            {"type": "calculate", "name": "total", "calculation": "${young} + ${adult}"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("young=2&adult=3&total=999"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["total"], 5)
+        self.assertNotIn("total", [field["name"] for field in service.pages()[0]["fields"]])
+
+    def test_reverse_dependencies_and_constraints_use_computed_values(self):
+        service = self.service([
+            {"type": "integer", "name": "value", "constraint": ". <= ${total}"},
+            {"type": "calculate", "name": "total", "calculation": "${subtotal} * 2"},
+            {"type": "calculate", "name": "subtotal", "body::calculation": "${value} + 1"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("value=3&subtotal=0&total=0"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["total"], 8)
+        self.assertEqual(cleaned["subtotal"], 4)
+
+    def test_calculated_visible_field_is_readonly_and_recomputed_on_edit(self):
+        service = self.service([
+            {"type": "integer", "name": "quantity"},
+            {"type": "decimal", "name": "price", "calculation": "${quantity} * 2.5"},
+        ])
+        self.assertTrue(service.pages()[0]["fields"][1]["readonly"])
+        cleaned, _, errors = service._clean_submission_payload(
+            QueryDict("quantity=4&price=999"), {}, existing_data={"price": 2.5},
+        )
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["price"], 10)
+
+    def test_missing_inputs_do_not_become_zero(self):
+        tree = compile_expression("${a} + ${b}")
+        self.assertEqual(calculation_value(tree, {"a": 0, "b": 0}), 0)
+        self.assertEqual(calculation_value(tree, {"a": 0, "b": ""}), "")
+        self.assertEqual(calculation_value(compile_expression("1 div 0"), {}), "")
+
+    def test_conditions_and_quoted_text(self):
+        tree = compile_expression("if(${count} > 0, concat('div if ${literal}', ${count}), 'none')")
+        self.assertEqual(calculation_value(tree, {"count": 2}), "div if ${literal}2")
+        self.assertEqual(calculation_value(tree, {"count": 0}), "none")
+
+    def test_unsupported_and_circular_calculations_block_saving(self):
+        for expression in ["unknown(${value})", "${total} + 1"]:
+            service = self.service([{"type": "calculate", "name": "total", "calculation": expression}])
+            _, _, errors = service._clean_submission_payload(QueryDict(), {})
+            self.assertIn("total", errors)
+
+    def test_unsafe_expressions_are_rejected(self):
+        for expression in ["__import__('os').system('id')", "[x for x in []]", "${a}.__class__"]:
+            with self.assertRaises(CalculationError):
+                compile_expression(expression)
+
+    def test_irrelevant_calculation_is_not_saved(self):
+        service = self.service([
+            {"type": "integer", "name": "count"},
+            {"type": "calculate", "name": "total", "calculation": "${count} * 2", "relevant": "${count} > 0"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("count=0&total=100"), {})
+        self.assertEqual(errors, {})
+        self.assertNotIn("total", cleaned)
+
+    def test_medical_codes_ignore_inactive_diagnosis_answers(self):
+        service = self.service([
+            {"type": "select_one", "name": "record_type", "options": [{"name": "diagnosis"}, {"name": "test"}]},
+            {"type": "select_one", "name": "disease_major", "relevant": "${record_type} = 'diagnosis'", "options": [{"name": "MAJ01"}]},
+            {"type": "calculate", "name": "disease_major_code", "calculation": "int(substr(${disease_major}, 3))"},
+        ])
+        for record_type, expected in [("diagnosis", 1), ("test", None)]:
+            with self.subTest(record_type=record_type):
+                cleaned, _, errors = service._clean_submission_payload(
+                    QueryDict(f"record_type={record_type}&disease_major=MAJ01&disease_major_code=999"),
+                    {}, existing_data={"disease_major_code": 1},
+                )
+                self.assertEqual(errors, {})
+                self.assertEqual(cleaned.get("disease_major_code"), expected)
+
+    def test_inactive_sources_are_blank_for_calculation_fallbacks(self):
+        service = self.service([
+            {"type": "integer", "name": "enabled"},
+            {"type": "integer", "name": "count", "relevant": "${enabled} = 1"},
+            {"type": "calculate", "name": "total", "calculation": "coalesce(${count}, 0) * 2"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("enabled=0&count=99"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["total"], 0)
+
+    def test_transitively_inactive_sources_cannot_feed_calculations(self):
+        service = self.service([
+            {"type": "integer", "name": "enabled"},
+            {"type": "integer", "name": "amount", "relevant": "${selector} = 1"},
+            {"type": "integer", "name": "selector", "relevant": "${enabled} = 1"},
+            {"type": "calculate", "name": "total", "calculation": "${amount} * 2"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("enabled=0&selector=1&amount=9"), {})
+        self.assertEqual(errors, {})
+        self.assertNotIn("total", cleaned)
+
+    def test_calculated_relevance_dependencies_are_evaluated_before_sources(self):
+        service = self.service([
+            {"type": "calculate", "name": "total", "calculation": "${amount} * 2"},
+            {"type": "integer", "name": "amount", "relevant": "${enabled} = 1"},
+            {"type": "calculate", "name": "enabled", "calculation": "1"},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("amount=9"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["total"], 18)
+
+
+class WebFormChoiceFilterTests(SimpleTestCase):
+    def service(self, fields):
+        definition = {"pages": [{"fields": [{field["name"]: field} for field in fields]}]}
+        return WebFormDefinitionService(SimpleNamespace(form_defn=json.dumps(definition)))
+
+    def location_service(self):
+        return self.service([
+            {"type": "select_one", "name": "district", "options": [{"name": "D01"}, {"name": "D02"}]},
+            {"type": "select_one", "name": "ward", "choice_filter": "filter_one = ${district}",
+             "options": [{"name": "D01W01", "filter_one": "D01"}, {"name": "D02W01", "filter_one": "D02"}]},
+            {"type": "select_one", "name": "village", "choice_filter": "filter_two = ${ward}",
+             "options": [{"name": "D01W01V01", "filter_two": "D01W01"}, {"name": "D02W01V01", "filter_two": "D02W01"}]},
+            {"type": "calculate", "name": "ward_id", "calculation": "int(substr(${ward}, 4))"},
+        ])
+
+    def test_metadata_and_dependencies_are_available_to_browser(self):
+        filters = self.location_service().choice_filters()
+        self.assertEqual(filters[0]["dependencies"], ["district"])
+        self.assertEqual(filters[0]["options"][0]["attributes"]["filter_one"], "D01")
+        self.assertEqual(filters[0]["tree"][0], "op")
+
+    def test_valid_cascade_and_calculation_are_saved(self):
+        cleaned, _, errors = self.location_service()._clean_submission_payload(
+            QueryDict("district=D01&ward=D01W01&village=D01W01V01"), {},
+        )
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["ward_id"], 1)
+
+    def test_forged_selections_are_rejected_at_each_level(self):
+        for data, invalid_field in [
+            ("district=D01&ward=D02W01", "ward"),
+            ("district=D01&ward=D01W01&village=D02W01V01", "village"),
+            ("ward=D01W01", "ward"),
+        ]:
+            with self.subTest(data=data):
+                cleaned, _, errors = self.location_service()._clean_submission_payload(QueryDict(data), {})
+                self.assertIsNone(cleaned)
+                self.assertEqual(errors[invalid_field], "Select a valid option.")
+
+    def test_edits_reject_old_child_selection_after_parent_changes(self):
+        _, _, errors = self.location_service()._clean_submission_payload(
+            QueryDict("district=D02&ward=D01W01"), {},
+            existing_data={"district": "D01", "ward": "D01W01"},
+        )
+        self.assertIn("ward", errors)
+
+    def test_multiple_selection_filter_uses_option_attributes(self):
+        service = self.service([
+            {"type": "select_multiple", "name": "categories", "options": [{"name": "a"}, {"name": "b"}]},
+            {"type": "select_multiple", "name": "items", "choice_filter": "selected(${categories}, category) and enabled = 1",
+             "options": [{"name": "a1", "category": "a", "enabled": 1}, {"name": "b1", "category": "b", "enabled": 1}]},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("categories=a&items=a1"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["items"], ["a1"])
+        _, _, errors = service._clean_submission_payload(QueryDict("categories=a&items=a1&items=b1"), {})
+        self.assertIn("items", errors)
+
+    def test_filters_support_calculated_parent_values(self):
+        service = self.service([
+            {"type": "integer", "name": "quantity"},
+            {"type": "calculate", "name": "category", "calculation": "if(${quantity} > 5, 'large', 'small')"},
+            {"type": "select_one", "name": "item", "choice_filter": "category = ${category}",
+             "options": [{"name": "small1", "category": "small"}, {"name": "large1", "category": "large"}]},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("quantity=10&item=large1"), {})
+        self.assertEqual(errors, {})
+        self.assertEqual(cleaned["category"], "large")
+
+    def test_unsupported_filters_fail_closed_for_active_fields(self):
+        service = self.service([
+            {"type": "select_one", "name": "item", "choice_filter": "unknown(filter_one)", "options": [{"name": "a"}]},
+        ])
+        _, _, errors = service._clean_submission_payload(QueryDict("item=a"), {})
+        self.assertIn("item", errors)
+
+    def test_irrelevant_filters_do_not_block_submission(self):
+        service = self.service([
+            {"type": "integer", "name": "enabled"},
+            {"type": "select_one", "name": "item", "relevant": "${enabled} = 1", "choice_filter": "unknown(filter_one)", "options": [{"name": "a"}]},
+        ])
+        cleaned, _, errors = service._clean_submission_payload(QueryDict("enabled=0&item=a"), {})
+        self.assertEqual(errors, {})
+        self.assertNotIn("item", cleaned)

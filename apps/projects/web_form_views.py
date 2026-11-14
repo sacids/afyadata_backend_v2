@@ -52,6 +52,7 @@ class WebFormFillView(View):
 
     def get_context(self, request, form, service, errors=None, bound_data=None, instance=None, parent_instance=None):
         pages = service.pages(bound_data=bound_data, errors=errors)
+        calculations = service.calculation_plan()
         first_error_page = 0
         for page in pages:
             if page["has_errors"]:
@@ -66,6 +67,12 @@ class WebFormFillView(View):
             "parent_instance": parent_instance,
             "is_edit": instance is not None,
             "pages": pages,
+            "calculations": calculations,
+            "choice_filters": service.choice_filters(),
+            "calculation_errors": [
+                (errors or {})[item["name"]] for item in calculations
+                if item["name"] in (errors or {})
+            ],
             "first_error_page": first_error_page,
             "page_count": len(pages),
             "errors": errors or {},

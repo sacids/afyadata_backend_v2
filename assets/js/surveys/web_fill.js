@@ -4,20 +4,105 @@ function webFormFill(initialPage, pageCount) {
         pageCount: pageCount || 0,
         values: {},
         errors: {},
+        calculations: [],
+        calculationErrors: {},
+        choiceFilters: [],
+        choiceFilterErrors: {},
 
         init() {
+            this.calculations = JSON.parse(document.getElementById('web-form-calculations')?.textContent || '[]');
+            this.choiceFilters = JSON.parse(document.getElementById('web-form-choice-filters')?.textContent || '[]');
             this.refreshValues();
+            this.syncChoiceFilters();
             this.syncAllFieldStates();
-            this.$refs.form.addEventListener('input', (event) => {
+            this.$refs.form.addEventListener('input', event => this.handleFormInput(event));
+            this.$refs.form.addEventListener('change', event => this.handleFormInput(event));
+        },
+
+        handleFormInput(event) {
+            const previous = { ...this.values };
+            this.refreshValues();
+            this.syncChoiceFilters(previous);
+            this.syncAllFieldStates();
+            this.validateFieldByInput(event.target);
+        },
+
+        choiceValueSignature(value) {
+            return JSON.stringify(Array.isArray(value) ? value.map(String).sort() : String(value ?? ''));
+        },
+
+        syncChoiceFilters(previous = null) {
+            if (!this.choiceFilters.length) return;
+            const changed = new Set();
+            const reset = new Set();
+            const recordChanges = before => {
+                Object.keys({ ...before, ...this.values }).forEach(name => {
+                    if (this.choiceValueSignature(before[name]) !== this.choiceValueSignature(this.values[name])) changed.add(name);
+                });
+            };
+            if (previous) recordChanges(previous);
+
+            // Walk the cascade to a stable state, including filters which depend
+            // on calculated values changed by an upstream selection reset.
+            for (let pass = 0; pass < this.choiceFilters.length + this.calculations.length + 1; pass += 1) {
+                const before = { ...this.values };
+                const changedCount = changed.size;
+                const errors = {};
+                let cleared = false;
+                this.choiceFilters.forEach(filter => {
+                    let selectionCleared = false;
+                    const controls = Array.from(this.$refs.form.querySelectorAll(`[name="${CSS.escape(filter.name)}"]`));
+                    const resetSelection = filter.dependencies.some(name => changed.has(name)) && !reset.has(filter.name);
+                    if (resetSelection) {
+                        reset.add(filter.name);
+                        changed.add(filter.name);
+                    }
+                    let allowed = new Set();
+                    try {
+                        const values = this.activeCalculationValues();
+                        if (!filter.relevant || this.evaluateExpression(filter.relevant, '', values)) {
+                            if (filter.error) throw new Error(filter.error);
+                            allowed = new Set(filter.options.filter(option => {
+                                const result = this.evaluateCalculation(filter.tree, values, option.attributes);
+                                return typeof result === 'number' ? Number.isFinite(result) && result !== 0 : Boolean(result);
+                            }).map(option => String(option.value)));
+                        }
+                    } catch (error) {
+                        errors[filter.name] = error.message || 'Unable to evaluate this field\'s choice filter.';
+                    }
+                    controls.forEach(control => {
+                        if (control.tagName === 'SELECT') {
+                            Array.from(control.options).forEach(option => {
+                                const available = option.value === '' || allowed.has(option.value);
+                                option.hidden = !available;
+                                option.disabled = !available;
+                                if (option.selected && option.value !== '' && (resetSelection || !available)) {
+                                    option.selected = false;
+                                    selectionCleared = true;
+                                }
+                            });
+                            if (!control.multiple && !Array.from(control.options).some(option => option.selected)) control.value = '';
+                        } else if (control.type === 'checkbox' || control.type === 'radio') {
+                            if (control.dataset.originalDisabled === undefined) control.dataset.originalDisabled = String(control.disabled);
+                            const available = allowed.has(control.value);
+                            control.dataset.choiceFilteredOut = String(!available);
+                            control.disabled = !available || control.dataset.originalDisabled === 'true';
+                            const label = control.closest('[data-choice-option]');
+                            if (label) label.style.display = available ? '' : 'none';
+                            if (control.checked && (resetSelection || !available)) {
+                                control.checked = false;
+                                selectionCleared = true;
+                            }
+                        }
+                    });
+                    if (resetSelection || selectionCleared) this.clearFieldError(filter.name);
+                    cleared = cleared || selectionCleared;
+                });
+                this.choiceFilterErrors = errors;
                 this.refreshValues();
-                this.validateFieldByInput(event.target);
-                this.syncAllFieldStates();
-            });
-            this.$refs.form.addEventListener('change', (event) => {
-                this.refreshValues();
-                this.validateFieldByInput(event.target);
-                this.syncAllFieldStates();
-            });
+                recordChanges(before);
+                if (!cleared && changed.size === changedCount) break;
+            }
         },
 
         refreshValues() {
@@ -32,6 +117,126 @@ function webFormFill(initialPage, pageCount) {
                 }
             }
             this.values = values;
+            this.refreshCalculations();
+        },
+
+        refreshCalculations() {
+            const errors = {};
+            this.calculations.forEach(item => { this.values[item.name] = ''; });
+            this.calculations.forEach(item => {
+                try {
+                    const values = this.activeCalculationValues();
+                    if (!item.relevant || this.evaluateExpression(item.relevant, '', values)) {
+                        if (item.error) throw new Error(item.error);
+                        let value = this.evaluateCalculation(item.tree, values);
+                        if (typeof value === 'number' && !Number.isFinite(value)) value = '';
+                        this.values[item.name] = value;
+                    }
+                } catch (error) {
+                    errors[item.name] = error.message || 'Unable to calculate this field.';
+                }
+                this.$refs.form.querySelectorAll(`[name="${CSS.escape(item.name)}"]`).forEach(input => {
+                    input.value = this.calculationText(this.values[item.name]);
+                });
+            });
+            this.calculationErrors = errors;
+        },
+
+        activeCalculationValues() {
+            const values = { ...this.values };
+            const relevance = {};
+            this.$refs.form.querySelectorAll('[data-field-wrapper]').forEach(wrapper => {
+                const name = wrapper.dataset.fieldName;
+                relevance[name] = wrapper.dataset.relevant || '';
+                const inputs = Array.from(wrapper.querySelectorAll(`[name="${CSS.escape(name)}"]`));
+                // Conditional controls may still be disabled during the event
+                // which makes them relevant again. Read them only for calculations.
+                const disabled = inputs.filter(input => input.disabled && input.dataset.originalDisabled === 'false');
+                if (!disabled.length) return;
+                if (disabled[0].type === 'checkbox' || disabled[0].type === 'radio') {
+                    values[name] = disabled.filter(input => input.checked).map(input => input.value);
+                } else if (disabled[0].type !== 'file') {
+                    values[name] = disabled[0].value;
+                }
+            });
+            this.calculations.forEach(item => { relevance[item.name] = item.relevant || ''; });
+            for (let pass = 0; pass < Object.keys(relevance).length; pass += 1) {
+                const inactive = Object.keys(relevance).filter(name =>
+                    (values[name] ?? '') !== '' && relevance[name]
+                    && !this.evaluateExpression(relevance[name], '', values));
+                if (!inactive.length) break;
+                inactive.forEach(name => { values[name] = ''; });
+            }
+            return values;
+        },
+
+        calculationNumber(value) {
+            if (value === '' || value === null || value === undefined || Array.isArray(value)) return NaN;
+            if (typeof value === 'string' && !value.trim()) return NaN;
+            return Number(value);
+        },
+
+        calculationText(value) {
+            if (value === null || value === undefined) return '';
+            if (Array.isArray(value)) return value.map(item => this.calculationText(item)).join(' ');
+            return String(value);
+        },
+
+        evaluateCalculation(tree, data = this.values, attributes = {}) {
+            const [kind, name, args] = tree;
+            if (kind === 'literal') return name;
+            if (kind === 'ref') return data[name] ?? '';
+            if (kind === 'attribute') return attributes[name] ?? '';
+            if (kind === 'call' && name === 'choose') {
+                if (args.length !== 3) throw new Error('if() requires three arguments.');
+                return this.evaluateCalculation(args[this.evaluateCalculation(args[0], data, attributes) ? 1 : 2], data, attributes);
+            }
+            const values = args.map(arg => this.evaluateCalculation(arg, data, attributes));
+            const a = this.calculationNumber(values[0]), b = this.calculationNumber(values[1]);
+            if (kind === 'op') {
+                switch (name) {
+                    case '+': return a + b;
+                    case '-': return a - b;
+                    case '*': return a * b;
+                    case '/': return a / b;
+                    case '%': return a % b;
+                    case 'neg': return -a;
+                    case 'pos': return a;
+                    case 'not': return !values[0];
+                    case 'and': return values.every(Boolean);
+                    case 'or': return values.some(Boolean);
+                    case '=': return this.calculationText(values[0]) === this.calculationText(values[1]);
+                    case '!=': return this.calculationText(values[0]) !== this.calculationText(values[1]);
+                    case '<': return a < b;
+                    case '<=': return a <= b;
+                    case '>': return a > b;
+                    case '>=': return a >= b;
+                }
+            }
+            switch (name) {
+                case 'true': return true;
+                case 'false': return false;
+                case 'int': return Math.trunc(a);
+                case 'number': return a;
+                case 'string': return this.calculationText(values[0]);
+                case 'substr': {
+                    const start = this.calculationNumber(values[1]);
+                    const end = values.length > 2 ? this.calculationNumber(values[2]) : undefined;
+                    if (!Number.isFinite(start) || (end !== undefined && !Number.isFinite(end))) return '';
+                    return Array.from(this.calculationText(values[0])).slice(start, end).join('');
+                }
+                case 'concat': return values.map(value => this.calculationText(value)).join('');
+                case 'coalesce': return values.find(value => value !== '' && value !== null) ?? '';
+                case 'selected': return this.calculationText(values[0]).split(/\s+/).includes(this.calculationText(values[1]));
+                case 'abs': return Math.abs(a);
+                case 'floor': return Math.floor(a);
+                case 'ceiling': return Math.ceil(a);
+                case 'round': {
+                    const factor = 10 ** (values.length > 1 ? b : 0);
+                    return Math.floor(a * factor + 0.5) / factor;
+                }
+            }
+            throw new Error('Unsupported calculation expression.');
         },
 
         syncAllFieldStates() {
@@ -47,7 +252,7 @@ function webFormFill(initialPage, pageCount) {
                 if (input.dataset.originalDisabled === undefined) {
                     input.dataset.originalDisabled = input.disabled ? 'true' : 'false';
                 }
-                input.disabled = !relevant || input.dataset.originalDisabled === 'true';
+                input.disabled = !relevant || input.dataset.originalDisabled === 'true' || input.dataset.choiceFilteredOut === 'true';
             });
             if (!relevant) {
                 this.clearFieldError(wrapper.dataset.fieldName);
@@ -154,7 +359,7 @@ function webFormFill(initialPage, pageCount) {
 
         hasFieldValue(value) {
             if (Array.isArray(value)) return value.length > 0;
-            return String(value || '').trim() !== '';
+            return String(value ?? '').trim() !== '';
         },
 
         wrapperIsActive(wrapper) {
@@ -180,6 +385,11 @@ function webFormFill(initialPage, pageCount) {
         submitForm(event) {
             this.syncAllFieldStates();
             this.refreshValues();
+            this.syncChoiceFilters();
+            if (Object.keys(this.calculationErrors).length || Object.keys(this.choiceFilterErrors).length) {
+                event.preventDefault();
+                return false;
+            }
             for (let index = 0; index < this.pageCount; index += 1) {
                 if (!this.pageIsRelevant(index)) continue;
                 if (!this.validatePage(index, false)) {
@@ -204,19 +414,19 @@ function webFormFill(initialPage, pageCount) {
             return this.evaluateExpression(expression, '');
         },
 
-        evaluateExpression(expression, currentValue = '') {
+        evaluateExpression(expression, currentValue = '', data = this.values) {
             let expr = String(expression || '').trim();
             if (!expr) return true;
             expr = this.stripWrappingParentheses(expr);
 
             const notExpression = expr.match(/^not\s*\((.*)\)$/i);
             if (notExpression) {
-                return !this.evaluateExpression(notExpression[1], currentValue);
+                return !this.evaluateExpression(notExpression[1], currentValue, data);
             }
 
             const selected = expr.match(/^selected\(\s*\$\{([^}]+)\}\s*,\s*['"]([^'"]+)['"]\s*\)$/i);
             if (selected) {
-                const values = this.asArray(this.values[selected[1]]);
+                const values = this.asArray(data[selected[1]]);
                 return values.map(String).includes(selected[2]);
             }
 
@@ -231,10 +441,10 @@ function webFormFill(initialPage, pageCount) {
 
             const parts = this.splitLogicalExpression(expr);
             if (parts.length > 1) {
-                let result = this.evaluateExpression(parts[0], currentValue);
+                let result = this.evaluateExpression(parts[0], currentValue, data);
                 for (let i = 1; i < parts.length; i += 2) {
                     const op = parts[i].toLowerCase();
-                    const next = this.evaluateExpression(parts[i + 1], currentValue);
+                    const next = this.evaluateExpression(parts[i + 1], currentValue, data);
                     result = op === 'and' ? (result && next) : (result || next);
                 }
                 return result;
@@ -243,16 +453,16 @@ function webFormFill(initialPage, pageCount) {
             const comparison = expr.match(/^(\.|\$\{[^}]+\})\s*(=|!=|>=|<=|>|<)\s*(.+)$/);
             if (!comparison) return true;
 
-            const left = this.resolveOperand(comparison[1], currentValue);
-            const right = this.resolveOperand(comparison[3], currentValue);
+            const left = this.resolveOperand(comparison[1], currentValue, data);
+            const right = this.resolveOperand(comparison[3], currentValue, data);
             return this.compare(left, comparison[2], right);
         },
 
-        resolveOperand(value, currentValue = '') {
+        resolveOperand(value, currentValue = '', data = this.values) {
             const trimmed = String(value || '').trim();
             if (trimmed === '.') return currentValue;
             if (trimmed.startsWith('${') && trimmed.endsWith('}')) {
-                return this.values[trimmed.slice(2, -1)] || '';
+                return data[trimmed.slice(2, -1)] ?? '';
             }
             if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
                 return trimmed.slice(1, -1);
