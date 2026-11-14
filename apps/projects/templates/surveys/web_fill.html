@@ -79,6 +79,7 @@
 
         {{ calculations|json_script:"web-form-calculations" }}
         {{ choice_filters|json_script:"web-form-choice-filters" }}
+        {{ errors|json_script:"web-form-errors" }}
         <div x-show="Object.keys(choiceFilterErrors).length" role="alert" class="mb-4 text-sm text-red-700" x-cloak>
             <template x-for="(message, name) in choiceFilterErrors" :key="name">
                 <p x-text="`${name}: ${message}`"></p>
@@ -193,7 +194,7 @@
                                     {% endif %}
 
                                     {% if errors|get_item:field.name %}
-                                        <p class="mt-2 text-xs font-medium text-red-700">{{ errors|get_item:field.name }}</p>
+                                        <noscript><p class="mt-2 text-xs font-medium text-red-700">{{ errors|get_item:field.name }}</p></noscript>
                                     {% endif %}
                                     <p x-show="fieldError('{{ field.name|escapejs }}')" x-text="fieldError('{{ field.name|escapejs }}')" class="mt-2 text-xs font-medium text-red-700" x-cloak></p>
                                 {% endif %}
@@ -243,5 +244,5 @@
 
 {% block extra-js %}
 {{ block.super }}
-<script src="{% static 'js/surveys/web_fill.js' %}"></script>
+<script src="{% static 'js/surveys/web_fill.js' %}?v=2"></script>
 {% endblock extra-js %}
